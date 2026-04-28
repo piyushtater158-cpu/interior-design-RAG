@@ -1,0 +1,410 @@
+{
+  "name": "generations_export",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generations/:generation_id/export",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "POST /generations/:generation_id/export",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "generations-export"
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_jwt_verify"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "authorization": "={{ $json.headers.authorization }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "verify",
+      "name": "Verify JWT",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_ok",
+      "name": "Token valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 401,
+        "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
+        "options": {}
+      },
+      "id": "respond_401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const params = $('POST /generations/:generation_id/export').item.json.params || {};\nconst generation_id = (params.generation_id || '').toString().trim();\nconst user_id = $json.user_id;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(generation_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_generation_id', code: 'invalid_request' } } } }];\n}\nreturn [{ json: { user_id, generation_id } }];"
+      },
+      "id": "validate",
+      "name": "Validate params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_err",
+      "name": "Params valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_400",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/generations?id=eq.{{$json.generation_id}}&user_id=eq.{{$json.user_id}}&select=id,output_image_path",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch_row",
+      "name": "Fetch generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst row  = rows[0];\nconst ctx  = $('Validate params').item.json;\nif (!row || !row.output_image_path) {\n  return [{ json: { _error: { status: 404, body: { error: 'generation_not_found', code: 'not_found' } } } }];\n}\nconst download_url = `${$env.SUPABASE_URL}/storage/v1/object/public/${row.output_image_path}`;\nreturn [{ json: { ...ctx, download_url } }];"
+      },
+      "id": "shape",
+      "name": "Build download URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_404",
+      "name": "Row exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_404",
+      "name": "Respond 404",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2160,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_event_log"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_type": "export",
+            "user_id": "={{ $json.user_id }}",
+            "payload": "={{ { generation_id: $json.generation_id } }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "log",
+      "name": "Log event",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        2160,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 200,
+        "responseBody": "={{ JSON.stringify({ download_url: $json.download_url }) }}",
+        "options": {}
+      },
+      "id": "respond_200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2400,
+        660
+      ]
+    }
+  ],
+  "connections": {
+    "POST /generations/:generation_id/export": {
+      "main": [
+        [
+          {
+            "node": "Verify JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify JWT": {
+      "main": [
+        [
+          {
+            "node": "Token valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token valid?": {
+      "main": [
+        [
+          {
+            "node": "Validate params",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate params": {
+      "main": [
+        [
+          {
+            "node": "Params valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Params valid?": {
+      "main": [
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch generation": {
+      "main": [
+        [
+          {
+            "node": "Build download URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build download URL": {
+      "main": [
+        [
+          {
+            "node": "Row exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Row exists?": {
+      "main": [
+        [
+          {
+            "node": "Respond 404",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "generations"
+    }
+  ]
+}

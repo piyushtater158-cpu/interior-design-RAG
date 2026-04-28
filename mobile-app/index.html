@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#EAE2D4"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Atelier · Mobile Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bone:#F4EFE6;--bone-deep:#EAE2D4;--paper:#FBF8F2;
+  --ink:#1C1B17;--ink-soft:#3A382F;--mute:#8B8676;--mute-lite:#B8B2A1;
+  --line:#D8D0BE;--olive:#3D4A2A;--olive-deep:#2A3420;--clay:#B85C3A;
+  --sand:#D9C9A8;--sky:#A8B5B0;--dark:#1C1B17;
+}
+html,body{height:100%;background:var(--bone-deep);font-family:'Inter',sans-serif;color:var(--ink);
+  -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+button{font-family:inherit;cursor:pointer}
+a{color:inherit;text-decoration:none}
+textarea,input{font-family:inherit}
+
+/* ── Shell ──────────────────────────────────────────────────────────── */
+#shell{
+  width:100%;max-width:430px;margin:0 auto;height:100dvh;min-height:100svh;
+  position:relative;overflow:hidden;background:var(--paper);
+  display:flex;flex-direction:column;
+  box-shadow:0 0 80px rgba(0,0,0,0.18);
+}
+#shell.dark-shell{background:var(--dark)}
+
+/* ── Status bar ─────────────────────────────────────────────────────── */
+#status-bar{
+  flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:13px 24px 4px;height:44px;font-size:12px;font-weight:500;
+  font-family:'JetBrains Mono',monospace;color:var(--ink);transition:color .2s;
+}
+#status-bar.dark{color:var(--paper)}
+
+/* ── View ───────────────────────────────────────────────────────────── */
+#view{
+  flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  position:relative;min-height:0;
+}
+
+/* ── Tab bar ────────────────────────────────────────────────────────── */
+#tab-bar{
+  flex-shrink:0;display:flex;justify-content:space-around;padding:8px 0 env(safe-area-inset-bottom,22px);
+  background:rgba(251,248,242,0.92);backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border-top:.5px solid var(--line);
+}
+#tab-bar.hidden{display:none}
+.tab-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:4px 16px;background:none;border:none;color:var(--mute);
+  -webkit-tap-highlight-color:transparent;position:relative;
+}
+.tab-btn.active{color:var(--ink)}
+.tab-label{font-size:10px;letter-spacing:.1px;transition:color .15s}
+.tab-badge{
+  position:absolute;top:0;right:8px;width:8px;height:8px;border-radius:50%;
+  background:var(--clay);border:1.5px solid var(--paper);
+}
+
+/* ── Typography ─────────────────────────────────────────────────────── */
+.serif{font-family:'Instrument Serif',serif}
+.mono{font-family:'JetBrains Mono',monospace}
+.anno{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--mute)}
+
+/* ── Blueprint grid ─────────────────────────────────────────────────── */
+.blueprint{
+  background-color:var(--bone-deep);
+  background-image:linear-gradient(rgba(61,74,42,.06) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(61,74,42,.06) 1px,transparent 1px);
+  background-size:24px 24px;
+}
+
+/* ── Mob nav ────────────────────────────────────────────────────────── */
+.mob-nav{
+  display:flex;align-items:center;gap:12px;padding:6px 20px 12px;
+  min-height:56px;flex-shrink:0;
+  border-bottom:.5px solid var(--line);background:var(--paper);
+}
+.mob-nav.dark{border-bottom-color:rgba(255,255,255,.08);background:transparent}
+.mob-nav-title{font-family:'Instrument Serif',serif;font-size:22px;line-height:1.15;
+  color:var(--ink);transition:color .2s}
+.mob-nav.dark .mob-nav-title{color:var(--paper)}
+.mob-nav-sub{font-family:'JetBrains Mono',monospace;font-size:10px;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin-bottom:2px}
+.mob-nav.dark .mob-nav-sub{color:rgba(255,255,255,.45)}
+
+.back-btn{
+  width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;background:#fff;border:1px solid var(--line);
+  flex-shrink:0;-webkit-tap-highlight-color:transparent;
+}
+.back-btn.dark{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12)}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;
+  border-radius:999px;font-size:13px;font-weight:500;letter-spacing:.02em;
+  transition:opacity .15s,transform .1s,background .15s;padding:10px 20px;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn:active:not(:disabled){transform:scale(.96);opacity:.85}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-olive{background:var(--olive);color:var(--paper);border-color:var(--olive-deep);
+  box-shadow:0 2px 8px rgba(61,74,42,.25)}
+.btn-olive:not(:disabled):hover{background:var(--olive-deep)}
+.btn-clay{background:var(--clay);color:var(--paper);border-color:#A24E2E;
+  box-shadow:0 4px 12px rgba(184,92,58,.3)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn-ghost:not(:disabled):hover{background:rgba(28,27,23,.04)}
+.btn-sm{padding:7px 14px;font-size:12px}
+.btn-lg{padding:14px 26px;font-size:14px}
+.btn-full{width:100%;justify-content:center}
+
+/* ── Cards ──────────────────────────────────────────────────────────── */
+.card{
+  background:var(--paper);border:1px solid var(--line);border-radius:14px;
+  transition:border-color .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent;
+}
+.card.active,.card:active{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.card-tap{cursor:pointer}
+.card-tap:active{opacity:.85}
+
+/* ── Upload zone ────────────────────────────────────────────────────── */
+.upload-zone{
+  border:1.5px dashed var(--mute-lite);border-radius:16px;aspect-ratio:4/3;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;background:var(--paper);cursor:pointer;text-align:center;
+  padding:24px;position:relative;overflow:hidden;
+}
+.upload-zone.filled{border-style:solid;border-color:var(--line);cursor:default}
+.upload-zone img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* ── Shelf ──────────────────────────────────────────────────────────── */
+.shelf{
+  display:flex;gap:8px;padding:12px 16px env(safe-area-inset-bottom,20px);
+  background:rgba(28,27,23,.96);border-top:1px solid rgba(255,255,255,.08);
+  flex-shrink:0;
+}
+.shelf-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:10px 6px;border-radius:14px;border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.06);color:var(--paper);font-size:11px;font-weight:500;
+  -webkit-tap-highlight-color:transparent;
+}
+.shelf-btn.primary-shelf{background:var(--clay);border-color:#A24E2E}
+.shelf-btn:active:not(:disabled){transform:scale(.96);opacity:.75}
+.shelf-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── Bottom sheet ───────────────────────────────────────────────────── */
+.sheet-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;
+  animation:fadeIn .2s ease;
+}
+.sheet{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;max-height:78vh;background:var(--paper);
+  border-radius:20px 20px 0 0;z-index:51;display:flex;flex-direction:column;
+  box-shadow:0 -20px 50px rgba(0,0,0,.25);
+  animation:slideUp .26s cubic-bezier(.2,.9,.3,1);
+}
+.sheet-handle{width:40px;height:4px;background:var(--line);border-radius:2px;
+  margin:10px auto 0;flex-shrink:0}
+.sheet-header{display:flex;align-items:flex-start;justify-content:space-between;
+  padding:12px 20px 6px;flex-shrink:0}
+.sheet-body{flex:1;overflow-y:auto;padding:8px 20px 32px;-webkit-overflow-scrolling:touch}
+.sheet-close{
+  width:30px;height:30px;border-radius:50%;background:var(--bone);border:none;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+
+/* ── Inputs ─────────────────────────────────────────────────────────── */
+.inp{
+  width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 16px;
+  font-size:15px;color:var(--ink);background:var(--paper);outline:none;
+  transition:border-color .15s;resize:none;
+}
+.inp:focus{border-color:var(--ink)}
+
+/* ── Spinner ────────────────────────────────────────────────────────── */
+.spin{
+  border:2px solid transparent;border-top-color:currentColor;border-radius:50%;
+  animation:spin .7s linear infinite;display:inline-block;
+}
+
+/* ── Ref grid ───────────────────────────────────────────────────────── */
+.refs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ref-thumb{
+  aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--bone);
+  position:relative;
+}
+.ref-thumb img{width:100%;height:100%;object-fit:cover}
+.ref-sim{
+  position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;
+  font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 5px;border-radius:4px;
+}
+
+/* ── Credits pill ───────────────────────────────────────────────────── */
+.cr-pill{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;
+  background:var(--bone);border:1px solid var(--line);font-size:11px;
+  font-family:'JetBrains Mono',monospace;color:var(--ink-soft);
+}
+.cr-pill.dark{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12);color:var(--paper)}
+
+/* ── Toast ──────────────────────────────────────────────────────────── */
+#toasts{
+  position:fixed;top:56px;left:50%;transform:translateX(-50%);
+  width:calc(100% - 40px);max-width:390px;z-index:200;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none;
+}
+.toast{
+  padding:12px 16px;border-radius:12px;font-size:13px;font-weight:500;
+  animation:slideDown .2s ease;pointer-events:auto;
+}
+.toast-err{background:#fff1f0;border:1px solid #ffa39e;color:#cf1322}
+.toast-ok{background:#f6ffed;border:1px solid #b7eb8f;color:#389e0d}
+
+/* ── Chat msgs ──────────────────────────────────────────────────────── */
+.chat-msg{
+  padding:9px 12px;border-radius:10px;font-size:14px;max-width:85%;margin-bottom:7px;
+  line-height:1.4;
+}
+.chat-msg.user{
+  background:var(--ink);color:var(--paper);margin-left:auto;
+  border-radius:10px 10px 2px 10px;
+}
+.chat-msg.sys{
+  background:var(--bone);color:var(--ink-soft);
+  border-radius:10px 10px 10px 2px;
+}
+
+/* ── Sticky CTA ─────────────────────────────────────────────────────── */
+.sticky-cta{
+  position:sticky;bottom:0;padding:12px 20px env(safe-area-inset-bottom,24px);
+  background:rgba(251,248,242,.93);backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);border-top:.5px solid var(--line);z-index:10;
+}
+
+/* ── Revision rail ──────────────────────────────────────────────────── */
+.rev-rail{
+  display:flex;gap:8px;padding:10px 14px;overflow-x:auto;
+  background:rgba(28,27,23,.8);-webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.rev-rail::-webkit-scrollbar{display:none}
+.rev-thumb{
+  width:52px;height:52px;border-radius:8px;border:2px solid transparent;
+  overflow:hidden;flex-shrink:0;cursor:pointer;background:rgba(255,255,255,.1);
+}
+.rev-thumb.active{border-color:var(--clay)}
+.rev-thumb img{width:100%;height:100%;object-fit:cover}
+
+/* ── Generation screen ──────────────────────────────────────────────── */
+.gen-screen{
+  min-height:100%;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:28px;padding:40px 28px;background:var(--dark);
+}
+.gen-pulse{
+  width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.07);
+  display:flex;align-items:center;justify-content:center;
+  animation:pulse 2s ease-in-out infinite;
+}
+.gen-step{
+  display:flex;align-items:center;gap:10px;font-size:13px;
+  color:rgba(255,255,255,.3);transition:color .3s;
+}
+.gen-step.active{color:var(--paper)}
+.gen-step.done{color:rgba(255,255,255,.5)}
+.gen-step-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);
+  flex-shrink:0;transition:background .3s}
+.gen-step.active .gen-step-dot{background:var(--clay)}
+.gen-step.done .gen-step-dot{background:var(--olive)}
+
+/* ── Profile ────────────────────────────────────────────────────────── */
+.prow{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 0;border-bottom:1px solid var(--line);
+}
+.prow:last-child{border-bottom:none}
+.toggle{
+  width:44px;height:26px;border-radius:13px;background:var(--line);
+  position:relative;border:none;flex-shrink:0;transition:background .2s;cursor:pointer;
+}
+.toggle.on{background:var(--olive)}
+.toggle::after{
+  content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;
+  border-radius:50%;background:#fff;transition:transform .2s;
+  box-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+.toggle.on::after{transform:translateX(18px)}
+
+/* ── Session card ───────────────────────────────────────────────────── */
+.sess-card{
+  display:flex;gap:12px;align-items:center;padding:14px;border-radius:14px;
+  background:var(--paper);border:1px solid var(--line);cursor:pointer;
+  margin-bottom:10px;-webkit-tap-highlight-color:transparent;
+}
+.sess-card:active{opacity:.8}
+.sess-thumb{
+  width:72px;height:72px;border-radius:10px;background:var(--bone);
+  overflow:hidden;flex-shrink:0;
+}
+.sess-thumb img{width:100%;height:100%;object-fit:cover}
+
+/* ── Divider ────────────────────────────────────────────────────────── */
+.divider{height:1px;background:var(--line);margin:16px 0}
+
+/* ── Filter chips ───────────────────────────────────────────────────── */
+.chip{
+  padding:6px 14px;border-radius:20px;border:1px solid var(--line);background:var(--paper);
+  font-size:12px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--mute);white-space:nowrap;flex-shrink:0;
+}
+.chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* ── Room grid ──────────────────────────────────────────────────────── */
+.room-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.style-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ── Keyframes ──────────────────────────────────────────────────────── */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{
+  from{transform:translateX(-50%) translateY(100%)}
+  to{transform:translateX(-50%) translateY(0)}
+}
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(28,27,23,.15);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ── Shell ──────────────────────────────────────────────────────────── -->
+<div id="shell">
+  <!-- Status bar -->
+  <div id="status-bar">
+    <span>9:41</span>
+    <div style="display:flex;align-items:center;gap:6px">
+      <svg width="16" height="10" viewBox="0 0 16 10" fill="currentColor">
+        <rect x="0" y="7" width="2.5" height="3" rx=".5" opacity=".4"/>
+        <rect x="3.5" y="5" width="2.5" height="5" rx=".5" opacity=".6"/>
+        <rect x="7" y="3" width="2.5" height="7" rx=".5" opacity=".8"/>
+        <rect x="10.5" y="1" width="2.5" height="9" rx=".5"/>
+        <rect x="14" y="0" width="2" height="10" rx=".5"/>
+      </svg>
+      <svg width="14" height="10" viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-linecap="round">
+        <path d="M7 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" fill="currentColor" stroke="none"/>
+        <path d="M3.5 5.5C4.7 4.3 5.8 3.8 7 3.8s2.3.5 3.5 1.7" stroke-width="1.2"/>
+        <path d="M1 3C2.8 1.2 4.8.5 7 .5s4.2.7 6 2.5" stroke-width="1.2" opacity=".4"/>
+      </svg>
+      <svg width="22" height="10" viewBox="0 0 22 10" fill="none">
+        <rect x=".5" y=".5" width="18" height="9" rx="2" stroke="currentColor" opacity=".4"/>
+        <rect x="2" y="2" width="14" height="6" rx="1" fill="currentColor"/>
+        <rect x="19.5" y="3" width="1.5" height="4" rx=".5" fill="currentColor" opacity=".4"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- View -->
+  <div id="view"></div>
+
+  <!-- Tab bar -->
+  <div id="tab-bar" class="hidden">
+    <button class="tab-btn" data-tab="home" onclick="switchTab('home')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 10 L11 3 L19 10 V19 H3 Z"/><path d="M8 19V14H14V19"/>
+      </svg>
+      <span class="tab-label">Studio</span>
+    </button>
+    <button class="tab-btn" data-tab="canvas" onclick="switchTab('canvas')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="16" height="14" rx="2"/>
+        <path d="M3 14 L8 9 L12 13 L16 10 L19 13"/>
+        <circle cx="8" cy="8" r="1.2"/>
+      </svg>
+      <span class="tab-label">Canvas</span>
+    </button>
+    <button class="tab-btn" data-tab="library" onclick="switchTab('library')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="7" width="16" height="12" rx="2"/>
+        <path d="M5 4H17 M6 1H16"/>
+      </svg>
+      <span class="tab-label">Library</span>
+      <span class="tab-badge" id="lib-badge" style="display:none"></span>
+    </button>
+    <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="8" r="4"/>
+        <path d="M3 20C3 15 7 13 11 13S19 15 19 20"/>
+      </svg>
+      <span class="tab-label">Profile</span>
+    </button>
+  </div>
+</div>
+
+<!-- Sheet & toast layers -->
+<div id="sheet-layer"></div>
+<div id="toasts"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const API = (localStorage.getItem('atelier:api') || 'http://localhost:5678/webhook').replace(/\/$/, '');
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+const S = {
+  jwt:    localStorage.getItem('atelier:jwt') || '',
+  userId: localStorage.getItem('atelier:userId') || '',
+  email:  localStorage.getItem('atelier:email') || '',
+  credits: +localStorage.getItem('atelier:credits') || 24,
+  notifPrefs: JSON.parse(localStorage.getItem('atelier:prefs') || '{"lowBalance":true,"commitDone":true,"features":false,"storage":true}'),
+
+  screen: '',
+  prevScreen: '',
+  tab: 'home',
+
+  // new-session flow
+  flow: {
+    roomType: 'bedroom',
+    style: null,
+    prompt: '',
+    uploadId: null,
+    uploadPreview: null,
+    uploading: false,
+  },
+
+  // active session (canvas)
+  sess: {
+    id: null,
+    roomType: null,
+    style: null,
+    revisions: [],        // {id,kind,url,parentId,createdAt,modelId}
+    currentId: null,
+    references: [],       // {id,url,similarity,tags}
+    chat: [],             // {role,text}
+  },
+
+  unread: 2,
+  notifications: [
+    {id:1,title:'Draft ready',body:'Your bedroom draft (Rev 01) is ready.',read:false,time:'2m ago'},
+    {id:2,title:'Commit complete',body:'High-fidelity render committed successfully.',read:false,time:'14m ago'},
+    {id:3,title:'Storage reminder',body:'You\'ve used 80% of monthly storage.',read:true,time:'2h ago'},
+  ],
+
+  // library filter state
+  libFilter: 'all',
+  libQuery: '',
+};
+
+function savePersist() {
+  localStorage.setItem('atelier:jwt',     S.jwt);
+  localStorage.setItem('atelier:userId',  S.userId);
+  localStorage.setItem('atelier:email',   S.email);
+  localStorage.setItem('atelier:credits', String(S.credits));
+  localStorage.setItem('atelier:prefs',   JSON.stringify(S.notifPrefs));
+}
+
+// ── ICONS ────────────────────────────────────────────────────────────────────
+const IC = {
+  back: `<svg width="10" height="16" viewBox="0 0 10 16" fill="none"><path d="M8 2L2 8L8 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  close: `<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2L10 10M10 2L2 10" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  edit: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17L7 16L17 6L14 3L4 13Z"/></svg>`,
+  refs: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 13L7 9L11 12L14 10L17 13"/></svg>`,
+  commit: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3"/><path d="M10 2V7M10 13V18"/></svg>`,
+  exp: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13V3M6 7L10 3L14 7"/><path d="M4 13V16H16V13"/></svg>`,
+  plus: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 2V14M2 8H14"/></svg>`,
+  notif: `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1.5C6.5 1.5 4.5 3.5 4.5 6v3.5L3 12H15L13.5 9.5V6C13.5 3.5 11.5 1.5 9 1.5"/><path d="M7 13.5a2 2 0 0 0 4 0"/></svg>`,
+  upload: `<svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="6" y="9" width="32" height="24" rx="3" stroke="#8B8676" stroke-width="1.5"/><circle cx="15" cy="18" r="2.5" fill="#8B8676"/><path d="M6 29L18 19L25 26L31 21L38 28" stroke="#8B8676" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  heart: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14S2 10 2 5.5A3.5 3.5 0 0 1 8 3a3.5 3.5 0 0 1 6 2.5C14 10 8 14 8 14z"/></svg>`,
+  chevron: `<svg width="8" height="14" viewBox="0 0 8 14" fill="none"><path d="M1 1L7 7L1 13" stroke="var(--mute-lite)" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+};
+
+// ── API CLIENT ────────────────────────────────────────────────────────────────
+async function apiReq(path, opts = {}) {
+  const headers = {};
+  if (S.jwt) headers['Authorization'] = `Bearer ${S.jwt}`;
+  if (opts.json !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    opts = { ...opts, body: JSON.stringify(opts.json) };
+    delete opts.json;
+  }
+  const res = await fetch(`${API}${path}`, { ...opts, headers });
+  if (!res.ok) {
+    let b = {};
+    try { b = await res.json(); } catch {}
+    throw new Error(b.error || b.message || res.statusText || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+const WH = {
+  authMagicLink: (email)   => apiReq('/auth/magic-link',   { method:'POST', json:{email} }),
+  authMe:        ()         => apiReq('/auth/me'),
+  uploadPhoto:   (file)     => { const f=new FormData(); f.append('file',file); return apiReq('/uploads/room-photo',{method:'POST',body:f}); },
+  retrieveRefs:  (a)        => apiReq('/retrieve/references',              { method:'POST', json:a }),
+  generateDraft: (a)        => apiReq('/generate/draft',                   { method:'POST', json:a }),
+  generateEdit:  (a)        => apiReq('/generate/edit',                    { method:'POST', json:a }),
+  generateCommit:(a)        => apiReq('/generate/commit',                  { method:'POST', json:a }),
+  listSessGens:  (id)       => apiReq(`/generations/session/${encodeURIComponent(id)}`),
+  exportGen:     (id)       => apiReq(`/generations/${encodeURIComponent(id)}/export`, { method:'POST' }),
+};
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function absUrl(url) {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${API}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+function revLabel(i) { return `Rev ${String(i+1).padStart(2,'0')}` }
+function wait(ms) { return new Promise(r=>setTimeout(r,ms)) }
+function uid() { return crypto.randomUUID?.() || `sess-${Date.now()}-${Math.random().toString(36).slice(2,7)}` }
+
+function toast(msg, type='err') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+
+// ── ROUTING ───────────────────────────────────────────────────────────────────
+function go(screen) {
+  S.prevScreen = S.screen;
+  S.screen = screen;
+  render();
+}
+
+function switchTab(tab) {
+  S.tab = tab;
+  const map = { home:'home', canvas:'canvas', library:'library', profile:'profile' };
+  go(map[tab]);
+}
+
+// ── SHELL HELPERS ─────────────────────────────────────────────────────────────
+function applyShellTheme(dark) {
+  const shell = document.getElementById('shell');
+  const sb    = document.getElementById('status-bar');
+  shell.classList.toggle('dark-shell', dark);
+  sb.classList.toggle('dark', dark);
+}
+
+function updateTabBar(visible) {
+  const tb = document.getElementById('tab-bar');
+  tb.className = visible ? '' : 'hidden';
+  if (!visible) return;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const on = b.dataset.tab === S.tab;
+    b.classList.toggle('active', on);
+  });
+  const badge = document.getElementById('lib-badge');
+  if (badge) badge.style.display = S.unread > 0 ? 'block' : 'none';
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render() {
+  const noTabs = ['landing','signin','new-upload','new-style','new-generating'];
+  const darkBg = ['canvas','new-generating'];
+  const dark   = darkBg.includes(S.screen);
+
+  applyShellTheme(dark);
+  updateTabBar(!noTabs.includes(S.screen));
+
+  const view = document.getElementById('view');
+  switch (S.screen) {
+    case 'landing':        view.innerHTML = scrLanding();    afterLanding();    break;
+    case 'signin':         view.innerHTML = scrSignIn();     afterSignIn();     break;
+    case 'home':           view.innerHTML = scrHome();                          break;
+    case 'new-upload':     view.innerHTML = scrNewUpload();                     break;
+    case 'new-style':      view.innerHTML = scrNewStyle();   afterNewStyle();   break;
+    case 'new-generating': view.innerHTML = scrGenerating(); startGeneration(); break;
+    case 'canvas':         view.innerHTML = scrCanvas();                        break;
+    case 'library':        view.innerHTML = scrLibrary();    afterLibrary();    break;
+    case 'notifications':  view.innerHTML = scrNotifs();                        break;
+    case 'profile':        view.innerHTML = scrProfile();                       break;
+    default:               view.innerHTML = scrLanding();    afterLanding();    break;
+  }
+}
+
+// ── SHEET HELPERS ─────────────────────────────────────────────────────────────
+function openSheet(title, sub, bodyHtml) {
+  document.getElementById('sheet-layer').innerHTML = `
+    <div class="sheet-backdrop" onclick="closeSheet()"></div>
+    <div class="sheet" id="active-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div>
+          ${sub ? `<div class="anno" style="margin-bottom:3px">${sub}</div>` : ''}
+          <div class="serif" style="font-size:22px">${title}</div>
+        </div>
+        <button class="sheet-close" onclick="closeSheet()">${IC.close}</button>
+      </div>
+      <div class="sheet-body" id="sheet-body">${bodyHtml}</div>
+    </div>`;
+}
+function closeSheet() { document.getElementById('sheet-layer').innerHTML = '' }
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: LANDING
+// ════════════════════════════════════════════════════════════════════════
+function scrLanding() {
+  return `<div class="blueprint" style="min-height:100%;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;padding:40px 28px;text-align:center;gap:28px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="6" y="6" width="24" height="24" rx="3" stroke="var(--olive)" stroke-width="1.5"/>
+        <rect x="11" y="11" width="14" height="14" rx="2" fill="var(--olive)" opacity=".15"/>
+        <path d="M18 11V25M11 18H25" stroke="var(--olive)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <span class="serif" style="font-size:28px;letter-spacing:-.5px">Atelier</span>
+    </div>
+    <div class="anno">interior design studio · mobile</div>
+    <h1 class="serif" style="font-size:36px;line-height:1.1;color:var(--ink)">
+      Upload a room.<br><em style="font-style:italic">Describe a mood.</em><br>Get a draft in seconds.
+    </h1>
+    <p style="color:var(--mute);font-size:14px;line-height:1.65;max-width:280px">
+      An AI design assistant tuned for studios. Draft, iterate, commit — without leaving the conversation.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:310px">
+      <button class="btn btn-olive btn-lg btn-full" onclick="go('signin')">Sign in to start</button>
+      <button class="btn btn-ghost btn-lg btn-full" id="demo-btn" onclick="doDemo()">
+        Continue as demo →
+      </button>
+    </div>
+    <div class="anno" style="margin-top:8px">phase 3 · n8n webhooks · port 3002</div>
+  </div>`;
+}
+function afterLanding() {}
+
+async function doDemo() {
+  const b = document.getElementById('demo-btn');
+  b.disabled = true; b.textContent = 'Starting…';
+  try {
+    const r = await WH.authMagicLink('demo@example.com');
+    S.jwt = r.token; S.userId = r.user_id; S.email = 'demo@example.com';
+    savePersist(); S.tab = 'home'; go('home');
+  } catch(e) {
+    toast('Demo sign-in failed: ' + e.message);
+    b.disabled = false; b.textContent = 'Continue as demo →';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: SIGN IN
+// ════════════════════════════════════════════════════════════════════════
+function scrSignIn() {
+  return `<div style="min-height:100%;padding-bottom:40px">
+    <div class="mob-nav">
+      <button class="back-btn" onclick="go('landing')">${IC.back}</button>
+      <div>
+        <div class="mob-nav-sub">atelier · auth</div>
+        <div class="mob-nav-title">Sign in</div>
+      </div>
+    </div>
+    <div style="padding:28px 24px;display:flex;flex-direction:column;gap:20px">
+      <p style="color:var(--mute);font-size:14px;line-height:1.6">
+        Enter your email — we'll issue a JWT token immediately. No password needed.
+      </p>
+      <div>
+        <div class="anno" style="margin-bottom:8px">◆ email</div>
+        <input id="email-in" type="email" class="inp" placeholder="studio@example.com"
+          autocomplete="email" inputmode="email" onkeydown="if(event.key==='Enter')doSignIn()"/>
+      </div>
+      <button class="btn btn-olive btn-lg btn-full" id="signin-btn" onclick="doSignIn()">
+        Send magic link
+      </button>
+      <div class="divider"></div>
+      <button class="btn btn-ghost btn-full" onclick="doDemo()">Or continue as demo →</button>
+    </div>
+  </div>`;
+}
+function afterSignIn() {
+  setTimeout(() => document.getElementById('email-in')?.focus(), 100);
+}
+
+async function doSignIn() {
+  const email = document.getElementById('email-in')?.value.trim();
+  if (!email || !email.includes('@')) { toast('Please enter a valid email'); return; }
+  const b = document.getElementById('signin-btn');
+  b.disabled = true; b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Sending…';
+  try {
+    const r = await WH.authMagicLink(email);
+    S.jwt = r.token; S.userId = r.user_id; S.email = email;
+    savePersist(); S.tab = 'home'; go('home');
+    toast('Signed in!', 'ok');
+  } catch(e) {
+    toast('Sign-in failed: ' + e.message);
+    b.disabled = false; b.textContent = 'Send magic link';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: HOME (STUDIO)
+// ════════════════════════════════════════════════════════════════════════
+const ROOMS = [
+  { id:'bedroom',  name:'Bedroom',  sub:'calm · personal · low light'  },
+  { id:'dining',   name:'Dining',   sub:'gathering · warm · focal'      },
+  { id:'kitchen',  name:'Kitchen',  sub:'utility · surfaces · flow'     },
+  { id:'mandir',   name:'Mandir',   sub:'sacred · still · intimate'     },
+];
+
+function scrHome() {
+  const sess = S.sess;
+  return `<div style="min-height:100%;padding-bottom:24px">
+    <!-- Header -->
+    <div style="padding:20px 20px 14px;display:flex;align-items:flex-start;justify-content:space-between">
+      <div>
+        <div class="anno">studio</div>
+        <div class="serif" style="font-size:28px;margin-top:2px">
+          ${S.email ? 'Good morning.' : 'Welcome.'}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="go('notifications')" style="position:relative;background:none;border:none;padding:4px">
+          ${IC.notif}
+          ${S.unread>0 ? `<span style="position:absolute;top:0;right:0;width:8px;height:8px;border-radius:50%;
+            background:var(--clay);border:1.5px solid var(--paper)"></span>` : ''}
+        </button>
+        <div class="cr-pill">${S.credits} cr</div>
+      </div>
+    </div>
+
+    <!-- Room picker -->
+    <div style="padding:0 20px 20px">
+      <div class="anno" style="margin-bottom:10px">◆ start new session</div>
+      <div class="room-grid">
+        ${ROOMS.map(r => `
+          <div class="card card-tap room-card ${S.flow.roomType===r.id?'active':''}"
+               data-room="${r.id}" onclick="selRoom('${r.id}')"
+               style="padding:14px;cursor:pointer">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+              <div class="room-dot" style="width:8px;height:8px;border-radius:50%;
+                background:${S.flow.roomType===r.id?'var(--olive)':'var(--line)'};transition:background .15s"></div>
+              <span class="serif" style="font-size:17px">${r.name}</span>
+            </div>
+            <div class="anno">${r.sub}</div>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn btn-olive btn-lg btn-full" style="margin-top:14px" onclick="startNew()">
+        ${IC.plus} New session →
+      </button>
+    </div>
+
+    <!-- Current session -->
+    <div style="padding:0 20px 20px">
+      <div class="divider"></div>
+      <div class="anno" style="margin-bottom:10px">◆ current session</div>
+      ${sess.id ? `
+        <div class="sess-card" onclick="S.tab='canvas';go('canvas')">
+          <div class="sess-thumb">
+            ${sess.revisions.length > 0
+              ? `<img src="${sess.revisions[sess.revisions.length-1].url}" alt="session" onerror="this.style.display='none'"/>`
+              : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                  <span class="anno">—</span></div>`
+            }
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="anno" style="margin-bottom:3px">${sess.roomType||'—'} · ${sess.style||'—'}</div>
+            <div class="serif" style="font-size:16px;margin-bottom:3px">
+              Session ${sess.id.slice(0,8)}
+            </div>
+            <div style="font-size:12px;color:var(--mute)">
+              ${sess.revisions.length} revision${sess.revisions.length!==1?'s':''}
+            </div>
+          </div>
+          ${IC.chevron}
+        </div>
+      ` : `
+        <div style="text-align:center;padding:32px 0">
+          <div class="anno" style="margin-bottom:6px">no sessions yet</div>
+          <p style="font-size:13px;color:var(--mute)">Upload a room to get started.</p>
+        </div>
+      `}
+    </div>
+  </div>`;
+}
+
+function selRoom(id) {
+  S.flow.roomType = id;
+  document.querySelectorAll('.room-card').forEach(c => {
+    const on = c.dataset.room === id;
+    c.classList.toggle('active', on);
+    const dot = c.querySelector('.room-dot');
+    if (dot) dot.style.background = on ? 'var(--olive)' : 'var(--line)';
+  });
+}
+
+function startNew() {
+  S.flow.style = null; S.flow.prompt = '';
+  S.flow.uploadId = null; S.flow.uploadPreview = null;
+  go('new-upload');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: NEW SESSION – STEP 1 (UPLOAD)
+// ════════════════════════════════════════════════════════════════════════
+function scrNewUpload() {
+  const room = ROOMS.find(r=>r.id===S.flow.roomType)||ROOMS[0];
+  const filled = !!S.flow.uploadId;
+  return `<div>
+    <div class="mob-nav">
+      <button class="back-btn" onclick="go('home')">${IC.back}</button>
+      <div style="flex:1">
+        <div class="mob-nav-sub">${room.id} · step 01 of 02</div>
+        <div class="mob-nav-title">Show us the room</div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <div style="width:20px;height:4px;border-radius:2px;background:var(--ink)"></div>
+        <div style="width:10px;height:4px;border-radius:2px;background:var(--line)"></div>
+      </div>
+    </div>
+
+    <div style="padding:20px 20px 140px">
+      <input type="file" id="file-in" accept="image/jpeg,image/png,image/webp"
+        style="display:none" onchange="onFile(event)"/>
+
+      <div class="upload-zone ${filled?'filled':''}"
+           onclick="${filled?'':'document.getElementById(\'file-in\').click()'}">
+        ${S.flow.uploadPreview
+          ? `<img src="${S.flow.uploadPreview}" alt="Room preview"/>
+             <div style="position:absolute;bottom:12px;left:12px;right:12px;
+                 display:flex;justify-content:space-between;align-items:center;z-index:2">
+               <span class="anno" style="background:rgba(255,255,255,.9);padding:3px 8px;border-radius:6px">
+                 ✓ uploaded</span>
+               <button class="btn btn-sm" style="background:rgba(255,255,255,.9);color:var(--ink);
+                   border:1px solid var(--line)" onclick="event.stopPropagation();clearUpload()">
+                 Replace</button>
+             </div>`
+          : S.flow.uploading
+          ? `<div class="spin" style="width:32px;height:32px"></div>
+             <div class="serif" style="font-size:18px">Uploading…</div>`
+          : `${IC.upload}
+             <div class="serif" style="font-size:20px">Tap to upload</div>
+             <div class="anno">JPG / PNG · ≤10 MB</div>`
+        }
+      </div>
+
+      ${filled ? `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        ${['landscape ok','night ok','any angle'].map(t=>
+          `<span class="chip" style="padding:5px 12px;font-size:10px">✓ ${t}</span>`
+        ).join('')}
+      </div>` : ''}
+
+      <div style="margin-top:24px">
+        <div class="anno" style="margin-bottom:8px">◆ what we keep</div>
+        <p style="font-size:13px;line-height:1.65;color:var(--ink-soft);max-width:340px">
+          Windows, proportions, and architecture stay. Everything else — furniture, finishes,
+          light, greenery — is up for redesign.
+        </p>
+      </div>
+    </div>
+
+    <div class="sticky-cta">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span class="anno">step 01 · upload your room</span>
+        <button class="btn btn-olive btn-lg" onclick="goStyle()"
+          ${filled && !S.flow.uploading ? '' : 'disabled'}>
+          Next — pick a style →
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function onFile(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  S.flow.uploading = true; S.flow.uploadId = null; S.flow.uploadPreview = null;
+  render();
+  try {
+    const r = await WH.uploadPhoto(file);
+    S.flow.uploadId = r.upload_id;
+    S.flow.uploadPreview = absUrl(r.preview_url);
+  } catch(err) {
+    toast('Upload failed: ' + err.message);
+  } finally {
+    S.flow.uploading = false; render();
+  }
+}
+
+function clearUpload() {
+  S.flow.uploadId = null; S.flow.uploadPreview = null; render();
+}
+
+function goStyle() {
+  if (!S.flow.uploadId) return;
+  go('new-style');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: NEW SESSION – STEP 2 (STYLE)
+// ════════════════════════════════════════════════════════════════════════
+const STYLES = [
+  { id:'scandinavian', name:'Scandinavian', desc:'pale wood · airy · restrained'  },
+  { id:'japandi',      name:'Japandi',      desc:'quiet · textural · warm minimal' },
+  { id:'midcentury',   name:'Mid-century',  desc:'teak · tapered · bold color'    },
+  { id:'traditional',  name:'Traditional',  desc:'carved · layered · rich tones'  },
+  { id:'industrial',   name:'Industrial',   desc:'steel · concrete · patina'      },
+  { id:'boho',         name:'Boho',         desc:'rattan · weave · sun-faded'     },
+];
+
+function scrNewStyle() {
+  const room = ROOMS.find(r=>r.id===S.flow.roomType)||ROOMS[0];
+  return `<div>
+    <div class="mob-nav">
+      <button class="back-btn" onclick="go('new-upload')">${IC.back}</button>
+      <div style="flex:1">
+        <div class="mob-nav-sub">${room.id} · step 02 of 02</div>
+        <div class="mob-nav-title">Pick a direction</div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <div style="width:20px;height:4px;border-radius:2px;background:var(--ink)"></div>
+        <div style="width:20px;height:4px;border-radius:2px;background:var(--ink)"></div>
+      </div>
+    </div>
+
+    <div style="padding:20px 20px 150px">
+      <div class="anno" style="margin-bottom:10px">◆ style tag</div>
+      <div class="style-grid">
+        ${STYLES.map(s=>`
+          <div class="card card-tap ${S.flow.style===s.id?'active':''}"
+               data-style="${s.id}" onclick="selStyle('${s.id}')"
+               style="padding:13px;cursor:pointer">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <div style="width:8px;height:8px;border-radius:50%;
+                background:${S.flow.style===s.id?'var(--olive)':'var(--line)'};
+                transition:background .15s" class="sdot-${s.id}"></div>
+              <span class="serif" style="font-size:16px">${s.name}</span>
+            </div>
+            <div class="anno">${s.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div style="margin-top:20px">
+        <div class="anno" style="margin-bottom:8px">or describe it (optional)</div>
+        <textarea id="prompt-in" class="inp" rows="3"
+          placeholder='"soft light, lived-in, brass touches, plants that outgrow their pots"'
+          oninput="S.flow.prompt=this.value">${S.flow.prompt}</textarea>
+        <div class="anno" style="margin-top:6px">
+          your brief guides the AI render + reference selection
+        </div>
+      </div>
+    </div>
+
+    <div class="sticky-cta">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span class="anno">cost · 2 credits</span>
+        <button class="btn btn-olive btn-lg" id="gen-btn"
+          onclick="triggerGen()" ${S.flow.style?'':'disabled'}>
+          Generate first draft →
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function afterNewStyle() {
+  const ta = document.getElementById('prompt-in');
+  if (ta) ta.value = S.flow.prompt;
+}
+
+function selStyle(id) {
+  S.flow.style = id;
+  document.querySelectorAll('[data-style]').forEach(c => {
+    const on = c.dataset.style === id;
+    c.classList.toggle('active', on);
+    const dot = c.querySelector(`[class*="sdot"]`);
+    if (dot) dot.style.background = on ? 'var(--olive)' : 'var(--line)';
+  });
+  const b = document.getElementById('gen-btn');
+  if (b) b.disabled = false;
+}
+
+function triggerGen() {
+  const ta = document.getElementById('prompt-in');
+  if (ta) S.flow.prompt = ta.value;
+  if (!S.flow.style) { toast('Please pick a style first'); return; }
+  go('new-generating');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: GENERATING
+// ════════════════════════════════════════════════════════════════════════
+const GEN_STEPS = [
+  'Retrieving reference images…',
+  'Composing scene…',
+  'Rendering draft…',
+  'Finalising output…',
+];
+
+function scrGenerating() {
+  return `<div class="gen-screen" style="min-height:100%">
+    <div class="gen-pulse">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+        <rect x="8" y="8" width="24" height="24" rx="4" stroke="var(--paper)" stroke-width="1.5" opacity=".5"/>
+        <rect x="14" y="14" width="12" height="12" rx="2" fill="var(--paper)" opacity=".15"/>
+        <path d="M20 14V26M14 20H26" stroke="var(--paper)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div style="text-align:center">
+      <div class="serif" style="font-size:26px;color:var(--paper)">Rendering…</div>
+      <div class="anno" style="color:rgba(255,255,255,.4);margin-top:5px">
+        ${S.flow.roomType} · ${S.flow.style}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:270px">
+      ${GEN_STEPS.map((s,i)=>`
+        <div class="gen-step" id="gs${i}">
+          <div class="gen-step-dot"></div>
+          <span>${s}</span>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+async function startGeneration() {
+  function stepActive(i) {
+    const el = document.getElementById(`gs${i}`);
+    if (!el) return;
+    el.classList.add('active');
+    el.querySelector('.gen-step-dot').style.background = 'var(--clay)';
+    el.querySelector('span').style.color = 'var(--paper)';
+  }
+  function stepDone(i) {
+    const el = document.getElementById(`gs${i}`);
+    if (!el) return;
+    el.classList.remove('active'); el.classList.add('done');
+    el.querySelector('.gen-step-dot').style.background = 'var(--olive)';
+    el.querySelector('span').style.color = 'rgba(255,255,255,.45)';
+  }
+
+  stepActive(0);
+  try {
+    const sessionId = uid();
+
+    // Step 0 — retrieve references
+    let refs = [];
+    try {
+      const rr = await WH.retrieveRefs({
+        upload_id:  S.flow.uploadId,
+        room_type:  S.flow.roomType,
+        style_tag:  S.flow.style,
+        k: 6,
+        prompt:     S.flow.prompt || undefined,
+      });
+      refs = rr.references || [];
+    } catch {}
+
+    stepDone(0); stepActive(1);
+    await wait(350);
+    stepDone(1); stepActive(2);
+
+    // Step 2 — generate draft  ← core webhook call
+    const draft = await WH.generateDraft({
+      upload_id:     S.flow.uploadId,
+      room_type:     S.flow.roomType,
+      style_tag:     S.flow.style,
+      reference_ids: refs.map(r=>r.id),
+      session_id:    sessionId,
+      prompt:        S.flow.prompt || undefined,
+    });
+
+    stepDone(2); stepActive(3);
+    await wait(250);
+    stepDone(3);
+
+    // Commit to state
+    S.sess = {
+      id:       sessionId,
+      roomType: S.flow.roomType,
+      style:    S.flow.style,
+      revisions: [{
+        id: draft.generation_id, kind:'draft',
+        url: absUrl(draft.output_url),
+        parentId: null, createdAt: Date.now(), modelId: draft.model_id,
+      }],
+      currentId:  draft.generation_id,
+      references: refs.map(r=>({id:r.id, url:absUrl(r.url), similarity:r.similarity, tags:r.style_tags})),
+      chat: [],
+    };
+    S.credits = Math.max(0, S.credits - 2);
+    savePersist();
+
+    await wait(180);
+    S.tab = 'canvas'; go('canvas');
+  } catch(e) {
+    toast('Generation failed: ' + e.message);
+    S.tab = 'home'; go('home');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: CANVAS
+// ════════════════════════════════════════════════════════════════════════
+function scrCanvas() {
+  const { sess } = S;
+  const rev = sess.revisions.find(r=>r.id===sess.currentId)
+              || sess.revisions[sess.revisions.length-1];
+  const revIdx = sess.revisions.findIndex(r=>r.id===rev?.id);
+  const has = !!rev;
+
+  return `<div style="min-height:100%;display:flex;flex-direction:column;background:var(--dark)">
+    <!-- Nav -->
+    <div class="mob-nav dark">
+      <button class="back-btn dark" onclick="S.tab='home';go('home')">${IC.back}</button>
+      <div style="flex:1">
+        <div class="mob-nav-sub">session · ${sess.id ? sess.id.slice(0,8) : '—'}</div>
+        <div class="mob-nav-title">
+          ${has ? `${revLabel(revIdx)} · ${rev.kind}` : 'No draft yet'}
+        </div>
+      </div>
+      <div class="cr-pill dark">${S.credits} cr</div>
+    </div>
+
+    <!-- Revision rail -->
+    ${sess.revisions.length > 1 ? `
+      <div class="rev-rail">
+        ${sess.revisions.map((r,i)=>`
+          <div class="rev-thumb ${r.id===sess.currentId?'active':''}"
+               onclick="selectRev('${r.id}')">
+            ${r.url ? `<img src="${r.url}" alt="${revLabel(i)}"
+              onerror="this.style.display='none'"/>` : ''}
+          </div>`).join('')}
+      </div>` : ''}
+
+    <!-- Main image -->
+    <div style="flex:1;position:relative;overflow:hidden;min-height:0;
+        display:flex;align-items:center;justify-content:center">
+      ${has && rev.url
+        ? `<img src="${rev.url}" alt="Room render"
+             style="width:100%;height:100%;object-fit:cover"
+             onerror="this.style.display='none'"/>`
+        : `<div style="display:flex;flex-direction:column;align-items:center;gap:12px;
+               color:rgba(255,255,255,.3)">
+             ${sess.id
+               ? `<div class="spin" style="width:32px;height:32px"></div>
+                  <div class="anno" style="color:rgba(255,255,255,.3)">generating…</div>`
+               : `<div class="anno" style="color:rgba(255,255,255,.3)">no session active</div>
+                  <button class="btn btn-ghost" style="color:var(--paper);border-color:rgba(255,255,255,.2)"
+                    onclick="S.tab='home';go('home')">Go to Studio</button>`
+             }
+           </div>`}
+      ${rev?.modelId ? `
+        <div style="position:absolute;bottom:8px;left:10px" class="anno"
+             style="color:rgba(255,255,255,.45)">model · ${rev.modelId}</div>` : ''}
+    </div>
+
+    <!-- Shelf -->
+    <div class="shelf">
+      <button class="shelf-btn primary-shelf" onclick="sheetEdit()" ${!has?'disabled':''}>
+        ${IC.edit}<span>Edit</span>
+      </button>
+      <button class="shelf-btn" onclick="sheetRefs()"
+          ${S.sess.references.length===0?'style="opacity:.35"':''}>
+        ${IC.refs}<span>Refs <span style="opacity:.5;font-family:monospace;font-size:10px">
+          ${S.sess.references.length}</span></span>
+      </button>
+      <button class="shelf-btn" onclick="sheetCommit()" ${!has?'disabled':''}>
+        ${IC.commit}<span>Commit</span>
+      </button>
+      <button class="shelf-btn" onclick="sheetExport()" ${!has?'disabled':''}>
+        ${IC.exp}<span>Export</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+function selectRev(id) {
+  S.sess.currentId = id; go('canvas');
+}
+
+// ── Edit sheet ─────────────────────────────────────────────────────────
+function sheetEdit() {
+  const chat = S.sess.chat.map(m =>
+    `<div class="chat-msg ${m.role==='user'?'user':'sys'}">${m.text}</div>`
+  ).join('');
+  openSheet('Edit', 'describe a change', `
+    <div style="display:flex;flex-direction:column;gap:12px;min-height:45vh">
+      <div id="chat-log" style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
+        ${chat || '<div style="color:var(--mute);font-size:13px;text-align:center;margin-top:24px">Describe a change to the room…</div>'}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:auto">
+        <textarea id="edit-in" class="inp" rows="2"
+          placeholder='"Add warm pendant lights and darken the walls…"'
+          style="flex:1"></textarea>
+        <button class="btn btn-clay" onclick="sendEdit()" style="align-self:flex-end;padding:10px 14px">
+          ${IC.edit}
+        </button>
+      </div>
+    </div>`);
+}
+
+async function sendEdit() {
+  const inp = document.getElementById('edit-in');
+  const instruction = inp?.value.trim();
+  if (!instruction) return;
+  if (!S.sess.currentId) { toast('No revision to edit'); return; }
+
+  inp.value = ''; inp.disabled = true;
+  S.sess.chat.push({ role:'user', text:instruction });
+  const log = document.getElementById('chat-log');
+  if (log) {
+    if (log.querySelector('div[style*="margin-top:24px"]')) log.innerHTML = '';
+    log.innerHTML += `<div class="chat-msg user">${instruction}</div>`;
+    log.innerHTML += `<div class="chat-msg sys" id="typing">
+      <span class="spin" style="width:12px;height:12px;display:inline-block"></span></div>`;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  try {
+    const r = await WH.generateEdit({
+      generation_id: S.sess.currentId,
+      instruction,
+      session_id: S.sess.id,
+    });
+    const newRev = {
+      id: r.generation_id, kind:'edit',
+      url: absUrl(r.output_url),
+      parentId: S.sess.currentId, createdAt: Date.now(), modelId: r.model_id,
+    };
+    S.sess.revisions.push(newRev);
+    S.sess.currentId = r.generation_id;
+    S.sess.chat.push({ role:'sys', text:`Edit applied — ${revLabel(S.sess.revisions.length-1)}` });
+    S.credits = Math.max(0, S.credits - 1);
+    savePersist();
+    closeSheet(); go('canvas');
+  } catch(e) {
+    toast('Edit failed: ' + e.message);
+    if (inp) inp.disabled = false;
+    document.getElementById('typing')?.remove();
+  }
+}
+
+// ── Refs sheet ─────────────────────────────────────────────────────────
+function sheetRefs() {
+  const refs = S.sess.references;
+  openSheet('References', 'retrieved matches',
+    refs.length > 0
+      ? `<div class="refs-grid">${refs.map(r=>`
+          <div class="ref-thumb">
+            <img src="${r.url}" alt="ref" onerror="this.parentNode.style.background='var(--bone)'"/>
+            <div class="ref-sim">${Math.round((r.similarity||0)*100)}%</div>
+          </div>`).join('')}
+        </div>`
+      : `<div style="color:var(--mute);font-size:13px;text-align:center;margin-top:24px">
+           No references for this session.</div>`
+  );
+}
+
+// ── Commit sheet ────────────────────────────────────────────────────────
+function sheetCommit() {
+  openSheet('Commit', 'higher-fidelity re-render', `
+    <div style="display:flex;flex-direction:column;gap:16px;padding-top:8px">
+      <p style="font-size:14px;line-height:1.6;color:var(--ink-soft)">
+        Commit re-renders at higher fidelity. Costs <strong>3 credits</strong> and cannot be undone.
+      </p>
+      <div style="padding:14px;border-radius:12px;background:var(--bone);border:1px solid var(--line)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span class="anno">current revision</span>
+          <span class="anno">${S.sess.currentId?.slice(0,10)||'—'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span class="anno">credits after</span>
+          <span class="anno">${Math.max(0,S.credits-3)} cr</span>
+        </div>
+      </div>
+      <button class="btn btn-clay btn-lg btn-full" id="commit-btn" onclick="doCommit()">
+        Commit revision · 3 cr
+      </button>
+    </div>`);
+}
+
+async function doCommit() {
+  const b = document.getElementById('commit-btn');
+  if (!b) return;
+  b.disabled = true;
+  b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Committing…';
+  try {
+    const r = await WH.generateCommit({
+      generation_id: S.sess.currentId,
+      session_id: S.sess.id,
+    });
+    S.sess.revisions.push({
+      id: r.generation_id, kind:'commit',
+      url: absUrl(r.output_url),
+      parentId: S.sess.currentId, createdAt: Date.now(), modelId: r.model_id,
+    });
+    S.sess.currentId = r.generation_id;
+    S.credits = Math.max(0, S.credits - 3);
+    savePersist();
+    toast('Commit complete!', 'ok');
+    closeSheet(); go('canvas');
+  } catch(e) {
+    toast('Commit failed: ' + e.message);
+    if (b) { b.disabled = false; b.textContent = 'Commit revision · 3 cr'; }
+  }
+}
+
+// ── Export sheet ────────────────────────────────────────────────────────
+function sheetExport() {
+  openSheet('Export', 'download package', `
+    <div style="display:flex;flex-direction:column;gap:16px;padding-top:8px">
+      <p style="font-size:14px;line-height:1.6;color:var(--ink-soft)">
+        Export generates a high-resolution package for the current revision.
+      </p>
+      <button class="btn btn-olive btn-lg btn-full" id="exp-btn" onclick="doExport()">
+        Export this revision →
+      </button>
+      <div id="exp-result"></div>
+    </div>`);
+}
+
+async function doExport() {
+  const b = document.getElementById('exp-btn');
+  const res = document.getElementById('exp-result');
+  if (!b || !res) return;
+  b.disabled = true;
+  b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Preparing…';
+  try {
+    const r = await WH.exportGen(S.sess.currentId);
+    const dlUrl = r.download_url || r.export_url || r.url;
+    res.innerHTML = `
+      <div style="padding:16px;border-radius:12px;background:var(--bone);border:1px solid var(--line)">
+        <div class="anno" style="margin-bottom:10px">◆ export ready</div>
+        ${dlUrl
+          ? `<a href="${absUrl(dlUrl)}" download target="_blank"
+               class="btn btn-clay btn-full" style="display:flex">
+               Download package →</a>`
+          : `<div class="anno" style="word-break:break-all">${JSON.stringify(r)}</div>`}
+      </div>`;
+    b.style.display = 'none';
+    toast('Export ready!', 'ok');
+  } catch(e) {
+    toast('Export failed: ' + e.message);
+    b.disabled = false; b.textContent = 'Export this revision →';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: LIBRARY
+// ════════════════════════════════════════════════════════════════════════
+function scrLibrary() {
+  const sess = S.sess;
+  return `<div style="min-height:100%;padding-bottom:20px">
+    <div class="mob-nav">
+      <div style="flex:1">
+        <div class="mob-nav-sub">atelier · library</div>
+        <div class="mob-nav-title">Library</div>
+      </div>
+      <div class="cr-pill">${S.credits} cr</div>
+    </div>
+
+    <div style="padding:14px 20px 8px">
+      <input type="search" id="lib-search" class="inp" placeholder="Search sessions…"
+        value="${S.libQuery}" oninput="S.libQuery=this.value" style="padding:10px 14px;font-size:14px"/>
+    </div>
+
+    <div style="padding:0 20px 14px;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch">
+      ${['all','bedroom','dining','kitchen','mandir','favourites'].map(f=>`
+        <button class="chip ${S.libFilter===f?'active':''}"
+          onclick="S.libFilter='${f}';render()">${f}</button>`).join('')}
+    </div>
+
+    <div style="padding:0 20px 100px" id="lib-body">
+      <div class="anno" style="margin-bottom:10px">◆ sessions</div>
+
+      ${sess.id ? `
+        <div class="sess-card" onclick="S.tab='canvas';go('canvas')">
+          <div class="sess-thumb">
+            ${sess.revisions.length > 0
+              ? `<img src="${sess.revisions[sess.revisions.length-1].url}" alt="s"
+                   onerror="this.style.display='none'"/>`
+              : `<div style="width:100%;height:100%;display:flex;align-items:center;
+                     justify-content:center"><span class="anno">—</span></div>`}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="anno" style="margin-bottom:2px">${sess.roomType} · ${sess.style}</div>
+            <div class="serif" style="font-size:16px;margin-bottom:3px">
+              Session ${sess.id.slice(0,8)}</div>
+            <div style="font-size:12px;color:var(--mute)">
+              ${sess.revisions.length} revision${sess.revisions.length!==1?'s':''}
+              · ${new Date().toLocaleDateString()}</div>
+          </div>
+          ${IC.chevron}
+        </div>` : ''}
+
+      <div id="fetched-lib">
+        <div style="text-align:center;padding:16px 0">
+          <div class="spin" style="width:20px;height:20px;margin:0 auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function afterLibrary() {
+  if (!S.sess.id) {
+    const el = document.getElementById('fetched-lib');
+    if (el) el.innerHTML = `
+      <div style="text-align:center;padding:40px 0">
+        <div class="anno" style="margin-bottom:8px">no other sessions</div>
+        <button class="btn btn-olive" onclick="S.tab='home';go('home')">
+          Go to Studio</button>
+      </div>`;
+    return;
+  }
+  try {
+    const items = await WH.listSessGens(S.sess.id);
+    const el = document.getElementById('fetched-lib');
+    if (!el) return;
+    if (!items || items.length === 0) {
+      el.innerHTML = '<div class="anno" style="text-align:center;padding:16px 0">No additional generations found.</div>';
+      return;
+    }
+    el.innerHTML = `<div class="anno" style="margin-bottom:8px">◆ all generations (${items.length})</div>` +
+      items.map((it,i)=>`
+        <div class="sess-card">
+          <div class="sess-thumb" style="width:52px;height:52px">
+            ${it.output_url
+              ? `<img src="${absUrl(it.output_url)}" alt="gen" onerror="this.style.display='none'"/>`
+              : ''}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="anno" style="margin-bottom:2px">${it.kind}</div>
+            <div style="font-size:14px">${revLabel(i)}</div>
+            <div style="font-size:11px;color:var(--mute)">${it.model_id||''}</div>
+          </div>
+        </div>`).join('');
+  } catch(e) {
+    const el = document.getElementById('fetched-lib');
+    if (el) el.innerHTML = `<div class="anno" style="color:var(--clay)">Could not load: ${e.message}</div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: NOTIFICATIONS
+// ════════════════════════════════════════════════════════════════════════
+function scrNotifs() {
+  S.unread = 0;
+  document.getElementById('lib-badge')?.style && (document.getElementById('lib-badge').style.display='none');
+  return `<div style="min-height:100%;padding-bottom:24px">
+    <div class="mob-nav">
+      <button class="back-btn" onclick="go(S.prevScreen||'home')">${IC.back}</button>
+      <div>
+        <div class="mob-nav-sub">atelier</div>
+        <div class="mob-nav-title">Notifications</div>
+      </div>
+    </div>
+    <div style="padding:16px 20px">
+      ${S.notifications.map(n=>`
+        <div style="display:flex;gap:12px;align-items:flex-start;
+            padding:14px 0;border-bottom:1px solid var(--line)">
+          <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;
+              background:${n.read?'var(--line)':'var(--clay)'}"></div>
+          <div style="flex:1">
+            <div style="font-weight:500;font-size:14px;margin-bottom:3px">${n.title}</div>
+            <div style="font-size:13px;color:var(--mute);line-height:1.5">${n.body}</div>
+            <div class="anno" style="margin-top:4px">${n.time}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SCREEN: PROFILE
+// ════════════════════════════════════════════════════════════════════════
+function scrProfile() {
+  const initial = (S.email || 'D')[0].toUpperCase();
+  return `<div style="min-height:100%;padding-bottom:100px">
+    <div class="mob-nav">
+      <div style="flex:1">
+        <div class="mob-nav-sub">atelier · account</div>
+        <div class="mob-nav-title">Profile</div>
+      </div>
+      <button onclick="go('notifications')"
+          style="position:relative;background:none;border:none;padding:4px">
+        ${IC.notif}
+        ${S.unread>0?`<span style="position:absolute;top:0;right:0;width:8px;height:8px;
+          border-radius:50%;background:var(--clay);border:1.5px solid var(--paper)"></span>`:''}
+      </button>
+    </div>
+
+    <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+      <!-- Identity -->
+      <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--olive);
+            display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <span class="serif" style="color:var(--paper);font-size:20px">${initial}</span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="serif" style="font-size:18px;word-break:break-all">${S.email || 'Demo User'}</div>
+          <div class="anno" style="margin-top:2px">member · atelier studio</div>
+        </div>
+      </div>
+
+      <!-- Wallet -->
+      <div class="card" style="padding:16px">
+        <div class="anno" style="margin-bottom:10px">wallet</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
+          <span class="serif" style="font-size:40px;line-height:1">${S.credits}</span>
+          <span style="color:var(--mute);font-size:14px">credits</span>
+        </div>
+        <div class="anno" style="margin-bottom:12px">1 draft = 2 cr · 1 edit = 1 cr · 1 commit = 3 cr</div>
+        <div style="display:flex;gap:8px">
+          ${[[100,20],[500,100],[1000,200]].map(([inr,cr])=>`
+            <button class="btn btn-ghost" style="flex:1;flex-direction:column;gap:2px;
+                padding:8px 6px;border-radius:10px;font-size:12px"
+                onclick="topUp(${inr},${cr})">
+              +${cr} cr<br>
+              <span class="anno" style="text-transform:none;color:var(--mute)">₹${inr}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+
+      <!-- Usage stats -->
+      <div class="card" style="padding:16px">
+        <div class="anno" style="margin-bottom:12px">usage</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          ${[['Drafts','${S.sess.revisions.filter(r=>r.kind==="draft").length}'],
+             ['Edits','${S.sess.revisions.filter(r=>r.kind==="edit").length}'],
+             ['Commits','${S.sess.revisions.filter(r=>r.kind==="commit").length}']].map(([l,v])=>`
+            <div>
+              <div class="serif" style="font-size:24px;line-height:1">${eval(v.replace(/\$/g,''))}</div>
+              <div class="anno" style="margin-top:3px">${l}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Notification prefs -->
+      <div class="card" style="padding:16px">
+        <div class="anno" style="margin-bottom:10px">notifications</div>
+        ${[
+          ['lowBalance',  'Low balance alerts',  'Ping when credits drop below a commit.'],
+          ['commitDone',  'Commit complete',      'High-fidelity render finished.'],
+          ['features',    'Product updates',      'New models and capabilities.'],
+          ['storage',     'Storage invoices',     'Monthly storage charges.'],
+        ].map(([k,title,sub])=>`
+          <div class="prow">
+            <div style="flex:1">
+              <div style="font-size:14px">${title}</div>
+              <div style="font-size:12px;color:var(--mute);margin-top:2px">${sub}</div>
+            </div>
+            <button class="toggle ${S.notifPrefs[k]?'on':''}" id="tog-${k}"
+              onclick="togPref('${k}',this)"></button>
+          </div>`).join('')}
+      </div>
+
+      <!-- Account -->
+      <div class="card" style="padding:16px">
+        <div class="anno" style="margin-bottom:10px">account</div>
+        <button class="btn btn-ghost btn-full" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function togPref(key, btn) {
+  S.notifPrefs[key] = !S.notifPrefs[key];
+  btn.classList.toggle('on', S.notifPrefs[key]);
+  savePersist();
+}
+
+function topUp(inr, cr) {
+  S.credits += cr; savePersist();
+  toast(`+${cr} credits added!`, 'ok');
+  go('profile');
+}
+
+function signOut() {
+  S.jwt = ''; S.userId = ''; S.email = ''; S.credits = 24;
+  S.sess = { id:null,roomType:null,style:null,revisions:[],currentId:null,references:[],chat:[] };
+  savePersist(); go('landing');
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+S.screen = (S.jwt && S.jwt !== '') ? 'home' : 'landing';
+S.tab    = 'home';
+render();
+</script>
+</body>
+</html>

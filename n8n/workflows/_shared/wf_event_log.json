@@ -1,0 +1,62 @@
+{
+  "name": "wf_event_log",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/events",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  user_id:    $json.user_id    || null,\n  session_id: $json.session_id || null,\n  event_type: $json.event_type,\n  payload:    $json.payload    || {}\n}) }}",
+        "options": {
+          "timeout": 10000,
+          "redirect": { "redirect": {} },
+          "response": { "response": { "neverError": true, "fullResponse": false } }
+        }
+      },
+      "id": "insert",
+      "name": "Insert into events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fire-and-forget: never propagate failures back to the caller.\nreturn [{ json: { logged: true } }];"
+      },
+      "id": "swallow",
+      "name": "Return OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{ "node": "Insert into events", "type": "main", "index": 0 }]]
+    },
+    "Insert into events": {
+      "main": [[{ "node": "Return OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "shared" }]
+}

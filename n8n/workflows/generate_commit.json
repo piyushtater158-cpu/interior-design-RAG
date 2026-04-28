@@ -1,0 +1,772 @@
+{
+  "name": "generate_commit",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate/commit",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "POST /generate/commit",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "generate-commit"
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_jwt_verify"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "authorization": "={{ $json.headers.authorization }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "verify",
+      "name": "Verify JWT",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_ok",
+      "name": "Token valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 401,
+        "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
+        "options": {}
+      },
+      "id": "respond_401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const _raw = $('POST /generate/commit').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id = $json.user_id;\n\nconst parent_generation_id = (body.parent_generation_id || body.generation_id || '').toString().trim();\nconst session_id = body.session_id ? body.session_id.toString() : null;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(parent_generation_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_parent_generation_id', code: 'invalid_request' } } } }];\n}\n\nreturn [{ json: { user_id, parent_generation_id, session_id, started_at_ms: Date.now() } }];"
+      },
+      "id": "validate",
+      "name": "Validate body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_err",
+      "name": "Body valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_400",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/generations?id=eq.{{$json.parent_generation_id}}&user_id=eq.{{$json.user_id}}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch_parent",
+      "name": "Fetch parent generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows   = Array.isArray($json) ? $json : ($json.body || []);\nconst parent = rows[0];\nconst ctx    = $('Validate body').item.json;\nif (!parent) {\n  return [{ json: { _error: { status: 404, body: { error: 'parent_not_found', code: 'not_found' } } } }];\n}\nif (!parent.output_image_path || !parent.input_image_path) {\n  return [{ json: { _error: { status: 400, body: { error: 'parent_incomplete', code: 'invalid_state' } } } }];\n}\n// Walk up the chain to the root to recover the original upload. Commit should\n// render from the original room photo, not from an intermediate edit output.\n// parent.input_image_path on an edit points at the previous generation's output;\n// on a draft it points at user-uploads/<uid>/<upload_id>. For commit we want\n// to combine: the ORIGINAL upload + the latest parent output + reference images.\nreturn [{ json: {\n  ...ctx,\n  parent,\n  parent_input_url:  `${$env.SUPABASE_URL}/storage/v1/object/public/${parent.input_image_path}`,\n  parent_output_url: `${$env.SUPABASE_URL}/storage/v1/object/public/${parent.output_image_path}`\n} }];"
+      },
+      "id": "shape_parent",
+      "name": "Shape parent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_parent_err",
+      "name": "Parent ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_parent_err",
+      "name": "Respond parent err",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2160,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/reference_images?id=in.({{ ($json.parent.reference_image_ids || []).join(',') }})&select=id,source_url",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "fetch_refs",
+      "name": "Fetch reference URLs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build ordered fetch list: parent input (original room), then parent output,\n// then each reference image in the order stored on the parent row.\nconst ctx   = $('Shape parent').item.json;\nconst refs  = Array.isArray($json) ? $json : ($json.body || []);\nconst byId  = {};\nrefs.forEach(r => { byId[r.id] = r.source_url; });\n\nconst urls = [ctx.parent_input_url, ctx.parent_output_url];\nfor (const id of (ctx.parent.reference_image_ids || [])) {\n  if (byId[id]) urls.push(byId[id]);\n}\nreturn urls.map((url, i) => ({ json: { ...ctx, idx: i, fetch_url: url } }));"
+      },
+      "id": "order_urls",
+      "name": "Order fetch list",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.fetch_url }}",
+        "sendHeaders": false,
+        "sendBody": false,
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "image"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "fetch_all",
+      "name": "Fetch image bytes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nitems.sort((a, b) => a.json.idx - b.json.idx);\nconst parts = items.map(it => ({\n  inline_data: {\n    mime_type: it.binary.image.mimeType || 'image/png',\n    data:      it.binary.image.data\n  }\n}));\nreturn [{ json: { ...items[0].json, image_parts: parts } }];"
+      },
+      "id": "collect",
+      "name": "Collect image parts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/app_config?key=eq.image_model&select=value",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch_model",
+      "name": "Fetch image_model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows  = Array.isArray($json) ? $json : ($json.body || []);\nconst model = (rows[0] && rows[0].value) || 'gemini-3.1-flash-image-preview';\nconst ctx   = $('Collect image parts').item.json;\n\nconst template = `You are an interior design rendering engine.\n\nTASK: Generate a photorealistic image of the SAME room shown in the first input\nimage, redesigned in the style of the reference images provided.\n\nHARD CONSTRAINTS:\n- Preserve the input room's geometry exactly: wall positions, window positions\n  and sizes, door positions, ceiling height.\n- Preserve lighting direction from the input photo.\n- Use furniture, materials, colors, and styling cues from the reference images.\n- Output must be photorealistic, no illustrations or cartoons.\n- Do not add text, watermarks, logos, or signatures.\n- Do not add people.\n\nSTYLE: {style_tag}\nROOM TYPE: {room_type}\n\nOUTPUT QUALITY: Maximum resolution and detail. This is the final deliverable.\n`;\n\nconst prompt = template\n  .replace('{style_tag}', ctx.parent.style_tag || '')\n  .replace('{room_type}', ctx.parent.room_type || '');\n\nconst gemini_body = {\n  contents: [{\n    role: 'user',\n    parts: [ { text: prompt }, ...ctx.image_parts ]\n  }],\n  generationConfig: { responseModalities: ['IMAGE'] }\n};\n\nreturn [{ json: { ...ctx, model, prompt, gemini_body } }];"
+      },
+      "id": "build_gemini",
+      "name": "Build Gemini request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{$json.model}}:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{$env.GEMINI_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+        "options": {
+          "timeout": 120000,
+          "retry": {
+            "tryTimes": 3,
+            "waitBetweenTries": 2000
+          }
+        }
+      },
+      "id": "gemini_call",
+      "name": "Call Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3600,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx  = $('Build Gemini request').item.json;\nconst resp = $json;\nconst parts = (resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];\nconst imgPart = parts.find(p => p.inlineData || p.inline_data);\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst inline = imgPart.inlineData || imgPart.inline_data;\nconst b64    = inline.data;\nconst mime   = inline.mimeType || inline.mime_type || 'image/png';\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind:                'commit',\n    input_image_path:    ctx.parent.input_image_path,\n    room_type:           ctx.parent.room_type,\n    style_tag:           ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
+      },
+      "id": "extract_png",
+      "name": "Extract output PNG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3840,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_gen_err",
+      "name": "Gen error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4080,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_502",
+      "name": "Respond 502",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        4320,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_save_generation"
+        },
+        "workflowInputs": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "save",
+      "name": "Save generation",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        4320,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_event_log"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_type": "commit_ok",
+            "user_id": "={{ $json.user_id }}",
+            "session_id": "={{ $json.session_id }}",
+            "payload": "={{ { generation_id: $json.generation_id, model_id: $json.model_id, latency_ms: $json.latency_ms } }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "log",
+      "name": "Log event",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        4560,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 200,
+        "responseBody": "={{ JSON.stringify({\n  generation_id: $json.generation_id,\n  output_url:    $json.output_url,\n  latency_ms:    $json.latency_ms,\n  cost_usd:      $json.cost_usd,\n  model_id:      $json.model_id,\n  backend_id:    'gemini'\n}) }}",
+        "options": {}
+      },
+      "id": "respond_200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        4800,
+        780
+      ]
+    }
+  ],
+  "connections": {
+    "POST /generate/commit": {
+      "main": [
+        [
+          {
+            "node": "Verify JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify JWT": {
+      "main": [
+        [
+          {
+            "node": "Token valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token valid?": {
+      "main": [
+        [
+          {
+            "node": "Validate body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate body": {
+      "main": [
+        [
+          {
+            "node": "Body valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Body valid?": {
+      "main": [
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch parent generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch parent generation": {
+      "main": [
+        [
+          {
+            "node": "Shape parent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape parent": {
+      "main": [
+        [
+          {
+            "node": "Parent ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parent ok?": {
+      "main": [
+        [
+          {
+            "node": "Respond parent err",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch reference URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch reference URLs": {
+      "main": [
+        [
+          {
+            "node": "Order fetch list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order fetch list": {
+      "main": [
+        [
+          {
+            "node": "Fetch image bytes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch image bytes": {
+      "main": [
+        [
+          {
+            "node": "Collect image parts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect image parts": {
+      "main": [
+        [
+          {
+            "node": "Fetch image_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch image_model": {
+      "main": [
+        [
+          {
+            "node": "Build Gemini request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gemini request": {
+      "main": [
+        [
+          {
+            "node": "Call Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Gemini": {
+      "main": [
+        [
+          {
+            "node": "Extract output PNG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract output PNG": {
+      "main": [
+        [
+          {
+            "node": "Gen error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gen error?": {
+      "main": [
+        [
+          {
+            "node": "Respond 502",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save generation": {
+      "main": [
+        [
+          {
+            "node": "Log event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "generate"
+    }
+  ]
+}

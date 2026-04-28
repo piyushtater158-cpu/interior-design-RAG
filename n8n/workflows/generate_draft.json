@@ -1,0 +1,1645 @@
+{
+  "updatedAt": "2026-04-27T09:21:39.778Z",
+  "createdAt": "2026-04-24T15:57:33.486Z",
+  "id": "IkvnnbntRoK7OSgS",
+  "name": "Generate Draft  (upload + refs + style -> design image)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate/draft",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "1536f03f-e9b0-4347-bf2d-96c0866f0aca",
+      "name": "POST /generate/draft",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        1568
+      ],
+      "webhookId": "generate-draft"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    ...$json,\n    _cfg: {\n      supabase_url:    'https://uzghfpxboktnbcbbthns.supabase.co',\n      supabase_key:    '__REDACTED_SUPABASE_SERVICE_KEY__',\n      gemini_key:      '__REDACTED_GEMINI_API_KEY__',\n      openrouter_key:  '__REDACTED_OPENROUTER_API_KEY__',\n      openrouter_base: 'https://openrouter.ai/api/v1',\n      orch_model:      'google/gemini-2.5-flash',\n      retriever_model: 'google/gemini-2.5-flash',\n      embed_model:     'nvidia/llama-nemotron-embed-vl-1b-v2:free',\n      admin_token:     '__REDACTED_ADMIN_TOKEN__',\n      jwt_secret:      '__REDACTED_JWT_SECRET__',\n      jwt_ttl:         24\n    }\n  },\n  binary: $input.first().binary || {}\n}];"
+      },
+      "id": "05e26e7b-72a5-4477-a40f-580650f11df8",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const _sha256=(m)=>{const H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\nconst K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\nif(typeof m==='string')m=Buffer.from(m,'utf8');\nconst L=m.length,ex=((L%64)<56?56:120)-(L%64),M=Buffer.alloc(L+ex+8);\nm.copy(M);M[L]=0x80;M.writeUInt32BE(L*8>>>0,M.length-4);\nconst add=(a,b)=>(a+b)>>>0,r=(v,n)=>(v>>>n)|(v<<(32-n));\nfor(let i=0;i<M.length;i+=64){const W=[];\nfor(let j=0;j<16;j++)W[j]=M.readUInt32BE(i+j*4);\nfor(let j=16;j<64;j++){const s0=r(W[j-15],7)^r(W[j-15],18)^(W[j-15]>>>3),s1=r(W[j-2],17)^r(W[j-2],19)^(W[j-2]>>>10);W[j]=add(add(add(W[j-16],s0),W[j-7]),s1);}\nlet[a,b,c,d,e,f,g,hh]=H.slice();\nfor(let j=0;j<64;j++){const T1=add(add(add(add(hh,r(e,6)^r(e,11)^r(e,25)),(e&f)^(~e&g)),K[j]),W[j]),T2=add(r(a,2)^r(a,13)^r(a,22),(a&b)^(a&c)^(b&c));hh=g;g=f;f=e;e=add(d,T1);d=c;c=b;b=a;a=add(T1,T2);}\nH[0]=add(H[0],a);H[1]=add(H[1],b);H[2]=add(H[2],c);H[3]=add(H[3],d);H[4]=add(H[4],e);H[5]=add(H[5],f);H[6]=add(H[6],g);H[7]=add(H[7],hh);}\nconst res=Buffer.alloc(32);H.forEach((v,i)=>res.writeUInt32BE(v,i*4));return res;};\nconst _hmac=(key,data)=>{if(typeof key==='string')key=Buffer.from(key,'utf8');if(typeof data==='string')data=Buffer.from(data,'utf8');if(key.length>64)key=_sha256(key);const kp=Buffer.alloc(64);key.copy(kp);const ik=Buffer.alloc(64),ok=Buffer.alloc(64);for(let i=0;i<64;i++){ik[i]=kp[i]^0x36;ok[i]=kp[i]^0x5c;}return _sha256(Buffer.concat([ok,_sha256(Buffer.concat([ik,data]))]));};\nconst token = ($json.headers?.authorization || '').replace(/^Bearer /i, '').trim();\nif (!token) return [{ json: { ok: false, status: 401, error: 'missing_token', code: 'unauthorized' } }];\nconst parts = token.split('.');\nif (parts.length !== 3) return [{ json: { ok: false, status: 401, error: 'malformed_token', code: 'unauthorized' } }];\nconst [hp, pp, sp] = parts;\nconst expected = _hmac('__REDACTED_JWT_SECRET__', hp + '.' + pp).toString('base64url');\nif (sp !== expected) return [{ json: { ok: false, status: 401, error: 'invalid_token', code: 'unauthorized' } }];\nlet decoded;\ntry { decoded = JSON.parse(Buffer.from(pp, 'base64url').toString()); }\ncatch(e) { return [{ json: { ok: false, status: 401, error: 'malformed_payload', code: 'unauthorized' } }]; }\nif (decoded.exp && decoded.exp < Date.now() / 1000)\n  return [{ json: { ok: false, status: 401, error: 'token_expired', code: 'unauthorized' } }];\nreturn [{ json: { ok: true, user_id: decoded.sub, email: decoded.email } }];"
+      },
+      "id": "df151171-e79d-4655-a14b-b9b69cbc0a78",
+      "name": "Verify JWT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "627b3b1d-0617-4953-a2c2-794ca4cc977a",
+      "name": "Token valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2624,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
+        "options": {}
+      },
+      "id": "dfd1f128-7cb9-41eb-927b-9351d9ebc1cc",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2768,
+        1456
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const _raw = $('POST /generate/draft').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id = $json.user_id;\n\nconst upload_id   = (body.upload_id || '').toString().trim();\nconst room_type   = (body.room_type || '').toString().trim();\nconst style_tag   = (body.style_tag || '').toString().trim();\nconst reference_ids = Array.isArray(body.reference_ids) ? body.reference_ids : [];\nconst session_id  = body.session_id ? body.session_id.toString() : null;\nconst prompt      = body.prompt ? body.prompt.toString().trim() : null;\n\nconst missing = [];\nif (!upload_id) missing.push('upload_id');\nif (missing.length) {\n  return [{ json: { _error: { status: 400, body: { error: `missing_fields: ${missing.join(',')}`, code: 'invalid_request' } } } }];\n}\n\nconst storage_path = `user-uploads/${user_id}/${upload_id}`;\nconst upload_url   = `${'https://uzghfpxboktnbcbbthns.supabase.co'}/storage/v1/object/${storage_path}`;\n\nreturn [{ json: { user_id, upload_id, room_type, style_tag, prompt, reference_ids, session_id, upload_url, started_at_ms: Date.now() } }];"
+      },
+      "id": "7bb0767b-a83d-43e3-93f6-fd1594f09a4a",
+      "name": "Validate body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error ? 'err' : '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b1708561-32bf-49f3-9b5f-216fda145f8a",
+      "name": "Body valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "5bc7a30d-f037-4b42-b1ff-66bfb07b8fc5",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3248,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$('Config').first().json._cfg.supabase_url}}/rest/v1/reference_images{{ $json.reference_ids && $json.reference_ids.length > 0 ? '?id=in.(' + $json.reference_ids.join(',') + ')' : '?limit=0' }}&select=id,source_url",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$('Config').first().json._cfg.supabase_key}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$('Config').first().json._cfg.supabase_key}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "391289fd-a299-4426-b5d5-dc3ac39937b3",
+      "name": "Fetch reference URLs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3248,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ordered list of URLs to fetch: upload first, then references in order.\nconst ctx = $('Validate body').first().json;\nconst refs = $input.all().map(i => i.json);\nconst byId = {};\nrefs.forEach(r => { if (r.id && r.source_url) byId[r.id] = r.source_url; });\nconst urls = [ctx.upload_url];\nfor (const id of ctx.reference_ids) {\n  if (byId[id]) urls.push(byId[id]);\n}\nreturn urls.map((url, i) => ({ json: { ...ctx, idx: i, fetch_url: url } }));"
+      },
+      "id": "a5463b42-863f-42a7-912b-c674fefcac71",
+      "name": "Order fetch list",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3488,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.fetch_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$('Config').first().json._cfg.supabase_key}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$('Config').first().json._cfg.supabase_key}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "image"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "fd1e63ac-8eae-4a20-ba16-3a7926a083a6",
+      "name": "Fetch image bytes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3728,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nitems.sort((a, b) => a.json.idx - b.json.idx);\n\nconst cfg = $('Config').first().json._cfg;\nconst headers = {\n  apikey: cfg.supabase_key,\n  Authorization: 'Bearer ' + cfg.supabase_key\n};\n\nconst parts = [];\nfor (const it of items) {\n  const buf = await this.helpers.httpRequest({\n    method: 'GET',\n    url: it.json.fetch_url,\n    headers,\n    encoding: 'arraybuffer'\n  });\n  const ext = it.json.fetch_url.split('?')[0].split('.').pop().toLowerCase();\n  const mime = ({ png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' })[ext] || 'image/jpeg';\n  parts.push({ inline_data: { mime_type: mime, data: Buffer.from(buf).toString('base64') } });\n}\n\nreturn [{ json: { ...items[0].json, image_parts: parts } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "76554de5-4631-414e-813f-acf364ae4119",
+      "name": "Collect image parts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3968,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$('Config').first().json._cfg.supabase_url}}/rest/v1/app_config?key=eq.image_model&select=value",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$('Config').first().json._cfg.supabase_key}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$('Config').first().json._cfg.supabase_key}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "288fd794-3050-4984-a303-5864c4ff6e0f",
+      "name": "Fetch image_model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4208,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// $json is the single row from Fetch image_model: {value: 'model-name'}\nconst model = $json.value || 'gemini-3.1-flash-image-preview';\n\nconst template = `You are an interior design rendering engine.\n\nTASK: Generate a photorealistic image of the SAME room shown in the first input\nimage, redesigned in the style of the reference images provided.\n\nHARD CONSTRAINTS:\n- Preserve the input room's geometry exactly: wall positions, window positions\n  and sizes, door positions, ceiling height.\n- Preserve lighting direction from the input photo.\n- Use furniture, materials, colors, and styling cues from the reference images.\n- Output must be photorealistic, no illustrations or cartoons.\n- Do not add text, watermarks, logos, or signatures.\n- Do not add people.\n\nSTYLE: {style_tag}\nROOM TYPE: {room_type}\n{user_brief}`;\n\nconst ctx = $('Collect image parts').first().json;\nconst userBriefSection = ctx.prompt\n  ? `\\nUSER BRIEF (incorporate into the design):\\n${ctx.prompt}`\n  : '';\nconst finalPrompt = template\n  .replace('{style_tag}', ctx.style_tag || 'not specified')\n  .replace('{room_type}', ctx.room_type || 'not specified')\n  .replace('{user_brief}', userBriefSection);\n\nconst gemini_body = {\n  contents: [{\n    role: 'user',\n    parts: [ { text: finalPrompt }, ...ctx.image_parts ]\n  }],\n  generationConfig: { responseModalities: ['IMAGE'] }\n};\n\nreturn [{ json: { ...ctx, model, prompt: finalPrompt, gemini_body } }];"
+      },
+      "id": "5403b89f-8e61-4a7c-91b6-5e4e820bc683",
+      "name": "Build Gemini request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4448,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{$json.model}}:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{$('Config').first().json._cfg.gemini_key}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "cca48ddc-4d6a-43fa-b143-a21bee5f1dd8",
+      "name": "Call Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4688,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Build Gemini request').first().json;\nconst resp = $json;\nconst parts = (resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];\nconst imgPart = parts.find(p => p.inlineData || p.inline_data);\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst inline = imgPart.inlineData || imgPart.inline_data;\nconst b64    = inline.data;\nconst mime   = inline.mimeType || inline.mime_type || 'image/png';\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: null,\n    kind:                'draft',\n    input_image_path:    `user-uploads/${ctx.user_id}/${ctx.upload_id}`,\n    room_type:           ctx.room_type,\n    style_tag:           ctx.style_tag,\n    reference_image_ids: ctx.reference_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: {\n    output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' }\n  }\n}];"
+      },
+      "id": "47e7dedd-bc81-4ba7-9f8f-7fec8040468a",
+      "name": "Extract output PNG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4928,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error ? 'err' : '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "87a65481-a2b4-40fd-b9f3-4bb7251ff52d",
+      "name": "Gen error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5168,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "0281a3a2-4eeb-4a9f-af70-a59adf13e96e",
+      "name": "Respond 502",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        5408,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const generation_id = $json.generation_id || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); });\nreturn [{\n  json: {\n    generation_id,\n    user_id:              $json.user_id,\n    session_id:           $json.session_id || null,\n    parent_generation_id: $json.parent_generation_id || null,\n    kind:                 $json.kind,\n    input_image_path:     $json.input_image_path || null,\n    output_image_path:    `user-outputs/${$json.user_id}/${generation_id}.png`,\n    room_type:            $json.room_type || null,\n    style_tag:            $json.style_tag || null,\n    reference_image_ids:  $json.reference_image_ids || null,\n    prompt:               $json.prompt || null,\n    criteria:             $json.criteria || null,\n    model_config:         $json.model_config || 'A',\n    model_id:             $json.model_id || null,\n    latency_ms:           $json.latency_ms || null,\n    cost_usd:             $json.cost_usd || 0\n  },\n  binary: $input.first().binary\n}];"
+      },
+      "id": "c1a393bc-f7f0-421e-8e04-4fd9c52ba132",
+      "name": "Assemble row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5408,
+        1936
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json._cfg.supabase_url + '/storage/v1/object/' + $json.output_image_path }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Config').first().json._cfg.supabase_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config').first().json._cfg.supabase_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "image/png"
+            },
+            {
+              "name": "x-upsert",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "output_png",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "a762df36-fc5a-44fa-bfb5-8d6c99fe6e7b",
+      "name": "Upload PNG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5648,
+        1936
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json._cfg.supabase_url }}/rest/v1/generations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Config').first().json._cfg.supabase_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config').first().json._cfg.supabase_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "options": {
+          "timeout": 15000
+        },
+        "body": "={{ JSON.stringify({ user_id:              $('Assemble row').first().json.user_id, session_id:           $('Assemble row').first().json.session_id, parent_generation_id: $('Assemble row').first().json.parent_generation_id, kind:                 $('Assemble row').first().json.kind, input_image_path:     $('Assemble row').first().json.input_image_path, room_type:            $('Assemble row').first().json.room_type, style_tag:            $('Assemble row').first().json.style_tag, reference_image_ids:  $('Assemble row').first().json.reference_image_ids, prompt:               $('Assemble row').first().json.prompt, model_config:         $('Assemble row').first().json.model_config, model_id:             $('Assemble row').first().json.model_id, output_image_path:    $('Assemble row').first().json.output_image_path, latency_ms:           $('Assemble row').first().json.latency_ms, cost_usd:             $('Assemble row').first().json.cost_usd, status:               'success' }) }}"
+      },
+      "id": "62753a98-f9f4-4929-98bc-00134ff43257",
+      "name": "Insert generation row",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5888,
+        1936
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = Array.isArray($json) ? $json[0]\n          : ($json.body ? (Array.isArray($json.body) ? $json.body[0] : $json.body) : $json);\nconst asm  = $('Assemble row').first().json;\nconst base = $('Config').first().json._cfg.supabase_url;\nreturn [{ json: {\n  generation_id:        row?.id || asm.generation_id,\n  user_id:              asm.user_id,\n  session_id:           asm.session_id,\n  kind:                 asm.kind,\n  parent_generation_id: asm.parent_generation_id,\n  model_id:             asm.model_id,\n  latency_ms:           asm.latency_ms,\n  cost_usd:             asm.cost_usd || 0,\n  room_type:            asm.room_type,\n  style_tag:            asm.style_tag,\n  output_url:           base + '/storage/v1/object/public/' + asm.output_image_path,\n  created_at:           row?.created_at || new Date().toISOString()\n} }];"
+      },
+      "id": "67afd49e-aefc-43ec-80f7-ee33877fd950",
+      "name": "Build gen response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6128,
+        1936
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  generation_id: $json.generation_id,\n  output_url:    $json.output_url,\n  latency_ms:    $json.latency_ms,\n  cost_usd:      $json.cost_usd,\n  model_id:      $json.model_id,\n  backend_id:    'gemini'\n}) }}",
+        "options": {}
+      },
+      "id": "bab8877f-853e-4785-b0f3-df57384916eb",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        6400,
+        1936
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        4592,
+        1760
+      ],
+      "typeVersion": 1,
+      "id": "6d76e9a7-8044-4a4f-a227-38837768cafb",
+      "name": "Sticky Note"
+    },
+    {
+      "id": "log-event-001",
+      "name": "Log event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6400,
+        2160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json._cfg.supabase_url }}/rest/v1/events",
+        "specifyBody": "string",
+        "body": "={{ JSON.stringify({ user_id: $json.user_id, session_id: $json.session_id, event_type: \"draft_ok\", payload: { generation_id: $json.generation_id, model_id: $json.model_id, latency_ms: $json.latency_ms } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 5000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Config').first().json._cfg.supabase_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Config').first().json._cfg.supabase_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Assemble row": {
+      "main": [
+        [
+          {
+            "node": "Upload PNG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload PNG": {
+      "main": [
+        [
+          {
+            "node": "Insert generation row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert generation row": {
+      "main": [
+        [
+          {
+            "node": "Build gen response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify JWT": {
+      "main": [
+        [
+          {
+            "node": "Token valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token valid?": {
+      "main": [
+        [
+          {
+            "node": "Validate body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate body": {
+      "main": [
+        [
+          {
+            "node": "Body valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Body valid?": {
+      "main": [
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch reference URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch reference URLs": {
+      "main": [
+        [
+          {
+            "node": "Order fetch list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order fetch list": {
+      "main": [
+        [
+          {
+            "node": "Fetch image bytes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch image bytes": {
+      "main": [
+        [
+          {
+            "node": "Collect image parts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect image parts": {
+      "main": [
+        [
+          {
+            "node": "Fetch image_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch image_model": {
+      "main": [
+        [
+          {
+            "node": "Build Gemini request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gemini request": {
+      "main": [
+        [
+          {
+            "node": "Call Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Gemini": {
+      "main": [
+        [
+          {
+            "node": "Extract output PNG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract output PNG": {
+      "main": [
+        [
+          {
+            "node": "Gen error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gen error?": {
+      "main": [
+        [
+          {
+            "node": "Respond 502",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Assemble row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build gen response": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /generate/draft": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Verify JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "c6bbd6d0-ff37-4819-8365-0a2b8e22becd",
+  "activeVersionId": "c6bbd6d0-ff37-4819-8365-0a2b8e22becd",
+  "versionCounter": 69,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-24T15:57:33.489Z",
+      "createdAt": "2026-04-24T15:57:33.489Z",
+      "role": "workflow:owner",
+      "workflowId": "IkvnnbntRoK7OSgS",
+      "projectId": "uEotrp6eQc7hJJM4",
+      "project": {
+        "updatedAt": "2026-04-22T16:19:32.735Z",
+        "createdAt": "2026-04-22T16:18:39.839Z",
+        "id": "uEotrp6eQc7hJJM4",
+        "name": "piyush tater <piyushtater158@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "f0f333e6-c534-4106-aa4e-ed7d123419ac"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-27T09:21:39.779Z",
+    "createdAt": "2026-04-27T09:21:39.779Z",
+    "versionId": "c6bbd6d0-ff37-4819-8365-0a2b8e22becd",
+    "workflowId": "IkvnnbntRoK7OSgS",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "generate/draft",
+          "responseMode": "onReceived",
+          "options": {}
+        },
+        "id": "1536f03f-e9b0-4347-bf2d-96c0866f0aca",
+        "name": "POST /generate/draft",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          2048,
+          1568
+        ],
+        "webhookId": "generate-draft"
+      },
+      {
+        "parameters": {
+          "jsCode": "return [{\n  json: {\n    ...$json,\n    _cfg: {\n      supabase_url:    'https://uzghfpxboktnbcbbthns.supabase.co',\n      supabase_key:    '__REDACTED_SUPABASE_SERVICE_KEY__',\n      gemini_key:      '__REDACTED_GEMINI_API_KEY__',\n      openrouter_key:  '__REDACTED_OPENROUTER_API_KEY__',\n      openrouter_base: 'https://openrouter.ai/api/v1',\n      orch_model:      'google/gemini-2.5-flash',\n      retriever_model: 'google/gemini-2.5-flash',\n      embed_model:     'nvidia/llama-nemotron-embed-vl-1b-v2:free',\n      admin_token:     '__REDACTED_ADMIN_TOKEN__',\n      jwt_secret:      '__REDACTED_JWT_SECRET__',\n      jwt_ttl:         24\n    }\n  },\n  binary: $input.first().binary || {}\n}];"
+        },
+        "id": "05e26e7b-72a5-4477-a40f-580650f11df8",
+        "name": "Config",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2288,
+          1568
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const _sha256=(m)=>{const H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\nconst K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\nif(typeof m==='string')m=Buffer.from(m,'utf8');\nconst L=m.length,ex=((L%64)<56?56:120)-(L%64),M=Buffer.alloc(L+ex+8);\nm.copy(M);M[L]=0x80;M.writeUInt32BE(L*8>>>0,M.length-4);\nconst add=(a,b)=>(a+b)>>>0,r=(v,n)=>(v>>>n)|(v<<(32-n));\nfor(let i=0;i<M.length;i+=64){const W=[];\nfor(let j=0;j<16;j++)W[j]=M.readUInt32BE(i+j*4);\nfor(let j=16;j<64;j++){const s0=r(W[j-15],7)^r(W[j-15],18)^(W[j-15]>>>3),s1=r(W[j-2],17)^r(W[j-2],19)^(W[j-2]>>>10);W[j]=add(add(add(W[j-16],s0),W[j-7]),s1);}\nlet[a,b,c,d,e,f,g,hh]=H.slice();\nfor(let j=0;j<64;j++){const T1=add(add(add(add(hh,r(e,6)^r(e,11)^r(e,25)),(e&f)^(~e&g)),K[j]),W[j]),T2=add(r(a,2)^r(a,13)^r(a,22),(a&b)^(a&c)^(b&c));hh=g;g=f;f=e;e=add(d,T1);d=c;c=b;b=a;a=add(T1,T2);}\nH[0]=add(H[0],a);H[1]=add(H[1],b);H[2]=add(H[2],c);H[3]=add(H[3],d);H[4]=add(H[4],e);H[5]=add(H[5],f);H[6]=add(H[6],g);H[7]=add(H[7],hh);}\nconst res=Buffer.alloc(32);H.forEach((v,i)=>res.writeUInt32BE(v,i*4));return res;};\nconst _hmac=(key,data)=>{if(typeof key==='string')key=Buffer.from(key,'utf8');if(typeof data==='string')data=Buffer.from(data,'utf8');if(key.length>64)key=_sha256(key);const kp=Buffer.alloc(64);key.copy(kp);const ik=Buffer.alloc(64),ok=Buffer.alloc(64);for(let i=0;i<64;i++){ik[i]=kp[i]^0x36;ok[i]=kp[i]^0x5c;}return _sha256(Buffer.concat([ok,_sha256(Buffer.concat([ik,data]))]));};\nconst token = ($json.headers?.authorization || '').replace(/^Bearer /i, '').trim();\nif (!token) return [{ json: { ok: false, status: 401, error: 'missing_token', code: 'unauthorized' } }];\nconst parts = token.split('.');\nif (parts.length !== 3) return [{ json: { ok: false, status: 401, error: 'malformed_token', code: 'unauthorized' } }];\nconst [hp, pp, sp] = parts;\nconst expected = _hmac('__REDACTED_JWT_SECRET__', hp + '.' + pp).toString('base64url');\nif (sp !== expected) return [{ json: { ok: false, status: 401, error: 'invalid_token', code: 'unauthorized' } }];\nlet decoded;\ntry { decoded = JSON.parse(Buffer.from(pp, 'base64url').toString()); }\ncatch(e) { return [{ json: { ok: false, status: 401, error: 'malformed_payload', code: 'unauthorized' } }]; }\nif (decoded.exp && decoded.exp < Date.now() / 1000)\n  return [{ json: { ok: false, status: 401, error: 'token_expired', code: 'unauthorized' } }];\nreturn [{ json: { ok: true, user_id: decoded.sub, email: decoded.email } }];"
+        },
+        "id": "df151171-e79d-4655-a14b-b9b69cbc0a78",
+        "name": "Verify JWT",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2464,
+          1568
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "ok",
+                "leftValue": "={{ $json.ok }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "627b3b1d-0617-4953-a2c2-794ca4cc977a",
+        "name": "Token valid?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2624,
+          1568
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
+          "options": {}
+        },
+        "id": "dfd1f128-7cb9-41eb-927b-9351d9ebc1cc",
+        "name": "Respond 401",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          2768,
+          1456
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const _raw = $('POST /generate/draft').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id = $json.user_id;\n\nconst upload_id   = (body.upload_id || '').toString().trim();\nconst room_type   = (body.room_type || '').toString().trim();\nconst style_tag   = (body.style_tag || '').toString().trim();\nconst reference_ids = Array.isArray(body.reference_ids) ? body.reference_ids : [];\nconst session_id  = body.session_id ? body.session_id.toString() : null;\nconst prompt      = body.prompt ? body.prompt.toString().trim() : null;\n\nconst missing = [];\nif (!upload_id) missing.push('upload_id');\nif (missing.length) {\n  return [{ json: { _error: { status: 400, body: { error: `missing_fields: ${missing.join(',')}`, code: 'invalid_request' } } } }];\n}\n\nconst storage_path = `user-uploads/${user_id}/${upload_id}`;\nconst upload_url   = `${'https://uzghfpxboktnbcbbthns.supabase.co'}/storage/v1/object/${storage_path}`;\n\nreturn [{ json: { user_id, upload_id, room_type, style_tag, prompt, reference_ids, session_id, upload_url, started_at_ms: Date.now() } }];"
+        },
+        "id": "7bb0767b-a83d-43e3-93f6-fd1594f09a4a",
+        "name": "Validate body",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2768,
+          1696
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "err",
+                "leftValue": "={{ $json._error ? 'err' : '' }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "b1708561-32bf-49f3-9b5f-216fda145f8a",
+        "name": "Body valid?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3008,
+          1696
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify($json._error.body) }}",
+          "options": {}
+        },
+        "id": "5bc7a30d-f037-4b42-b1ff-66bfb07b8fc5",
+        "name": "Respond 400",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          3248,
+          1568
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{$('Config').first().json._cfg.supabase_url}}/rest/v1/reference_images{{ $json.reference_ids && $json.reference_ids.length > 0 ? '?id=in.(' + $json.reference_ids.join(',') + ')' : '?limit=0' }}&select=id,source_url",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$('Config').first().json._cfg.supabase_key}}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{$('Config').first().json._cfg.supabase_key}}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 15000
+          }
+        },
+        "id": "391289fd-a299-4426-b5d5-dc3ac39937b3",
+        "name": "Fetch reference URLs",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3248,
+          1808
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Ordered list of URLs to fetch: upload first, then references in order.\nconst ctx = $('Validate body').first().json;\nconst refs = $input.all().map(i => i.json);\nconst byId = {};\nrefs.forEach(r => { if (r.id && r.source_url) byId[r.id] = r.source_url; });\nconst urls = [ctx.upload_url];\nfor (const id of ctx.reference_ids) {\n  if (byId[id]) urls.push(byId[id]);\n}\nreturn urls.map((url, i) => ({ json: { ...ctx, idx: i, fetch_url: url } }));"
+        },
+        "id": "a5463b42-863f-42a7-912b-c674fefcac71",
+        "name": "Order fetch list",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3488,
+          1808
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{ $json.fetch_url }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$('Config').first().json._cfg.supabase_key}}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{$('Config').first().json._cfg.supabase_key}}"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "file",
+                "outputPropertyName": "image"
+              }
+            },
+            "timeout": 30000
+          }
+        },
+        "id": "fd1e63ac-8eae-4a20-ba16-3a7926a083a6",
+        "name": "Fetch image bytes",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3728,
+          1808
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nitems.sort((a, b) => a.json.idx - b.json.idx);\n\nconst cfg = $('Config').first().json._cfg;\nconst headers = {\n  apikey: cfg.supabase_key,\n  Authorization: 'Bearer ' + cfg.supabase_key\n};\n\nconst parts = [];\nfor (const it of items) {\n  const buf = await this.helpers.httpRequest({\n    method: 'GET',\n    url: it.json.fetch_url,\n    headers,\n    encoding: 'arraybuffer'\n  });\n  const ext = it.json.fetch_url.split('?')[0].split('.').pop().toLowerCase();\n  const mime = ({ png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' })[ext] || 'image/jpeg';\n  parts.push({ inline_data: { mime_type: mime, data: Buffer.from(buf).toString('base64') } });\n}\n\nreturn [{ json: { ...items[0].json, image_parts: parts } }];",
+          "mode": "runOnceForAllItems"
+        },
+        "id": "76554de5-4631-414e-813f-acf364ae4119",
+        "name": "Collect image parts",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3968,
+          1808
+        ]
+      },
+      {
+        "parameters": {
+          "url": "={{$('Config').first().json._cfg.supabase_url}}/rest/v1/app_config?key=eq.image_model&select=value",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{$('Config').first().json._cfg.supabase_key}}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{$('Config').first().json._cfg.supabase_key}}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "288fd794-3050-4984-a303-5864c4ff6e0f",
+        "name": "Fetch image_model",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4208,
+          1808
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// $json is the single row from Fetch image_model: {value: 'model-name'}\nconst model = $json.value || 'gemini-3.1-flash-image-preview';\n\nconst template = `You are an interior design rendering engine.\n\nTASK: Generate a photorealistic image of the SAME room shown in the first input\nimage, redesigned in the style of the reference images provided.\n\nHARD CONSTRAINTS:\n- Preserve the input room's geometry exactly: wall positions, window positions\n  and sizes, door positions, ceiling height.\n- Preserve lighting direction from the input photo.\n- Use furniture, materials, colors, and styling cues from the reference images.\n- Output must be photorealistic, no illustrations or cartoons.\n- Do not add text, watermarks, logos, or signatures.\n- Do not add people.\n\nSTYLE: {style_tag}\nROOM TYPE: {room_type}\n{user_brief}`;\n\nconst ctx = $('Collect image parts').first().json;\nconst userBriefSection = ctx.prompt\n  ? `\\nUSER BRIEF (incorporate into the design):\\n${ctx.prompt}`\n  : '';\nconst finalPrompt = template\n  .replace('{style_tag}', ctx.style_tag || 'not specified')\n  .replace('{room_type}', ctx.room_type || 'not specified')\n  .replace('{user_brief}', userBriefSection);\n\nconst gemini_body = {\n  contents: [{\n    role: 'user',\n    parts: [ { text: finalPrompt }, ...ctx.image_parts ]\n  }],\n  generationConfig: { responseModalities: ['IMAGE'] }\n};\n\nreturn [{ json: { ...ctx, model, prompt: finalPrompt, gemini_body } }];"
+        },
+        "id": "5403b89f-8e61-4a7c-91b6-5e4e820bc683",
+        "name": "Build Gemini request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4448,
+          1808
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{$json.model}}:generateContent",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-goog-api-key",
+                "value": "={{$('Config').first().json._cfg.gemini_key}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+          "options": {
+            "timeout": 120000
+          }
+        },
+        "id": "cca48ddc-4d6a-43fa-b143-a21bee5f1dd8",
+        "name": "Call Gemini",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4688,
+          1808
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const ctx = $('Build Gemini request').first().json;\nconst resp = $json;\nconst parts = (resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];\nconst imgPart = parts.find(p => p.inlineData || p.inline_data);\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst inline = imgPart.inlineData || imgPart.inline_data;\nconst b64    = inline.data;\nconst mime   = inline.mimeType || inline.mime_type || 'image/png';\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: null,\n    kind:                'draft',\n    input_image_path:    `user-uploads/${ctx.user_id}/${ctx.upload_id}`,\n    room_type:           ctx.room_type,\n    style_tag:           ctx.style_tag,\n    reference_image_ids: ctx.reference_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: {\n    output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' }\n  }\n}];"
+        },
+        "id": "47e7dedd-bc81-4ba7-9f8f-7fec8040468a",
+        "name": "Extract output PNG",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4928,
+          1808
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "err",
+                "leftValue": "={{ $json._error ? 'err' : '' }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "87a65481-a2b4-40fd-b9f3-4bb7251ff52d",
+        "name": "Gen error?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          5168,
+          1808
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify($json._error.body) }}",
+          "options": {}
+        },
+        "id": "0281a3a2-4eeb-4a9f-af70-a59adf13e96e",
+        "name": "Respond 502",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          5408,
+          1696
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const generation_id = $json.generation_id || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); });\nreturn [{\n  json: {\n    generation_id,\n    user_id:              $json.user_id,\n    session_id:           $json.session_id || null,\n    parent_generation_id: $json.parent_generation_id || null,\n    kind:                 $json.kind,\n    input_image_path:     $json.input_image_path || null,\n    output_image_path:    `user-outputs/${$json.user_id}/${generation_id}.png`,\n    room_type:            $json.room_type || null,\n    style_tag:            $json.style_tag || null,\n    reference_image_ids:  $json.reference_image_ids || null,\n    prompt:               $json.prompt || null,\n    criteria:             $json.criteria || null,\n    model_config:         $json.model_config || 'A',\n    model_id:             $json.model_id || null,\n    latency_ms:           $json.latency_ms || null,\n    cost_usd:             $json.cost_usd || 0\n  },\n  binary: $input.first().binary\n}];"
+        },
+        "id": "c1a393bc-f7f0-421e-8e04-4fd9c52ba132",
+        "name": "Assemble row",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5408,
+          1936
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $('Config').first().json._cfg.supabase_url + '/storage/v1/object/' + $json.output_image_path }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $('Config').first().json._cfg.supabase_key }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $('Config').first().json._cfg.supabase_key }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "image/png"
+              },
+              {
+                "name": "x-upsert",
+                "value": "true"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "binaryData",
+          "inputDataFieldName": "output_png",
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "id": "a762df36-fc5a-44fa-bfb5-8d6c99fe6e7b",
+        "name": "Upload PNG",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          5648,
+          1936
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $('Config').first().json._cfg.supabase_url }}/rest/v1/generations",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $('Config').first().json._cfg.supabase_key }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $('Config').first().json._cfg.supabase_key }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=representation"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "string",
+          "options": {
+            "timeout": 15000
+          },
+          "body": "={{ JSON.stringify({ user_id:              $('Assemble row').first().json.user_id, session_id:           $('Assemble row').first().json.session_id, parent_generation_id: $('Assemble row').first().json.parent_generation_id, kind:                 $('Assemble row').first().json.kind, input_image_path:     $('Assemble row').first().json.input_image_path, room_type:            $('Assemble row').first().json.room_type, style_tag:            $('Assemble row').first().json.style_tag, reference_image_ids:  $('Assemble row').first().json.reference_image_ids, prompt:               $('Assemble row').first().json.prompt, model_config:         $('Assemble row').first().json.model_config, model_id:             $('Assemble row').first().json.model_id, output_image_path:    $('Assemble row').first().json.output_image_path, latency_ms:           $('Assemble row').first().json.latency_ms, cost_usd:             $('Assemble row').first().json.cost_usd, status:               'success' }) }}"
+        },
+        "id": "62753a98-f9f4-4929-98bc-00134ff43257",
+        "name": "Insert generation row",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          5888,
+          1936
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const row = Array.isArray($json) ? $json[0]\n          : ($json.body ? (Array.isArray($json.body) ? $json.body[0] : $json.body) : $json);\nconst asm  = $('Assemble row').first().json;\nconst base = $('Config').first().json._cfg.supabase_url;\nreturn [{ json: {\n  generation_id:        row?.id || asm.generation_id,\n  user_id:              asm.user_id,\n  session_id:           asm.session_id,\n  kind:                 asm.kind,\n  parent_generation_id: asm.parent_generation_id,\n  model_id:             asm.model_id,\n  latency_ms:           asm.latency_ms,\n  cost_usd:             asm.cost_usd || 0,\n  room_type:            asm.room_type,\n  style_tag:            asm.style_tag,\n  output_url:           base + '/storage/v1/object/public/' + asm.output_image_path,\n  created_at:           row?.created_at || new Date().toISOString()\n} }];"
+        },
+        "id": "67afd49e-aefc-43ec-80f7-ee33877fd950",
+        "name": "Build gen response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6128,
+          1936
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({\n  generation_id: $json.generation_id,\n  output_url:    $json.output_url,\n  latency_ms:    $json.latency_ms,\n  cost_usd:      $json.cost_usd,\n  model_id:      $json.model_id,\n  backend_id:    'gemini'\n}) }}",
+          "options": {}
+        },
+        "id": "bab8877f-853e-4785-b0f3-df57384916eb",
+        "name": "Respond 200",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          6400,
+          1936
+        ]
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          4592,
+          1760
+        ],
+        "typeVersion": 1,
+        "id": "6d76e9a7-8044-4a4f-a227-38837768cafb",
+        "name": "Sticky Note"
+      },
+      {
+        "id": "log-event-001",
+        "name": "Log event",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          6400,
+          2160
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $('Config').first().json._cfg.supabase_url }}/rest/v1/events",
+          "specifyBody": "string",
+          "body": "={{ JSON.stringify({ user_id: $json.user_id, session_id: $json.session_id, event_type: \"draft_ok\", payload: { generation_id: $json.generation_id, model_id: $json.model_id, latency_ms: $json.latency_ms } }) }}",
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            },
+            "timeout": 5000
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $('Config').first().json._cfg.supabase_key }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Config').first().json._cfg.supabase_key }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Assemble row": {
+        "main": [
+          [
+            {
+              "node": "Upload PNG",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload PNG": {
+        "main": [
+          [
+            {
+              "node": "Insert generation row",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Insert generation row": {
+        "main": [
+          [
+            {
+              "node": "Build gen response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Verify JWT": {
+        "main": [
+          [
+            {
+              "node": "Token valid?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Token valid?": {
+        "main": [
+          [
+            {
+              "node": "Validate body",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond 401",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate body": {
+        "main": [
+          [
+            {
+              "node": "Body valid?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Body valid?": {
+        "main": [
+          [
+            {
+              "node": "Respond 400",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fetch reference URLs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch reference URLs": {
+        "main": [
+          [
+            {
+              "node": "Order fetch list",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Order fetch list": {
+        "main": [
+          [
+            {
+              "node": "Fetch image bytes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch image bytes": {
+        "main": [
+          [
+            {
+              "node": "Collect image parts",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Collect image parts": {
+        "main": [
+          [
+            {
+              "node": "Fetch image_model",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch image_model": {
+        "main": [
+          [
+            {
+              "node": "Build Gemini request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Gemini request": {
+        "main": [
+          [
+            {
+              "node": "Call Gemini",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call Gemini": {
+        "main": [
+          [
+            {
+              "node": "Extract output PNG",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract output PNG": {
+        "main": [
+          [
+            {
+              "node": "Gen error?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gen error?": {
+        "main": [
+          [
+            {
+              "node": "Respond 502",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Assemble row",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build gen response": {
+        "main": [
+          [
+            {
+              "node": "Respond 200",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Log event",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "POST /generate/draft": {
+        "main": [
+          [
+            {
+              "node": "Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Config": {
+        "main": [
+          [
+            {
+              "node": "Verify JWT",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "piyush tater",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-27T09:21:39.956Z",
+        "id": 180,
+        "workflowId": "IkvnnbntRoK7OSgS",
+        "versionId": "c6bbd6d0-ff37-4819-8365-0a2b8e22becd",
+        "event": "activated",
+        "userId": "f0f333e6-c534-4106-aa4e-ed7d123419ac"
+      },
+      {
+        "createdAt": "2026-04-27T09:21:39.854Z",
+        "id": 179,
+        "workflowId": "IkvnnbntRoK7OSgS",
+        "versionId": "c6bbd6d0-ff37-4819-8365-0a2b8e22becd",
+        "event": "deactivated",
+        "userId": "f0f333e6-c534-4106-aa4e-ed7d123419ac"
+      }
+    ]
+  }
+}

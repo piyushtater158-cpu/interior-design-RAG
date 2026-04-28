@@ -1,0 +1,153 @@
+{
+  "name": "generations_session",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "generations/session/:session_id",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "GET /generations/session/:session_id",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "generations-session"
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": { "__rl": true, "mode": "list", "value": "wf_jwt_verify" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": { "authorization": "={{ $json.headers.authorization }}" }
+        },
+        "options": { "waitForSubWorkflow": true }
+      },
+      "id": "verify",
+      "name": "Verify JWT",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "strict" },
+          "conditions": [{ "id": "ok", "leftValue": "={{ $json.ok }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }],
+          "combinator": "and"
+        }
+      },
+      "id": "if_ok",
+      "name": "Token valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 401,
+        "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
+        "options": {}
+      },
+      "id": "respond_401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const params = $('GET /generations/session/:session_id').item.json.params || {};\nconst session_id = (params.session_id || '').toString().trim();\nconst user_id    = $json.user_id;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(session_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_session_id', code: 'invalid_request' } } } }];\n}\nreturn [{ json: { user_id, session_id } }];"
+      },
+      "id": "validate",
+      "name": "Validate params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "strict" },
+          "conditions": [{ "id": "err", "leftValue": "={{ $json._error }}", "rightValue": "", "operator": { "type": "object", "operation": "exists" } }],
+          "combinator": "and"
+        }
+      },
+      "id": "if_err",
+      "name": "Params valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_400",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/generations?session_id=eq.{{$json.session_id}}&user_id=eq.{{$json.user_id}}&select=id,kind,output_image_path,parent_generation_id,model_id,room_type,style_tag,created_at&order=created_at.asc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "fetch_rows",
+      "name": "Fetch session generations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst base = $env.SUPABASE_URL;\nconst items = rows.map(r => ({\n  generation_id:        r.id,\n  kind:                 r.kind,\n  output_url:           r.output_image_path ? `${base}/storage/v1/object/public/${r.output_image_path}` : null,\n  parent_generation_id: r.parent_generation_id,\n  model_id:             r.model_id,\n  room_type:            r.room_type,\n  style_tag:            r.style_tag,\n  created_at:           r.created_at\n}));\nreturn [{ json: { generations: items } }];"
+      },
+      "id": "shape",
+      "name": "Shape response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 540]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 200,
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond_200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1920, 540]
+    }
+  ],
+  "connections": {
+    "GET /generations/session/:session_id": { "main": [[{ "node": "Verify JWT", "type": "main", "index": 0 }]] },
+    "Verify JWT":                            { "main": [[{ "node": "Token valid?", "type": "main", "index": 0 }]] },
+    "Token valid?":                          { "main": [[{ "node": "Validate params", "type": "main", "index": 0 }], [{ "node": "Respond 401", "type": "main", "index": 0 }]] },
+    "Validate params":                       { "main": [[{ "node": "Params valid?", "type": "main", "index": 0 }]] },
+    "Params valid?":                         { "main": [[{ "node": "Respond 400", "type": "main", "index": 0 }], [{ "node": "Fetch session generations", "type": "main", "index": 0 }]] },
+    "Fetch session generations":             { "main": [[{ "node": "Shape response", "type": "main", "index": 0 }]] },
+    "Shape response":                        { "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "generations" }]
+}

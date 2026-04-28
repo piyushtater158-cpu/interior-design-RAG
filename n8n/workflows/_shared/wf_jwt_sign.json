@@ -1,0 +1,31 @@
+{
+  "name": "wf_jwt_sign",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst secret  = $env.JWT_SECRET || '__REDACTED_JWT_SECRET__';\nconst ttlHrs  = parseInt($env.JWT_TTL_HOURS || '24', 10);\n\nconst b64url = (buf) =>\n  Buffer.from(buf)\n    .toString('base64')\n    .replace(/=+$/g, '')\n    .replace(/\\+/g, '-')\n    .replace(/\\//g, '_');\n\nconst now    = Math.floor(Date.now() / 1000);\nconst header = { alg: 'HS256', typ: 'JWT' };\nconst payload = {\n  sub:   $json.user_id,\n  email: $json.email,\n  iat:   now,\n  exp:   now + ttlHrs * 3600\n};\n\nconst h   = b64url(JSON.stringify(header));\nconst p   = b64url(JSON.stringify(payload));\nconst sig = b64url(crypto.createHmac('sha256', secret).update(`${h}.${p}`).digest());\nconst token = `${h}.${p}.${sig}`;\n\nreturn [{ json: { token, user_id: $json.user_id, email: $json.email } }];"
+      },
+      "id": "sign",
+      "name": "Sign HS256",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{ "node": "Sign HS256", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "shared" }]
+}

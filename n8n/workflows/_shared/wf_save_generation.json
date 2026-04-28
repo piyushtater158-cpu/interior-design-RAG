@@ -1,0 +1,98 @@
+{
+  "name": "wf_save_generation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Assemble the row + derive storage path from a UUID that the caller may optionally pre-supply.\nconst crypto = require('crypto');\nconst uuid   = $json.generation_id || crypto.randomUUID();\nconst path   = `${$json.user_id}/${uuid}.png`;\n\nreturn [{\n  json: {\n    ...$json,\n    generation_id:      uuid,\n    output_storage_path: path\n  },\n  binary: $input.item.binary\n}];"
+      },
+      "id": "assemble",
+      "name": "Assemble row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/storage/v1/object/user-outputs/{{$json.output_storage_path}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "Content-Type",  "value": "image/png" },
+            { "name": "x-upsert",      "value": "true" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "output_png",
+        "options": { "timeout": 60000 }
+      },
+      "id": "upload",
+      "name": "Upload PNG to storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/generations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  id:                    $json.generation_id,\n  user_id:               $json.user_id,\n  session_id:            $json.session_id            || null,\n  parent_generation_id:  $json.parent_generation_id  || null,\n  kind:                  $json.kind,\n  input_image_path:      $json.input_image_path      || null,\n  room_type:             $json.room_type             || null,\n  style_tag:             $json.style_tag             || null,\n  reference_image_ids:   $json.reference_image_ids   || null,\n  prompt:                $json.prompt                || null,\n  model_config:          $json.model_config          || 'A',\n  model_id:              $json.model_id              || null,\n  output_image_path:     'user-outputs/' + $json.output_storage_path,\n  latency_ms:            $json.latency_ms            || null,\n  cost_usd:              $json.cost_usd              || 0,\n  status:                'success'\n}) }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "insert",
+      "name": "Insert generations row",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise return shape so callers always get generation_id + public output_url.\nconst row  = Array.isArray($json) ? $json[0] : $json;\nconst path = row.output_image_path;\nconst url  = `${$env.SUPABASE_URL}/storage/v1/object/public/${path}`;\nreturn [{ json: {\n  generation_id:        row.id,\n  user_id:              row.user_id,\n  session_id:           row.session_id,\n  kind:                 row.kind,\n  parent_generation_id: row.parent_generation_id,\n  model_id:             row.model_id,\n  latency_ms:           row.latency_ms,\n  cost_usd:             row.cost_usd,\n  room_type:            row.room_type,\n  style_tag:            row.style_tag,\n  output_url:           url,\n  created_at:           row.created_at\n} }];"
+      },
+      "id": "normalize",
+      "name": "Build response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{ "node": "Assemble row", "type": "main", "index": 0 }]]
+    },
+    "Assemble row": {
+      "main": [[{ "node": "Upload PNG to storage", "type": "main", "index": 0 }]]
+    },
+    "Upload PNG to storage": {
+      "main": [[{ "node": "Insert generations row", "type": "main", "index": 0 }]]
+    },
+    "Insert generations row": {
+      "main": [[{ "node": "Build response", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "shared" }]
+}

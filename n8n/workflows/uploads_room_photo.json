@@ -1,0 +1,361 @@
+{
+  "name": "uploads_room_photo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uploads/room-photo",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "file",
+          "rawBody": false
+        }
+      },
+      "id": "webhook",
+      "name": "POST /uploads/room-photo",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "uploads-room-photo"
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_jwt_verify"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "authorization": "={{ $json.headers.authorization }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "verify",
+      "name": "Verify JWT",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_ok",
+      "name": "Token valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 401,
+        "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
+        "options": {}
+      },
+      "id": "respond_401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: verify step returned { ok, user_id, email }.\n// The original webhook payload sits on the Webhook node; its binary is named 'file'.\nconst user_id = $json.user_id;\n\nconst binary = $('POST /uploads/room-photo').item.binary || {};\n// n8n webhook v2 stores multipart files as field0, field1... so check both 'file' and 'file0'\nconst file = binary.file || binary.file0 || Object.values(binary)[0] || null;\nif (!file) {\n  return [{ json: { _error: { status: 400, body: { error: 'missing_file', code: 'invalid_file' } } } }];\n}\n\nconst mime = (file.mimeType || '').toLowerCase();\nconst allowed = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png' };\nconst ext = allowed[mime];\nif (!ext) {\n  return [{ json: { _error: { status: 400, body: { error: 'unsupported_media_type', code: 'invalid_file_type' } } } }];\n}\n\nconst sizeBytes = Buffer.byteLength(file.data, 'base64');\nif (sizeBytes > 10 * 1024 * 1024) {\n  return [{ json: { _error: { status: 413, body: { error: 'file_too_large', code: 'file_too_large' } } } }];\n}\n\n// pure-JS UUID (no require('crypto') — blocked by n8n task-runner sandbox)\nconst upload_id = Array.from({length: 32}, () => (Math.random() * 16 | 0).toString(16)).join('');\nconst path = `${user_id}/${upload_id}`;\n\nreturn [{\n  json: { user_id, upload_id, ext, mime, path, storage_path: `user-uploads/${path}` },\n  binary: { file }\n}];"
+      },
+      "id": "prepare",
+      "name": "Validate + name",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_err",
+      "name": "Validation error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_validation",
+      "name": "Respond validation err",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/storage/v1/object/user-uploads/{{$json.path}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "={{ $json.mime }}"
+            },
+            {
+              "name": "x-upsert",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "file",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "upload_storage",
+      "name": "Upload to storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the public URL for the uploaded object.\nconst row         = $('Validate + name').item.json;\nconst user_id     = row.user_id;\nconst upload_id   = row.upload_id;\nconst path        = row.path;\nconst preview_url = `${$env.SUPABASE_URL}/storage/v1/object/public/user-uploads/${path}`;\nreturn [{ json: { user_id, upload_id, preview_url, storage_path: `user-uploads/${path}`, mime: row.mime } }];"
+      },
+      "id": "build_url",
+      "name": "Build preview_url",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_event_log"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_type": "upload",
+            "user_id": "={{ $json.user_id }}",
+            "payload": "={{ { upload_id: $json.upload_id } }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "log",
+      "name": "Log event",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        1920,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 200,
+        "responseBody": "={{ JSON.stringify({ upload_id: $json.upload_id, preview_url: $json.preview_url }) }}",
+        "options": {}
+      },
+      "id": "respond_200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2160,
+        540
+      ]
+    }
+  ],
+  "connections": {
+    "POST /uploads/room-photo": {
+      "main": [
+        [
+          {
+            "node": "Verify JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify JWT": {
+      "main": [
+        [
+          {
+            "node": "Token valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token valid?": {
+      "main": [
+        [
+          {
+            "node": "Validate + name",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate + name": {
+      "main": [
+        [
+          {
+            "node": "Validation error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation error?": {
+      "main": [
+        [
+          {
+            "node": "Respond validation err",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upload to storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to storage": {
+      "main": [
+        [
+          {
+            "node": "Build preview_url",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build preview_url": {
+      "main": [
+        [
+          {
+            "node": "Log event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "uploads"
+    }
+  ]
+}

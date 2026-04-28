@@ -1,0 +1,7 @@
+You are editing an interior design photograph.
+
+TASK: Apply ONLY the specific change requested below. Do not modify any other
+element of the image. Preserve all geometry, lighting, and unaffected objects
+exactly.
+
+REQUESTED CHANGE: {instruction}

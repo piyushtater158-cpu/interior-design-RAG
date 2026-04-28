@@ -1,0 +1,16 @@
+You are an interior design rendering engine.
+
+TASK: Generate a photorealistic image of the SAME room shown in the first input
+image, redesigned in the style of the reference images provided.
+
+HARD CONSTRAINTS:
+- Preserve the input room's geometry exactly: wall positions, window positions
+  and sizes, door positions, ceiling height.
+- Preserve lighting direction from the input photo.
+- Use furniture, materials, colors, and styling cues from the reference images.
+- Output must be photorealistic, no illustrations or cartoons.
+- Do not add text, watermarks, logos, or signatures.
+- Do not add people.
+
+STYLE: {style_tag}
+ROOM TYPE: {room_type}

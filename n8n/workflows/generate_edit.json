@@ -1,0 +1,842 @@
+{
+  "name": "generate_edit",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate/edit",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "POST /generate/edit",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "generate-edit"
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_jwt_verify"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "authorization": "={{ $json.headers.authorization }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "verify",
+      "name": "Verify JWT",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_ok",
+      "name": "Token valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 401,
+        "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
+        "options": {}
+      },
+      "id": "respond_401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const _raw = $('POST /generate/edit').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id = $json.user_id;\n\nconst generation_id = (body.generation_id || '').toString().trim();\nconst instruction   = (body.instruction   || '').toString().trim();\nconst session_id    = body.session_id ? body.session_id.toString() : null;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(generation_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_generation_id', code: 'invalid_request' } } } }];\n}\nif (!instruction) {\n  return [{ json: { _error: { status: 400, body: { error: 'missing_instruction', code: 'invalid_request' } } } }];\n}\n\nreturn [{ json: { user_id, generation_id, instruction, session_id, started_at_ms: Date.now() } }];"
+      },
+      "id": "validate",
+      "name": "Validate body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_err",
+      "name": "Body valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_400",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/generations?id=eq.{{$json.generation_id}}&user_id=eq.{{$json.user_id}}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch_parent",
+      "name": "Fetch parent generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows   = Array.isArray($json) ? $json : ($json.body || []);\nconst parent = rows[0];\nconst ctx    = $('Validate body').item.json;\nif (!parent) {\n  return [{ json: { _error: { status: 404, body: { error: 'parent_not_found', code: 'not_found' } } } }];\n}\nif (!parent.output_image_path) {\n  return [{ json: { _error: { status: 400, body: { error: 'parent_output_missing', code: 'invalid_state' } } } }];\n}\n\nreturn [{ json: {\n  ...ctx,\n  parent,\n  parent_output_url: `${$env.SUPABASE_URL}/storage/v1/object/public/${parent.output_image_path}`\n} }];"
+      },
+      "id": "shape_parent",
+      "name": "Shape parent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_parent_err",
+      "name": "Parent ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_parent_err",
+      "name": "Respond parent err",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2160,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/rpc/generation_chain_depth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ gen_id: $json.parent.id }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "chain_depth",
+      "name": "Chain depth RPC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const depth = typeof $json === 'number' ? $json : parseInt($json, 10) || 0;\nconst ctx   = $('Shape parent').item.json;\n// Parent itself consumes depth N ancestors; this new edit adds 1 more.\n// Cap at 6 total edits below a root.\nif (depth + 1 > 6) {\n  return [{ json: { _error: { status: 400, body: { error: 'edit_chain_cap_exceeded', code: 'edit_cap_exceeded' } } } }];\n}\nreturn [{ json: { ...ctx, chain_depth: depth } }];"
+      },
+      "id": "check_cap",
+      "name": "Check cap",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_cap",
+      "name": "Under cap?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_cap",
+      "name": "Respond cap exceeded",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2880,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.parent_output_url }}",
+        "sendHeaders": false,
+        "sendBody": false,
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "image"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "fetch_parent_png",
+      "name": "Fetch parent PNG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Check cap').item.json;\nconst bin = $input.item.binary.image;\nconst template = `You are editing an interior design photograph.\n\nTASK: Apply ONLY the specific change requested below. Do not modify any other\nelement of the image. Preserve all geometry, lighting, and unaffected objects\nexactly.\n\nREQUESTED CHANGE: {instruction}\n`;\nconst prompt = template.replace('{instruction}', ctx.instruction);\nconst gemini_body = {\n  contents: [{\n    role: 'user',\n    parts: [\n      { text: prompt },\n      { inline_data: { mime_type: bin.mimeType || 'image/png', data: bin.data } }\n    ]\n  }],\n  generationConfig: { responseModalities: ['IMAGE'] }\n};\nreturn [{ json: { ...ctx, prompt, gemini_body } }];"
+      },
+      "id": "build_gemini",
+      "name": "Build Gemini request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/app_config?key=eq.image_model&select=value",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch_model",
+      "name": "Fetch image_model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows  = Array.isArray($json) ? $json : ($json.body || []);\nconst model = (rows[0] && rows[0].value) || 'gemini-3.1-flash-image-preview';\nconst ctx   = $('Build Gemini request').item.json;\nreturn [{ json: { ...ctx, model } }];"
+      },
+      "id": "attach_model",
+      "name": "Attach model",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{$json.model}}:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{$env.GEMINI_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+        "options": {
+          "timeout": 120000,
+          "retry": {
+            "tryTimes": 3,
+            "waitBetweenTries": 2000
+          }
+        }
+      },
+      "id": "gemini_call",
+      "name": "Call Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3840,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx  = $('Attach model').item.json;\nconst resp = $json;\nconst parts = (resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];\nconst imgPart = parts.find(p => p.inlineData || p.inline_data);\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst inline = imgPart.inlineData || imgPart.inline_data;\nconst b64    = inline.data;\nconst mime   = inline.mimeType || inline.mime_type || 'image/png';\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind:                'edit',\n    input_image_path:    ctx.parent.output_image_path,\n    room_type:           ctx.parent.room_type,\n    style_tag:           ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
+      },
+      "id": "extract",
+      "name": "Extract output PNG",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4080,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if_extract",
+      "name": "Extract ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4320,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "respond_502",
+      "name": "Respond 502",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        4560,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_save_generation"
+        },
+        "workflowInputs": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "save",
+      "name": "Save generation",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        4560,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "wf_event_log"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_type": "edit_ok",
+            "user_id": "={{ $json.user_id }}",
+            "session_id": "={{ $json.session_id }}",
+            "payload": "={{ { generation_id: $json.generation_id, model_id: $json.model_id, latency_ms: $json.latency_ms } }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "log",
+      "name": "Log event",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        4800,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 200,
+        "responseBody": "={{ JSON.stringify({\n  generation_id: $json.generation_id,\n  output_url:    $json.output_url,\n  latency_ms:    $json.latency_ms,\n  cost_usd:      $json.cost_usd,\n  model_id:      $json.model_id,\n  backend_id:    'gemini'\n}) }}",
+        "options": {}
+      },
+      "id": "respond_200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        5040,
+        900
+      ]
+    }
+  ],
+  "connections": {
+    "POST /generate/edit": {
+      "main": [
+        [
+          {
+            "node": "Verify JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify JWT": {
+      "main": [
+        [
+          {
+            "node": "Token valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token valid?": {
+      "main": [
+        [
+          {
+            "node": "Validate body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate body": {
+      "main": [
+        [
+          {
+            "node": "Body valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Body valid?": {
+      "main": [
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch parent generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch parent generation": {
+      "main": [
+        [
+          {
+            "node": "Shape parent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape parent": {
+      "main": [
+        [
+          {
+            "node": "Parent ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parent ok?": {
+      "main": [
+        [
+          {
+            "node": "Respond parent err",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chain depth RPC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chain depth RPC": {
+      "main": [
+        [
+          {
+            "node": "Check cap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check cap": {
+      "main": [
+        [
+          {
+            "node": "Under cap?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Under cap?": {
+      "main": [
+        [
+          {
+            "node": "Respond cap exceeded",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch parent PNG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch parent PNG": {
+      "main": [
+        [
+          {
+            "node": "Build Gemini request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gemini request": {
+      "main": [
+        [
+          {
+            "node": "Fetch image_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch image_model": {
+      "main": [
+        [
+          {
+            "node": "Attach model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach model": {
+      "main": [
+        [
+          {
+            "node": "Call Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Gemini": {
+      "main": [
+        [
+          {
+            "node": "Extract output PNG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract output PNG": {
+      "main": [
+        [
+          {
+            "node": "Extract ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract ok?": {
+      "main": [
+        [
+          {
+            "node": "Respond 502",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save generation": {
+      "main": [
+        [
+          {
+            "node": "Log event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "generate"
+    }
+  ]
+}

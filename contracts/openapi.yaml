@@ -1,0 +1,844 @@
+openapi: 3.1.0
+info:
+  title: Interior Design Assistant API
+  description: "Upload \u2192 CLIP retrieval \u2192 Gemini / local-GPU generation\
+    \ \u2192 edit/commit loop."
+  version: 0.2.0
+paths:
+  /auth/magic-link:
+    post:
+      tags:
+      - auth
+      summary: Magic Link
+      operationId: magic_link_auth_magic_link_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /auth/me:
+    get:
+      tags:
+      - auth
+      summary: Me
+      operationId: me_auth_me_get
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /uploads/room-photo:
+    post:
+      tags:
+      - uploads
+      summary: Upload Room Photo
+      operationId: upload_room_photo_uploads_room_photo_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_upload_room_photo_uploads_room_photo_post'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /retrieve/references:
+    post:
+      tags:
+      - retrieve
+      summary: References
+      operationId: references_retrieve_references_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetrieveRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetrieveResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /generate/draft:
+    post:
+      tags:
+      - generate
+      summary: Draft
+      operationId: draft_generate_draft_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /generate/commit:
+    post:
+      tags:
+      - generate
+      summary: Commit
+      operationId: commit_generate_commit_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommitRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /generate/edit:
+    post:
+      tags:
+      - generate
+      summary: Edit
+      operationId: edit_generate_edit_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /generations/session/{session_id}:
+    get:
+      tags:
+      - generations
+      summary: Session History
+      operationId: session_history_generations_session__session_id__get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Session Id
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistoryItem'
+                title: Response Session History Generations Session  Session Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /generations/{generation_id}/export:
+    post:
+      tags:
+      - generations
+      summary: Export Generation
+      operationId: export_generation_generations__generation_id__export_post
+      parameters:
+      - name: generation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Generation Id
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /admin/ab-config:
+    get:
+      tags:
+      - admin
+      summary: Get Ab Config
+      operationId: get_ab_config_admin_ab_config_get
+      parameters:
+      - name: x-admin-token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Admin-Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ABConfigResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - admin
+      summary: Put Ab Config
+      operationId: put_ab_config_admin_ab_config_put
+      parameters:
+      - name: x-admin-token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Admin-Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ABConfigUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ABConfigResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /admin/run-ab-test:
+    post:
+      tags:
+      - admin
+      summary: Run Ab Test
+      operationId: run_ab_test_admin_run_ab_test_post
+      parameters:
+      - name: x-admin-token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Admin-Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunABResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /admin/metrics:
+    get:
+      tags:
+      - admin
+      summary: Metrics
+      operationId: metrics_admin_metrics_get
+      parameters:
+      - name: x-admin-token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Admin-Token
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /health:
+    get:
+      tags:
+      - health
+      summary: Health
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Health Health Get
+components:
+  schemas:
+    ABConfigResponse:
+      properties:
+        config:
+          type: string
+          enum:
+          - A
+          - B
+          title: Config
+        backend:
+          type: string
+          enum:
+          - gemini
+          - local_gpu
+          title: Backend
+        backend_edit:
+          type: string
+          enum:
+          - gemini
+          - local_gpu
+          - ''
+          default: ''
+          title: Backend Edit
+      type: object
+      required:
+      - config
+      - backend
+      title: ABConfigResponse
+    ABConfigUpdate:
+      properties:
+        config:
+          anyOf:
+          - type: string
+            enum:
+            - A
+            - B
+          - type: 'null'
+          title: Config
+        backend:
+          anyOf:
+          - type: string
+            enum:
+            - gemini
+            - local_gpu
+          - type: 'null'
+          title: Backend
+        backend_edit:
+          anyOf:
+          - type: string
+            enum:
+            - gemini
+            - local_gpu
+            - ''
+          - type: 'null'
+          title: Backend Edit
+      type: object
+      title: ABConfigUpdate
+    Body_upload_room_photo_uploads_room_photo_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_upload_room_photo_uploads_room_photo_post
+    CommitRequest:
+      properties:
+        generation_id:
+          type: string
+          title: Generation Id
+        session_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session Id
+      type: object
+      required:
+      - generation_id
+      title: CommitRequest
+    DraftRequest:
+      properties:
+        upload_id:
+          type: string
+          title: Upload Id
+        room_type:
+          type: string
+          title: Room Type
+        style_tag:
+          type: string
+          title: Style Tag
+        reference_ids:
+          items:
+            type: string
+          type: array
+          title: Reference Ids
+        session_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session Id
+      type: object
+      required:
+      - upload_id
+      - room_type
+      - style_tag
+      title: DraftRequest
+    EditRequest:
+      properties:
+        generation_id:
+          type: string
+          title: Generation Id
+        instruction:
+          type: string
+          title: Instruction
+        session_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session Id
+      type: object
+      required:
+      - generation_id
+      - instruction
+      title: EditRequest
+    ExportResponse:
+      properties:
+        download_url:
+          type: string
+          title: Download Url
+      type: object
+      required:
+      - download_url
+      title: ExportResponse
+    GenerationResponse:
+      properties:
+        generation_id:
+          type: string
+          title: Generation Id
+        output_url:
+          type: string
+          title: Output Url
+        latency_ms:
+          type: integer
+          title: Latency Ms
+        cost_usd:
+          type: number
+          title: Cost Usd
+        model_id:
+          type: string
+          title: Model Id
+        backend_id:
+          type: string
+          title: Backend Id
+      type: object
+      required:
+      - generation_id
+      - output_url
+      - latency_ms
+      - cost_usd
+      - model_id
+      - backend_id
+      title: GenerationResponse
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HistoryItem:
+      properties:
+        generation_id:
+          type: string
+          title: Generation Id
+        kind:
+          type: string
+          title: Kind
+        output_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Output Url
+        parent_generation_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parent Generation Id
+        model_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Id
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - generation_id
+      - kind
+      - output_url
+      - parent_generation_id
+      - model_id
+      - created_at
+      title: HistoryItem
+    MagicLinkRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+      type: object
+      required:
+      - email
+      title: MagicLinkRequest
+    MeResponse:
+      properties:
+        user_id:
+          type: string
+          title: User Id
+        email:
+          type: string
+          title: Email
+      type: object
+      required:
+      - user_id
+      - email
+      title: MeResponse
+    MetricsResponse:
+      properties:
+        window_hours:
+          type: integer
+          title: Window Hours
+          default: 24
+        generation_count:
+          type: integer
+          title: Generation Count
+        success_count:
+          type: integer
+          title: Success Count
+        error_count:
+          type: integer
+          title: Error Count
+        by_config:
+          additionalProperties:
+            type: integer
+          type: object
+          title: By Config
+        latency_p50_ms:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latency P50 Ms
+        latency_p95_ms:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latency P95 Ms
+        gemini_calls_24h:
+          type: integer
+          title: Gemini Calls 24H
+        gemini_quota_remaining:
+          type: integer
+          title: Gemini Quota Remaining
+      type: object
+      required:
+      - generation_count
+      - success_count
+      - error_count
+      - by_config
+      - gemini_calls_24h
+      - gemini_quota_remaining
+      title: MetricsResponse
+    ReferenceHit:
+      properties:
+        id:
+          type: string
+          title: Id
+        url:
+          type: string
+          title: Url
+        style_tags:
+          items:
+            type: string
+          type: array
+          title: Style Tags
+        room_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Room Type
+        caption:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Caption
+        similarity:
+          type: number
+          title: Similarity
+      type: object
+      required:
+      - id
+      - url
+      - style_tags
+      - similarity
+      title: ReferenceHit
+    RetrieveRequest:
+      properties:
+        upload_id:
+          type: string
+          title: Upload Id
+        room_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Room Type
+        style_tag:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Style Tag
+        k:
+          type: integer
+          maximum: 20.0
+          minimum: 1.0
+          title: K
+          default: 5
+      type: object
+      required:
+      - upload_id
+      title: RetrieveRequest
+    RetrieveResponse:
+      properties:
+        references:
+          items:
+            $ref: '#/components/schemas/ReferenceHit'
+          type: array
+          title: References
+      type: object
+      required:
+      - references
+      title: RetrieveResponse
+    RunABResponse:
+      properties:
+        started:
+          type: boolean
+          title: Started
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - started
+      - message
+      title: RunABResponse
+    TokenResponse:
+      properties:
+        token:
+          type: string
+          title: Token
+        user_id:
+          type: string
+          title: User Id
+      type: object
+      required:
+      - token
+      - user_id
+      title: TokenResponse
+    UploadResponse:
+      properties:
+        upload_id:
+          type: string
+          title: Upload Id
+        preview_url:
+          type: string
+          title: Preview Url
+      type: object
+      required:
+      - upload_id
+      - preview_url
+      title: UploadResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

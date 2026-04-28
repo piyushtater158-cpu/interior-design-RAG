@@ -1,0 +1,39 @@
+{
+  "name": "health",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "health",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "GET /health",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "health"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', backend: 'n8n-interior-design-assistant' }) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [480, 300]
+    }
+  ],
+  "connections": {
+    "GET /health": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": []
+}

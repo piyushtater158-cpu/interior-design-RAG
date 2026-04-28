@@ -1,0 +1,30 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Seed cache & downloaded images
+database/seed/cache/
+database/seed/images/
+
+# Model cache
+.models/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# n8n specifics
+n8n/credentials/
+n8n/exec*.json
+n8n/seed_log.txt
+
+# IDE
+.claude/
+.mcp.json
