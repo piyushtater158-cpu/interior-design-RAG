@@ -25,10 +25,9 @@ export function SignIn() {
     setError(null);
     try {
       const res = await api.authMagicLink(email.trim());
+      // setAuth writes jwt into Zustand; the persist middleware saves it
+      // to localStorage under key 'atelier:app' automatically.
       setAuth(res.token, res.user_id, email.trim());
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('atelier:jwt', res.token);
-      }
       router.push('/app');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Sign-in failed. Try again.');
