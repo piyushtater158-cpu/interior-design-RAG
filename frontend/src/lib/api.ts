@@ -24,7 +24,22 @@ export class ApiError extends Error {
 
 function readToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return useAppStore.getState().jwt ?? localStorage.getItem('atelier:jwt');
+
+  // 1. Try the live Zustand store first (works after hydration)
+  const fromStore = useAppStore.getState().jwt;
+  if (fromStore) return fromStore;
+
+  // 2. Fallback: read directly from the persisted store object (key: 'atelier:app')
+  try {
+    const raw = localStorage.getItem('atelier:app');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed?.state?.jwt ?? null;
+    }
+  } catch {
+    // localStorage blocked or JSON malformed
+  }
+  return null;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
