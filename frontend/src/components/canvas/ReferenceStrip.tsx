@@ -7,8 +7,11 @@ export function ReferenceStrip({ orientation = 'grid' }: { orientation?: 'grid' 
   const refs = useSessionStore((s) => s.references);
   if (refs.length === 0) {
     return (
-      <div className="p-4">
-        <Anno>no references retrieved</Anno>
+      <div className="p-4 flex flex-col gap-1">
+        <Anno className="block">references · selected by AI agent</Anno>
+        <p className="text-[11px] leading-relaxed" style={{ color: '#8B8676', maxWidth: 220 }}>
+          The orchestration agent picks 3 references automatically — spatial match, style match, and ambience match.
+        </p>
       </div>
     );
   }

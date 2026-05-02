@@ -6,7 +6,7 @@ import type { RoomType, StyleId, RoomTone } from '@/lib/tokens';
 
 export type Revision = {
   generationId: string;
-  kind: 'draft' | 'edit' | 'commit';
+  kind: 'draft' | 'edit' | 'commit' | 'orchestrated';
   outputUrl: string;
   parentId: string | null;
   createdAt: number;
@@ -38,7 +38,7 @@ interface SessionState {
   isGenerating: boolean;
   error: string | null;
 
-  newSession: (args: { sessionId: string; roomType: RoomType; styleTag: StyleId }) => void;
+  newSession: (args: { sessionId: string; roomType: RoomType; styleTag: StyleId | null }) => void;
   setUpload: (id: string, url: string) => void;
   setReferences: (r: ReferenceThumb[]) => void;
   appendRevision: (r: Revision) => void;

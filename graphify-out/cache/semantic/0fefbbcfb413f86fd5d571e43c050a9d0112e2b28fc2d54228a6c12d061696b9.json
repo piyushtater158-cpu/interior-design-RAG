@@ -1,0 +1,1 @@
+{"nodes": [{"id": "db_app_config", "label": "app_config table", "file_type": "document", "source_file": "n8n/migrations/005_app_config.sql", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

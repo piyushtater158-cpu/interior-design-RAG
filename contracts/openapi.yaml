@@ -92,74 +92,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /retrieve/references:
-    post:
-      tags:
-      - retrieve
-      summary: References
-      operationId: references_retrieve_references_post
-      parameters:
-      - name: authorization
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Authorization
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RetrieveRequest'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RetrieveResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /generate/draft:
-    post:
-      tags:
-      - generate
-      summary: Draft
-      operationId: draft_generate_draft_post
-      parameters:
-      - name: authorization
-        in: header
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Authorization
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DraftRequest'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenerationResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
   /generate/commit:
     post:
       tags:
@@ -228,6 +160,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /generate/orchestrated:
+    post:
+      tags:
+      - generate
+      summary: Orchestrated Generation
+      operationId: orchestrated_generate_orchestrated_post
+      parameters:
+      - name: authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              : '#/components/schemas/OrchestratedRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                : '#/components/schemas/GenerationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                : '#/components/schemas/HTTPValidationError'
   /generations/session/{session_id}:
     get:
       tags:
@@ -513,33 +479,6 @@ components:
       required:
       - generation_id
       title: CommitRequest
-    DraftRequest:
-      properties:
-        upload_id:
-          type: string
-          title: Upload Id
-        room_type:
-          type: string
-          title: Room Type
-        style_tag:
-          type: string
-          title: Style Tag
-        reference_ids:
-          items:
-            type: string
-          type: array
-          title: Reference Ids
-        session_id:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session Id
-      type: object
-      required:
-      - upload_id
-      - room_type
-      - style_tag
-      title: DraftRequest
     EditRequest:
       properties:
         generation_id:
@@ -708,75 +647,6 @@ components:
       - gemini_calls_24h
       - gemini_quota_remaining
       title: MetricsResponse
-    ReferenceHit:
-      properties:
-        id:
-          type: string
-          title: Id
-        url:
-          type: string
-          title: Url
-        style_tags:
-          items:
-            type: string
-          type: array
-          title: Style Tags
-        room_type:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Room Type
-        caption:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Caption
-        similarity:
-          type: number
-          title: Similarity
-      type: object
-      required:
-      - id
-      - url
-      - style_tags
-      - similarity
-      title: ReferenceHit
-    RetrieveRequest:
-      properties:
-        upload_id:
-          type: string
-          title: Upload Id
-        room_type:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Room Type
-        style_tag:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Style Tag
-        k:
-          type: integer
-          maximum: 20.0
-          minimum: 1.0
-          title: K
-          default: 5
-      type: object
-      required:
-      - upload_id
-      title: RetrieveRequest
-    RetrieveResponse:
-      properties:
-        references:
-          items:
-            $ref: '#/components/schemas/ReferenceHit'
-          type: array
-          title: References
-      type: object
-      required:
-      - references
-      title: RetrieveResponse
     RunABResponse:
       properties:
         started:
@@ -816,6 +686,35 @@ components:
       - upload_id
       - preview_url
       title: UploadResponse
+    OrchestratedRequest:
+      title: OrchestratedRequest
+      type: object
+      required:
+      - upload_id
+      - brief
+      properties:
+        upload_id:
+          type: string
+          title: Upload Id
+        brief:
+          type: string
+          title: Brief
+        style_tag:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Style Tag
+        room_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Room Type
+        session_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session Id
+
     ValidationError:
       properties:
         loc:

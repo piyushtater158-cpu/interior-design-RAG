@@ -55,7 +55,7 @@ function NewSessionInner() {
   }
 
   async function generate() {
-    if (!uploadId || !styleId) return;
+    if (!uploadId || !prompt.trim()) return;
     setGenerating(true);
     setError(null);
     try {
@@ -67,40 +67,21 @@ function NewSessionInner() {
       sessionStore.newSession({ sessionId, roomType, styleTag: styleId });
       sessionStore.setUpload(uploadId, previewUrl ?? '');
 
-      const userPrompt = prompt.trim() || undefined;
-
-      const refs = await api.retrieveReferences({
+      const result = await api.generateOrchestrated({
         upload_id: uploadId,
+        brief: prompt.trim(),
+        style_tag: styleId ?? undefined,
         room_type: roomType,
-        style_tag: styleId,
-        k: 5,
-        prompt: userPrompt,
-      });
-      sessionStore.setReferences(
-        refs.references.map((r) => ({
-          id: r.id,
-          url: absoluteUrl(r.url),
-          similarity: r.similarity,
-          styleTags: r.style_tags,
-        })),
-      );
-
-      const draft = await api.generateDraft({
-        upload_id: uploadId,
-        room_type: roomType,
-        style_tag: styleId,
-        reference_ids: refs.references.map((r) => r.id),
         session_id: sessionId,
-        prompt: userPrompt,
       });
       sessionStore.appendRevision({
-        generationId: draft.generation_id,
-        kind: 'draft',
-        outputUrl: absoluteUrl(draft.output_url),
+        generationId: result.generation_id,
+        kind: 'orchestrated',
+        outputUrl: absoluteUrl(result.output_url),
         parentId: null,
         createdAt: Date.now(),
-        modelId: draft.model_id,
-        backendId: draft.backend_id,
+        modelId: result.model_id,
+        backendId: result.backend_id,
       });
       decrementCredits(2);
 
@@ -112,7 +93,7 @@ function NewSessionInner() {
   }
 
   const canAdvance = !!uploadId && !uploading;
-  const canGenerate = !!styleId && !generating;
+  const canGenerate = !!prompt.trim() && !generating;
 
   // ── Step dots ──────────────────────────────────────────────────────────────
   const StepDots = () => (
@@ -140,7 +121,7 @@ function NewSessionInner() {
         {/* Nav */}
         <div className="lg:hidden">
           <MobNav
-            title={step === 1 ? 'Show us the room' : 'Pick a direction'}
+            title={step === 1 ? 'Show us the room' : 'Write a brief'}
             sub={`${roomMeta.id} · step 0${step} of 02`}
             onBack={step === 1 ? () => router.push('/app') : () => setStep(1)}
             trailing={<StepDots />}
@@ -239,48 +220,49 @@ function NewSessionInner() {
           </div>
         )}
 
-        {/* ── STEP 2: Style + Prompt ─────────────────────────────────────────── */}
+        {/* ── STEP 2: Brief + Style ─────────────────────────────────────────── */}
         {step === 2 && (
           <div className="flex-1 px-5 lg:px-10 pt-4 pb-36 lg:pb-20">
-            <Anno className="block mb-3">◆ style tag</Anno>
-            <div className="grid grid-cols-2 gap-3">
-              {STYLES.map((s) => (
-                <Card
-                  key={s.id}
-                  active={styleId === s.id}
-                  onClick={() => setStyleId(s.id)}
-                  className="p-4"
-                >
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div
-                      className="w-2 h-2 rounded-full transition-colors"
-                      style={{ background: styleId === s.id ? '#3D4A2A' : '#D8D0BE' }}
-                    />
-                    <div className="font-serif text-[17px] leading-tight">{s.name}</div>
-                  </div>
-                  <Anno className="block">{s.desc}</Anno>
-                </Card>
-              ))}
-            </div>
+            <Anno className="block mb-2">◆ describe what you want · required</Anno>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder={`"soft light, lived-in, brass touches, plants that outgrow their pots"`}
+              rows={4}
+              className="w-full rounded-xl px-4 py-3 text-sm leading-relaxed resize-none outline-none border transition-colors"
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                background: '#FEFCF6',
+                color: '#1C1B17',
+                borderColor: prompt ? '#1C1B17' : '#D8D0BE',
+              }}
+            />
+            <Anno className="block mt-1.5">
+              your brief drives the 3-agent pipeline · reference selection is automatic
+            </Anno>
 
             <div className="mt-6">
-              <Anno className="block mb-2">or describe it (optional)</Anno>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={`"soft light, lived-in, brass touches, plants that outgrow their pots"`}
-                rows={3}
-                className="w-full rounded-xl px-4 py-3 text-sm leading-relaxed resize-none outline-none border transition-colors"
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  background: '#FEFCF6',
-                  color: '#1C1B17',
-                  borderColor: prompt ? '#1C1B17' : '#D8D0BE',
-                }}
-              />
-              <Anno className="block mt-1.5">
-                your brief is used to select references + guide the AI render
-              </Anno>
+              <Anno className="block mb-3">◆ style tag · optional</Anno>
+              <div className="grid grid-cols-2 gap-3">
+                {STYLES.map((s) => (
+                  <Card
+                    key={s.id}
+                    active={styleId === s.id}
+                    onClick={() => setStyleId(styleId === s.id ? null : s.id)}
+                    className="p-4"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div
+                        className="w-2 h-2 rounded-full transition-colors"
+                        style={{ background: styleId === s.id ? '#3D4A2A' : '#D8D0BE' }}
+                      />
+                      <div className="font-serif text-[17px] leading-tight">{s.name}</div>
+                    </div>
+                    <Anno className="block">{s.desc}</Anno>
+                  </Card>
+                ))}
+              </div>
+              <Anno className="block mt-2">tap to select · tap again to deselect · agent infers style if none chosen</Anno>
             </div>
           </div>
         )}
@@ -309,15 +291,15 @@ function NewSessionInner() {
               <Anno>step 01 · upload your room</Anno>
               <Btn size="lg" onClick={() => setStep(2)} disabled={!canAdvance}>
                 {uploading ? <Spinner size={14} color="#FBF8F2" /> : null}
-                {uploading ? 'Uploading…' : 'Next — pick a style →'}
+                {uploading ? 'Uploading…' : 'Next — write a brief →'}
               </Btn>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">
-              <Anno>cost · 1 credit</Anno>
+              <Anno>cost · 2 credits</Anno>
               <Btn size="lg" onClick={generate} disabled={!canGenerate}>
                 {generating ? <Spinner size={14} color="#FBF8F2" /> : null}
-                {generating ? 'Generating draft…' : 'Generate first draft →'}
+                {generating ? 'Generating…' : prompt.trim() ? 'Generate first draft →' : 'Write a brief to continue'}
               </Btn>
             </div>
           )}

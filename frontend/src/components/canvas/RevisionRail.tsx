@@ -52,7 +52,7 @@ function Thumb({ rev, active, index, onClick }: { rev: Revision; active: boolean
           className="text-[10px] font-mono uppercase tracking-wider"
           style={{ color: rev.kind === 'commit' ? '#3D4A2A' : rev.kind === 'edit' ? '#B85C3A' : '#8B8676' }}
         >
-          {rev.kind}
+          {rev.kind === 'orchestrated' ? 'ai draft' : rev.kind}
         </span>
       </div>
       <Anno>{timestamp(rev.createdAt)}</Anno>

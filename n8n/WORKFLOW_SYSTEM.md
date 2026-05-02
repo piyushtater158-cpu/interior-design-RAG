@@ -243,9 +243,20 @@ Body: `{ parent_generation_id }`. Produces a polished "final deliverable" from a
 
 ---
 
-## 9. Generate orchestrated — `POST /webhook/generate/orchestrated`
+## 9. Generate orchestrated — `POST /webhook/generate/orchestrated`  ← PRIMARY GENERATION PATH
 
-Body: `{ upload_id, brief, room_hint?, session_id? }`. Three-agent pipeline: Agent 1 orchestrates, Agent 2 picks refs, Agent 3 (Gemini) renders.
+Body: `{ upload_id, brief, style_tag?, room_type?, session_id? }`.
+
+**This is the primary generation path.** When the user uploads a photo, selects a style, and writes a brief, this endpoint handles everything in a single call — no separate retrieve step needed.
+
+Three-agent pipeline:
+- **Agent 1 (Orchestrator)**: Reads upload image + brief + optional style_tag. Produces `===CRITERIA===` (3D spatial structure notes + style intent for Agent 2) and `===PROMPT===` (Gemini generation brief). Also derives `fts_search_text` (brief + style + room) for pool pre-filtering.
+- **Agent 2 (Spatial-aware Retriever)**: Receives candidate pool cards that include `caption_enhanced` + `spatial_signature` JSONB. Picks 3 references: Reference 1 → spatial/layout match, Reference 2 → style/materials match, Reference 3 → lighting/ambience match.
+- **Agent 3 (Gemini)**: Generates the final designed-room image from Agent 1's prompt + [upload, ref1, ref2, ref3] images.
+
+**Pool fetching**: Uses `retrieve_candidates_text` Supabase RPC (FTS on `caption_enhanced`) instead of vector similarity — no 2048-dim sequential scan needed. Falls back to quality-ordered unfiltered pool if FTS yields < 3 results.
+
+**Edit flow after this**: Call `POST /generate/edit` with the returned `generation_id` to iterate on the result.
 
 <!-- WFSYNC:generate_orchestrated:START -->
 | Step | Node | Type | What it does |
@@ -258,17 +269,17 @@ Body: `{ upload_id, brief, room_hint?, session_id? }`. Three-agent pipeline: Age
 | 6 | `Body valid?` | IF | Route on `={{ $json._error }}` exists |
 | 7 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
 | 8 | `Fetch upload bytes` | HTTP | `GET` =… |
-| 9 | `Build Agent 1 request` | Code | Build the Agent 1 (orchestrator) OpenRouter request. |
+| 9 | `Build Agent 1 request` | Code | Agent 1 — Orchestrator. |
 | 10 | `Agent 1 (Orchestrator)` | HTTP | `POST` =… |
 | 11 | `Parse Agent 1` | Code | Parse Agent 1 output. Extract ===CRITERIA=== and ===PROMPT=== blocks. |
 | 12 | `Agent 1 ok?` | IF | Route on `={{ $json._error }}` exists |
 | 13 | `Respond Agent 1 err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
 | 14 | `Log Agent 1` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
-| 15 | `Fetch candidate pool` | HTTP | `GET` =…/rest/v1/reference_images?select=id,caption,room_type,style_tags,dom |
-| 16 | `Check pool` | Code | If room-type-filtered pool is empty, fall back to unfiltered top 60. |
+| 15 | `Fetch candidate pool` | HTTP | `POST` =…/rest/v1/rpc/retrieve_candidates_text |
+| 16 | `Check pool` | Code | If FTS-filtered pool is too small, fall back to unfiltered quality-ordered pool. |
 | 17 | `Need fallback?` | IF | Route on `={{ $json.pool_fallback }}` equals |
-| 18 | `Fetch candidate pool (all)` | HTTP | `GET` =…/rest/v1/reference_images?select=id,caption,room_type,style_tags,dom |
-| 19 | `Build Agent 2 request` | Code | Build Agent 2 request: system prompt + criteria + candidate pool as cards. |
+| 18 | `Fetch candidate pool (all)` | HTTP | `GET` =…/rest/v1/reference_images?select=id,source_url,caption,caption_enhan |
+| 19 | `Build Agent 2 request` | Code | Agent 2 — Spatial-aware reference picker. |
 | 20 | `Shape pool (fallback)` | Code | Code |
 | 21 | `Agent 2 build ok?` | IF | Route on `={{ $json._error }}` exists |
 | 22 | `Respond pool err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
@@ -278,7 +289,7 @@ Body: `{ upload_id, brief, room_hint?, session_id? }`. Three-agent pipeline: Age
 | 26 | `Respond Agent 2 err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
 | 27 | `Log Agent 2` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
 | 28 | `Fetch picked URLs` | HTTP | `GET` =…/rest/v1/reference_images?id=in.(…)&select=id,source_url |
-| 29 | `Order fetch list` | Code | Ordered fetch list: upload first, then 3 references in the order Agent 2 returned. |
+| 29 | `Order fetch list` | Code | Ordered fetch list: upload first, then 3 references in Agent 2's pick order. |
 | 30 | `Fetch image bytes` | HTTP | `GET` =… |
 | 31 | `Collect image parts` | Code | Code |
 | 32 | `Fetch image_model` | HTTP | `GET` =…/rest/v1/app_config?key=eq.image_model&select=value |
@@ -357,9 +368,28 @@ Header: `X-Admin-Token: <ADMIN_TOKEN>` — no JWT, admin-token only.
 
 ---
 
-## 13. Seed (manual trigger, not an HTTP endpoint)
+## 13. Seed enhanced captions (manual trigger, not an HTTP endpoint)
 
-One-time population of `reference_embeddings` for the 104 pre-loaded `reference_images`. *In this project the seed flow was bypassed and run as a standalone Python script (`n8n/seed_embeddings.py`) because n8n's test-mode loop execution didn't iterate the `splitInBatches` loop.* The flow still lives in the workflow.
+One-time (or incremental) population of `caption_enhanced` + `spatial_signature` for the reference image library. Calls `wf_enhance_caption` once per image with a 4-second rate-limit delay between calls (OpenRouter free-tier safe). Skips images that already have `caption_enhanced`. Run this once after applying migration 012.
+
+<!-- WFSYNC:_seed_enhanced_captions:START -->
+| Step | Node | Type | What it does |
+|---|---|---|---|
+| 1 | `Manual trigger` | Manual | Manual trigger (n8n UI) |
+| 2 | `Config` | Code | Code |
+| 3 | `Fetch all reference_images` | HTTP | `GET` =…/rest/v1/reference_images?select=id,source_url,caption,caption_enhan |
+| 4 | `One item per pending row` | Code | Flatten response. Skip images that already have caption_enhanced. |
+| 5 | `Process one at a time` | Batch | Process ? at a time |
+| 6 | `Enhance caption` | SubWF | Call sub-workflow `wf_enhance_caption` (sync) |
+| 7 | `Summary` | Code | splitInBatches done-branch: all items processed. |
+| 8 | `Rate limit (4s)` | wait | wait |
+<!-- WFSYNC:_seed_enhanced_captions:END -->
+
+---
+
+## 14. Seed Nemotron embeddings (manual trigger, legacy)
+
+One-time population of `reference_embeddings` for the 104 pre-loaded `reference_images`. **Optional in the new pipeline** — embeddings are no longer the primary retrieval signal (replaced by FTS on `caption_enhanced`). Run if you want the old `retrieve_references` endpoint to continue working for fallback. *In this project the seed flow was bypassed and run as a standalone Python script (`n8n/seed_embeddings.py`) because n8n's test-mode loop execution didn't iterate the `splitInBatches` loop.* The flow still lives in the workflow.
 
 <!-- WFSYNC:_seed_nemotron_references:START -->
 | Step | Node | Type | What it does |
@@ -391,6 +421,7 @@ All four originally lived as separate n8n workflows and were called via `execute
 - **`wf_jwt_verify`** → 1 Code node. Input `{authorization: "Bearer <token>"}`. Splits the token, recomputes HMAC, compares, decodes the payload, checks `exp`. Returns `{ok:true, user_id, email}` or `{ok:false, status:401, error, code}` with distinct codes for each failure class (`missing_token`, `malformed_token`, `invalid_token`, `token_expired`).
 - **`wf_event_log`** → 1 HTTP node. Input `{event_type, user_id?, session_id?, payload?}`. Fire-and-forget POST to Supabase `/rest/v1/events` with `Prefer: return=minimal` and `neverError: true` so logging failures never break the caller.
 - **`wf_save_generation`** → 4 nodes. Input: full generation fields + binary `output_png`. **(a)** `Assemble row` Code adds `generation_id = crypto.randomUUID()` and builds `output_image_path = user-outputs/<user_id>/<gen_id>.png`. **(b)** `Upload PNG` HTTP PUTs the binary to Supabase Storage with `x-upsert: true`. **(c)** `Insert generation row` HTTP POSTs to `/rest/v1/generations` with `Prefer: return=representation`. **(d)** `Build gen response` composes `{ generation_id, user_id, session_id, kind, parent_generation_id, model_id, latency_ms, cost_usd, room_type, style_tag, output_url, created_at }`.
+- **`wf_enhance_caption`** → 7 nodes. Input: `{ reference_image_id, source_url, caption? }`. Fetches the reference image binary, calls OpenRouter vision LLM with a structured prompt, parses `===CAPTION===` (3–5 sentence rich description) and `===SPATIAL===` (JSON with keys: `room_shape`, `depth_cues`, `ceiling_height`, `window_wall`, `light_direction`, `focal_wall`, `floor_visible_pct`, `symmetry`, `open_to`) blocks from the response, then PATCHes `reference_images` with `caption_enhanced`, `spatial_signature`, and `caption_enhanced_at`. Parse failures are logged and swallowed (the loop continues). Called by `_seed_enhanced_captions` during batch seeding and can be called directly whenever a new reference image is imported.
 
 ---
 

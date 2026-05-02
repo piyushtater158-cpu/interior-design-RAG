@@ -1,0 +1,159 @@
+{
+  "name": "wf_enhance_caption",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.source_url }}",
+        "sendHeaders": false,
+        "sendBody": false,
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "image"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "fetch_image",
+      "name": "Fetch reference image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the caption enhancement + spatial analysis request for a reference image.\n// Called once per image when seeding or when a new reference is imported.\nconst ctx  = $('When Executed by Another Workflow').item.json;\nconst bin  = $input.item.binary.image;\nconst b64  = bin.data;\nconst mime = bin.mimeType || 'image/jpeg';\nconst dataUri = `data:${mime};base64,${b64}`;\n\nconst SYSTEM = `You are an interior-design visual analyst specialising in 3D spatial structure.\n\nYour job: analyse the provided reference interior design image and produce two outputs.\n\n1. ENHANCED_CAPTION (3-5 sentences):\n   Cover ALL of these in natural flowing sentences:\n   - Visual style and design intent (e.g. Japandi, Scandinavian, industrial)\n   - Material palette: surface finishes, textures, dominant materials\n   - Furniture arrangement and functional zones\n   - Colour story: dominant hues, accent colours, tonal range\n   - Natural light quality: source direction, intensity, time-of-day feel\n   - Mood and atmosphere\n\n2. SPATIAL_SIGNATURE (JSON object, no code fences):\n   Describe the 3D geometry of the room visible in the image.\n   Use ONLY these exact keys and value options:\n   {\n     \"room_shape\": \"rectangular\" | \"square\" | \"L-shaped\" | \"open-plan\",\n     \"depth_cues\": \"strong\" | \"moderate\" | \"minimal\",\n     \"ceiling_height\": \"low\" | \"standard\" | \"high\" | \"vaulted\",\n     \"window_wall\": \"left\" | \"right\" | \"back\" | \"front\" | \"multiple\" | \"none\",\n     \"light_direction\": \"front-left\" | \"front-right\" | \"back-left\" | \"back-right\" | \"overhead\" | \"diffuse\",\n     \"focal_wall\": \"front\" | \"left\" | \"right\" | \"ceiling\",\n     \"floor_visible_pct\": <integer 0-100>,\n     \"symmetry\": \"symmetric\" | \"asymmetric\" | \"partial\",\n     \"open_to\": [<array of adjacent spaces, e.g. \"dining\", \"kitchen\", \"hallway\">, or []]\n   }\n\nOutput — STRICT. No extra text. Exactly:\n===CAPTION===\n<enhanced caption>\n===END===\n\n===SPATIAL===\n<JSON object>\n===END===`;\n\nconst openrouter_body = {\n  model: $env.OPENROUTER_ORCHESTRATOR_MODEL || 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user', content: [\n      { type: 'text', text: `Reference image ID: ${ctx.reference_image_id}\\n${ctx.caption ? `Existing caption: ${ctx.caption}\\n` : ''}Please analyse this interior design image.` },\n      { type: 'image_url', image_url: { url: dataUri } }\n    ]}\n  ],\n  temperature: 0.3,\n  max_tokens: 1024\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
+      },
+      "id": "build_request",
+      "name": "Build enhancement request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1') + '/chat/completions' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.OPENROUTER_API_KEY}}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "HTTP-Referer",  "value": "https://interior-design-rag.local" },
+            { "name": "X-Title",       "value": "Interior Design RAG — caption enhancer" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.openrouter_body) }}",
+        "options": {
+          "timeout": 60000,
+          "retry": { "tryTimes": 3, "waitBetweenTries": 3000 }
+        }
+      },
+      "id": "call_llm",
+      "name": "Call vision LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse ===CAPTION=== and ===SPATIAL=== blocks from LLM response.\nconst ctx     = $('Build enhancement request').item.json;\nconst content = ($json.choices && $json.choices[0] && $json.choices[0].message && $json.choices[0].message.content) || '';\n\nif (!content) {\n  return [{ json: { ...ctx, _error: 'empty_response' } }];\n}\n\nfunction extractBlock(text, tag) {\n  const startRe = new RegExp(`={3,}\\\\s*${tag}\\\\s*={3,}`, 'i');\n  const endRe   = /={3,}\\s*END\\s*={3,}/i;\n  const s = text.search(startRe);\n  if (s < 0) return null;\n  const after = text.slice(s).replace(startRe, '');\n  const e = after.search(endRe);\n  return e < 0 ? after.trim() : after.slice(0, e).trim();\n}\n\nconst caption_enhanced = extractBlock(content, 'CAPTION');\nconst spatialRaw       = extractBlock(content, 'SPATIAL');\n\nif (!caption_enhanced) {\n  return [{ json: { ...ctx, _error: 'missing_caption_block', raw: content.slice(0, 300) } }];\n}\n\nlet spatial_signature = null;\nif (spatialRaw) {\n  try {\n    spatial_signature = JSON.parse(spatialRaw);\n  } catch (_) {\n    // Best-effort: store null if JSON is malformed\n  }\n}\n\nreturn [{ json: { ...ctx, caption_enhanced, spatial_signature, _error: null } }];"
+      },
+      "id": "parse",
+      "name": "Parse enhancement",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check_parse",
+      "name": "Parse ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log parse failure — do not throw, just return so the seed loop continues.\nconst ctx = $json;\nconsole.error(`wf_enhance_caption: parse failed for ${ctx.reference_image_id}: ${ctx._error}`);\nreturn [{ json: { reference_image_id: ctx.reference_image_id, ok: false, error: ctx._error } }];"
+      },
+      "id": "log_fail",
+      "name": "Log parse failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 180]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/reference_images?id=eq.{{ $json.reference_image_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ caption_enhanced: $json.caption_enhanced, spatial_signature: $json.spatial_signature, caption_enhanced_at: new Date().toISOString() }) }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "update_db",
+      "name": "Update reference_images",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Parse enhancement').item.json;\nreturn [{ json: { reference_image_id: ctx.reference_image_id, ok: true } }];"
+      },
+      "id": "done",
+      "name": "Return ok",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1880, 420]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": { "main": [[{ "node": "Fetch reference image", "type": "main", "index": 0 }]] },
+    "Fetch reference image":            { "main": [[{ "node": "Build enhancement request", "type": "main", "index": 0 }]] },
+    "Build enhancement request":        { "main": [[{ "node": "Call vision LLM", "type": "main", "index": 0 }]] },
+    "Call vision LLM":                  { "main": [[{ "node": "Parse enhancement", "type": "main", "index": 0 }]] },
+    "Parse enhancement":                { "main": [[{ "node": "Parse ok?", "type": "main", "index": 0 }]] },
+    "Parse ok?":                        { "main": [[{ "node": "Log parse failure", "type": "main", "index": 0 }], [{ "node": "Update reference_images", "type": "main", "index": 0 }]] },
+    "Update reference_images":          { "main": [[{ "node": "Return ok", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "shared" }, { "name": "caption" }]
+}

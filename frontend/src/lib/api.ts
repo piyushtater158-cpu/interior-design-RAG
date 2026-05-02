@@ -5,8 +5,6 @@ import { MOCK_SESSIONS, MOCK_NOTIFICATIONS, type MockSession, type MockNotificat
 export type TokenResponse = components['schemas']['TokenResponse'];
 export type MeResponse = components['schemas']['MeResponse'];
 export type UploadResponse = components['schemas']['UploadResponse'];
-export type RetrieveResponse = components['schemas']['RetrieveResponse'];
-export type ReferenceHit = components['schemas']['ReferenceHit'];
 export type GenerationResponse = components['schemas']['GenerationResponse'];
 export type HistoryItem = components['schemas']['HistoryItem'];
 export type ExportResponse = components['schemas']['ExportResponse'];
@@ -49,6 +47,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const message =
       body.error ??
       (typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail ?? r.statusText));
+    if (r.status === 401 && typeof window !== 'undefined') {
+      useAppStore.getState().clearAuth();
+      window.location.replace('/signin');
+    }
     throw new ApiError(message, r.status, body.code ?? `http_${r.status}`);
   }
   if (r.status === 204) return undefined as T;
@@ -79,21 +81,14 @@ export const api = {
     });
   },
 
-  retrieveReferences: (args: { upload_id: string; room_type?: string; style_tag?: string; k?: number; prompt?: string }) =>
-    request<RetrieveResponse>('/retrieve/references', {
-      method: 'POST',
-      body: JSON.stringify(args),
-    }),
-
-  generateDraft: (args: {
+  generateOrchestrated: (args: {
     upload_id: string;
-    room_type?: string;
+    brief: string;
     style_tag?: string;
-    reference_ids?: string[];
+    room_type?: string;
     session_id?: string;
-    prompt?: string;
   }) =>
-    request<GenerationResponse>('/generate/draft', {
+    request<GenerationResponse>('/generate/orchestrated', {
       method: 'POST',
       body: JSON.stringify(args),
     }),

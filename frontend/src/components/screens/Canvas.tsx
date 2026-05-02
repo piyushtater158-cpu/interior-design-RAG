@@ -63,7 +63,7 @@ function CanvasInner({ sessionId }: { sessionId: string }) {
         setRevisions(
           items.map((it) => ({
             generationId: it.generation_id,
-            kind: it.kind as 'draft' | 'edit' | 'commit',
+            kind: it.kind as 'draft' | 'edit' | 'commit' | 'orchestrated',
             outputUrl: absoluteUrl(it.output_url ?? ''),
             parentId: it.parent_generation_id ?? null,
             createdAt: Date.parse(it.created_at),
@@ -112,7 +112,7 @@ function CanvasInner({ sessionId }: { sessionId: string }) {
         type={(roomType ?? 'bedroom') as 'bedroom' | 'dining' | 'kitchen' | 'mandir'}
         tone={current?.tone ?? 'warm'}
         imageUrl={current?.outputUrl ?? null}
-        label={current ? `${revLabel(currentIndex)} · ${current.kind}` : undefined}
+        label={current ? `${revLabel(currentIndex)} · ${current.kind === 'orchestrated' ? 'ai draft' : current.kind}` : undefined}
         anno={current?.modelId ? `model · ${current.modelId}` : undefined}
       />
       {!current && (
@@ -201,8 +201,7 @@ function CanvasInner({ sessionId }: { sessionId: string }) {
           disabled={!current}
         />
         <ShelfBtn
-          label="Refs"
-          count={useSessionStore.getState().references.length}
+          label="AI Refs"
           onClick={() => setSheet('refs')}
           icon={<Icon kind="refs" />}
         />
