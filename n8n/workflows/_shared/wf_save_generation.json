@@ -22,12 +22,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.SUPABASE_URL}}/storage/v1/object/user-outputs/{{$json.output_storage_path}}",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/user-outputs/{{$json.output_storage_path}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "apikey",        "value": "=__REDACTED_SUPABASE_SERVICE_KEY__" },
+            { "name": "Authorization", "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__" },
             { "name": "Content-Type",  "value": "image/png" },
             { "name": "x-upsert",      "value": "true" }
           ]
@@ -46,12 +46,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/generations",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "apikey",        "value": "=__REDACTED_SUPABASE_SERVICE_KEY__" },
+            { "name": "Authorization", "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__" },
             { "name": "Content-Type",  "value": "application/json" },
             { "name": "Prefer",        "value": "return=representation" }
           ]
@@ -69,7 +69,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Normalise return shape so callers always get generation_id + public output_url.\nconst row  = Array.isArray($json) ? $json[0] : $json;\nconst path = row.output_image_path;\nconst url  = `${$env.SUPABASE_URL}/storage/v1/object/public/${path}`;\nreturn [{ json: {\n  generation_id:        row.id,\n  user_id:              row.user_id,\n  session_id:           row.session_id,\n  kind:                 row.kind,\n  parent_generation_id: row.parent_generation_id,\n  model_id:             row.model_id,\n  latency_ms:           row.latency_ms,\n  cost_usd:             row.cost_usd,\n  room_type:            row.room_type,\n  style_tag:            row.style_tag,\n  output_url:           url,\n  created_at:           row.created_at\n} }];"
+        "jsCode": "// Normalise return shape so callers always get generation_id + public output_url.\nconst row  = Array.isArray($json) ? $json[0] : $json;\nconst path = row.output_image_path;\nconst url  = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${path}`;\nreturn [{ json: {\n  generation_id:        row.id,\n  user_id:              row.user_id,\n  session_id:           row.session_id,\n  kind:                 row.kind,\n  parent_generation_id: row.parent_generation_id,\n  model_id:             row.model_id,\n  latency_ms:           row.latency_ms,\n  cost_usd:             row.cost_usd,\n  room_type:            row.room_type,\n  style_tag:            row.style_tag,\n  output_url:           url,\n  created_at:           row.created_at\n} }];"
       },
       "id": "normalize",
       "name": "Build response",

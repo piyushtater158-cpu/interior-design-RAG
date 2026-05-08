@@ -12,43 +12,69 @@
       "name": "POST /generate/orchestrated",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "generate-orchestrated"
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": { "__rl": true, "mode": "list", "value": "wf_jwt_verify" },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": { "authorization": "={{ $json.headers.authorization }}" }
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "56BlN6jqFkXVszX2",
+          "cachedResultName": "wf_supabase_verify"
         },
-        "options": { "waitForSubWorkflow": true }
+        "options": {
+          "waitForSubWorkflow": true
+        }
       },
       "id": "verify",
       "name": "Verify JWT",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "typeValidation": "strict" },
-          "conditions": [{ "id": "ok", "leftValue": "={{ $json.ok }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
       "id": "if_ok",
       "name": "Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [720, 300]
+      "position": [
+        720,
+        300
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseCode": 401,
         "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
         "options": {}
       },
@@ -56,36 +82,60 @@
       "name": "Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [960, 180]
+      "position": [
+        960,
+        180
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const _raw = $('POST /generate/orchestrated').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id    = $json.user_id;\nconst upload_id  = (body.upload_id  || '').toString().trim();\nconst brief      = (body.brief      || '').toString().trim();\nconst session_id = body.session_id  ? body.session_id.toString() : null;\nconst room_hint  = body.room_type   ? body.room_type.toString().trim() : null;\nconst style_tag  = body.style_tag   ? body.style_tag.toString().trim() : null;\n\nconst missing = [];\nif (!upload_id) missing.push('upload_id');\nif (!brief)     missing.push('brief');\nif (missing.length) {\n  return [{ json: { _error: { status: 400, body: { error: `missing_fields: ${missing.join(',')}`, code: 'invalid_request' } } } }];\n}\n\nconst storage_path = `user-uploads/${user_id}/${upload_id}`;\nconst upload_url   = `${$env.SUPABASE_URL}/storage/v1/object/public/${storage_path}`;\nreturn [{ json: { user_id, upload_id, brief, session_id, room_hint, style_tag, upload_url, started_at_ms: Date.now() } }];"
+        "jsCode": "const _raw = $('POST /generate/orchestrated').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id    = $json.user_id;\nconst upload_id  = (body.upload_id  || '').toString().trim();\nconst brief      = (body.brief      || '').toString().trim();\nconst session_id = body.session_id  ? body.session_id.toString() : null;\nconst room_hint  = body.room_type   ? body.room_type.toString().trim() : null;\nconst style_tag  = body.style_tag   ? body.style_tag.toString().trim() : null;\n\nconst missing = [];\nif (!upload_id) missing.push('upload_id');\nif (!brief)     missing.push('brief');\nif (missing.length) {\n  return [{ json: { _error: { status: 400, body: { error: `missing_fields: ${missing.join(',')}`, code: 'invalid_request' } } } }];\n}\n\nconst storage_path = `user-uploads/${user_id}/${upload_id}`;\nconst upload_url   = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${storage_path}`;\nreturn [{ json: { user_id, upload_id, brief, session_id, room_hint, style_tag, upload_url, started_at_ms: Date.now() } }];"
       },
       "id": "validate",
       "name": "Validate body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 420]
+      "position": [
+        960,
+        420
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "typeValidation": "strict" },
-          "conditions": [{ "id": "err", "leftValue": "={{ $json._error }}", "rightValue": "", "operator": { "type": "object", "operation": "exists" } }],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
       "id": "if_err",
       "name": "Body valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1200, 420]
+      "position": [
+        1200,
+        420
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseCode": "={{ $json._error.status }}",
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
@@ -93,90 +143,125 @@
       "name": "Respond 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1440, 300]
+      "position": [
+        1440,
+        300
+      ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{ $json.upload_url }}",
-        "sendHeaders": false,
-        "sendBody": false,
-        "options": {
-          "response": { "response": { "responseFormat": "file", "outputPropertyName": "image" } },
-          "timeout": 30000
-        }
+        "jsCode": "const ctx = $input.item.json;\nconst arrayBuf = await this.helpers.httpRequest({\n  method: 'GET',\n  url: ctx.upload_url,\n  encoding: 'arraybuffer',\n});\nconst b64 = Buffer.from(arrayBuf).toString('base64');\nconst mime = 'image/jpeg';\nreturn [{ json: { ...ctx, upload_b64: b64, upload_mime: mime } }];"
       },
       "id": "fetch_upload",
-      "name": "Fetch upload bytes",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1440, 540]
+      "name": "Fetch & encode upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        540
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Agent 1 — Orchestrator.\n// Takes user photo + brief + optional style selection.\n// Produces ===CRITERIA=== (spatial + style notes for Agent 2)\n// and ===PROMPT=== (Gemini generation brief for Agent 3).\nconst bin  = $input.item.binary.image;\nconst b64  = bin.data;\nconst mime = bin.mimeType || 'image/png';\nconst dataUri = `data:${mime};base64,${b64}`;\nconst ctx  = $('Validate body').item.json;\n\nconst styleContext = ctx.style_tag\n  ? `The user has selected style: \"${ctx.style_tag}\". Use this as the primary style direction.`\n  : 'No style was pre-selected. Infer the best style from the user brief and room photo.';\n\nconst SYSTEM = `You are an interior-design reference retrieval and prompt-orchestration agent for Nano Banana 2.\n\nYour mission: given a user\\'s design brief, a style selection (if provided), and a photograph of the actual room, you must:\n1. Interpret every usable specification in the brief.\n2. Critically reason about the room\\'s 3D spatial structure as visible in the photograph — wall positions visible, perceived depth, ceiling height, window placement and size, natural light direction, focal wall.\n3. Write retrieval criteria that the NEXT AGENT will use to pick exactly 3 reference images from the database.\n4. Write one curated Nano Banana 2 generation prompt.\n\n${styleContext}\n\nOutput format — STRICT. No preamble. No code fences. Exactly two delimited blocks:\n\n===CRITERIA===\nRoom type:\n<state the room type explicitly>\n\n3D spatial structure (grounded in photo):\n<Precise observations: number of walls visible, room depth, ceiling height (low/standard/high/vaulted), window wall position (left/right/back/front/multiple), natural light direction and intensity, floor coverage visible>\n\nStyle intent:\n<Target aesthetic, material palette, colour story — use selected style if provided>\n\nDaylight & ambience:\n<Lighting mood, warmth, time-of-day feel desired in the output>\n\nFunctional requirements:\n<Furniture types, zones, layout priorities>\n\nComplementarity guidance:\nReference 1 must match the 3D spatial geometry: similar room proportions, ceiling height, and window placement.\nReference 2 must match the style, materials, and colour palette.\nReference 3 must match the lighting quality and ambience.\n===END===\n\n===PROMPT===\n<One polished Nano Banana 2 creative brief in natural sentences. Must: (a) instruct to preserve the exact room geometry shown in the first input image — walls, windows, ceiling; (b) apply style \\'${ctx.style_tag || 'as derived from brief'}\\'; (c) describe the desired furnishing, materials, palette, and lighting. No keyword soup. No people, no text, no logos.>\n===END===`;\n\nconst openrouter_body = {\n  model: $env.OPENROUTER_ORCHESTRATOR_MODEL || 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user', content: [\n      { type: 'text', text: `User brief:\\n${ctx.brief}\\n\\n${ctx.style_tag ? `Selected style: ${ctx.style_tag}\\n\\n` : ''}Room type hint: ${ctx.room_hint || '(infer from photo)'}\\n\\nRoom photograph attached. Ground ALL 3D spatial reasoning in this image — do not assume, only observe.` },\n      { type: 'image_url', image_url: { url: dataUri } }\n    ]}\n  ],\n  temperature: 0.4,\n  max_tokens: 2048\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
+        "jsCode": "const ctx  = $input.item.json;\nconst b64  = ctx.upload_b64;\nconst mime = ctx.upload_mime || 'image/jpeg';\nconst dataUri = `data:${mime};base64,${b64}`;\n\nconst styleContext = ctx.style_tag\n  ? `The user has selected style: \"${ctx.style_tag}\". Use this as the primary style direction.`\n  : 'No style was pre-selected. Infer the best style from the user brief and room photo.';\n\nconst SYSTEM = `You are an interior-design reference retrieval and prompt-orchestration agent for Nano Banana 2.\n\nYour mission: given a user\\'s design brief, a style selection (if provided), and a photograph of the actual room, you must:\n1. Interpret every usable specification in the brief.\n2. Critically reason about the room\\'s 3D spatial structure as visible in the photograph \u2014 wall positions visible, perceived depth, ceiling height, window placement and size, natural light direction, focal wall.\n3. Write retrieval criteria that the NEXT AGENT will use to pick exactly 3 reference images from the database.\n4. Write one curated Nano Banana 2 generation prompt.\n\n${styleContext}\n\nOutput format \u2014 STRICT. No preamble. No code fences. Exactly two delimited blocks:\n\n===CRITERIA===\nRoom type:\n<state the room type explicitly>\n\n3D spatial structure (grounded in photo):\n<Precise observations: number of walls visible, room depth, ceiling height (low/standard/high/vaulted), window wall position (left/right/back/front/multiple), natural light direction and intensity, floor coverage visible>\n\nStyle intent:\n<Target aesthetic, material palette, colour story \u2014 use selected style if provided>\n\nDaylight & ambience:\n<Lighting mood, warmth, time-of-day feel desired in the output>\n\nFunctional requirements:\n<Furniture types, zones, layout priorities>\n\nComplementarity guidance:\nReference 1 must match the 3D spatial geometry: similar room proportions, ceiling height, and window placement.\nReference 2 must match the style, materials, and colour palette.\nReference 3 must match the lighting quality and ambience.\n===END===\n\n===PROMPT===\n<One polished Nano Banana 2 creative brief in natural sentences. Must: (a) instruct to preserve the exact room geometry shown in the first input image \u2014 walls, windows, ceiling; (b) apply style \\'${ctx.style_tag || 'as derived from brief'}\\'; (c) describe the desired furnishing, materials, palette, and lighting. No keyword soup. No people, no text, no logos.>\n===END===`;\n\nconst openrouter_body = {\n  model: 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user', content: [\n      { type: 'text', text: `User brief:\\n${ctx.brief}\\n\\n${ctx.style_tag ? `Selected style: ${ctx.style_tag}\\n\\n` : ''}Room type hint: ${ctx.room_hint || '(infer from photo)'}\\n\\nRoom photograph attached. Ground ALL 3D spatial reasoning in this image \u2014 do not assume, only observe.` },\n      { type: 'image_url', image_url: { url: dataUri } }\n    ]}\n  ],\n  temperature: 0.4,\n  max_tokens: 2048\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
       },
       "id": "build_agent1",
       "name": "Build Agent 1 request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1680, 540]
+      "position": [
+        1680,
+        540
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ ($env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1') + '/chat/completions' }}",
+        "url": "={{ 'https://openrouter.ai/api/v1' + '/chat/completions' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{$env.OPENROUTER_API_KEY}}" },
-            { "name": "Content-Type",  "value": "application/json" },
-            { "name": "HTTP-Referer",  "value": "https://interior-design-rag.local" },
-            { "name": "X-Title",       "value": "Interior Design RAG — orchestrator" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://interior-design-rag.local"
+            },
+            {
+              "name": "X-Title",
+              "value": "Interior Design RAG-orchestrator"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.openrouter_body) }}",
         "options": {
-          "timeout": 90000,
-          "retry": { "tryTimes": 3, "waitBetweenTries": 2000 }
+          "timeout": 90000
         }
       },
       "id": "agent1_call",
       "name": "Agent 1 (Orchestrator)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1920, 540]
+      "position": [
+        1920,
+        540
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Parse Agent 1 output. Extract ===CRITERIA=== and ===PROMPT=== blocks.\nconst ctx     = $('Build Agent 1 request').item.json;\nconst resp    = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nif (!content) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_empty_response', code: 'upstream_error' } } } }];\n}\n\nfunction extractBlock(text, startTag) {\n  const startRe = new RegExp(`={3,}\\\\s*${startTag}\\\\s*={3,}`, 'i');\n  const endRe   = /={3,}\\s*END\\s*={3,}/i;\n  const s = text.search(startRe);\n  if (s < 0) return null;\n  const after = text.slice(s).replace(startRe, '');\n  const e = after.search(endRe);\n  if (e < 0) return after.trim();\n  return after.slice(0, e).trim();\n}\n\nconst criteria = extractBlock(content, 'CRITERIA');\nconst prompt   = extractBlock(content, 'PROMPT');\nif (!criteria || !prompt) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_bad_format', code: 'upstream_error', raw: content.slice(0, 500) } } } }];\n}\n\n// Infer room_type from criteria text for pool pre-filter.\n// Keep original spacing (DB stores 'living room' not 'living_room').\nconst roomWords = ['bedroom','living room','kitchen','dining room','bathroom','office','study room','kids room','nursery','hallway','entryway','mandir'];\nconst lc = (criteria + ' ' + (ctx.brief || '') + ' ' + (ctx.room_hint || '')).toLowerCase();\nlet inferred_room = ctx.room_hint || null;\nif (!inferred_room) {\n  for (const w of roomWords) { if (lc.includes(w)) { inferred_room = w; break; } }\n}\n\n// Build FTS search text for retrieve_candidates_text RPC:\n// combine brief + style_tag + inferred_room for rich text query.\nconst ftsTerms = [ctx.brief, ctx.style_tag, inferred_room].filter(Boolean).join(' ');\n\nreturn [{ json: { ...ctx, criteria, agent_prompt: prompt, inferred_room, fts_search_text: ftsTerms } }];"
+        "jsCode": "const ctx     = $('Build Agent 1 request').item.json;\nconst resp    = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nif (!content) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_empty_response', code: 'upstream_error' } } } }];\n}\n\nfunction extractBlock(text, startTag) {\n  const startRe = new RegExp(`={3,}\\\\s*${startTag}\\\\s*={3,}`, 'i');\n  const endRe   = /={3,}\\s*END\\s*={3,}/i;\n  const s = text.search(startRe);\n  if (s < 0) return null;\n  const after = text.slice(s).replace(startRe, '');\n  const e = after.search(endRe);\n  if (e < 0) return after.trim();\n  return after.slice(0, e).trim();\n}\n\nconst criteria = extractBlock(content, 'CRITERIA');\nconst prompt   = extractBlock(content, 'PROMPT');\nif (!criteria || !prompt) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_bad_format', code: 'upstream_error', raw: content.slice(0, 500) } } } }];\n}\n\nconst roomWords = ['bedroom','living room','kitchen','dining room','bathroom','office','study room','kids room','nursery','hallway','entryway','mandir'];\nconst lc = (criteria + ' ' + (ctx.brief || '') + ' ' + (ctx.room_hint || '')).toLowerCase();\nlet inferred_room = ctx.room_hint || null;\nif (!inferred_room) {\n  for (const w of roomWords) { if (lc.includes(w)) { inferred_room = w; break; } }\n}\n\nconst ftsTerms = [ctx.brief, ctx.style_tag, inferred_room].filter(Boolean).join(' ');\n\nreturn [{ json: { ...ctx, criteria, agent_prompt: prompt, inferred_room, fts_search_text: ftsTerms } }];"
       },
       "id": "parse_agent1",
       "name": "Parse Agent 1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2160, 540]
+      "position": [
+        2160,
+        540
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "typeValidation": "strict" },
-          "conditions": [{ "id": "err", "leftValue": "={{ $json._error }}", "rightValue": "", "operator": { "type": "object", "operation": "exists" } }],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
       "id": "if_a1_err",
       "name": "Agent 1 ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2400, 540]
+      "position": [
+        2400,
+        540
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseCode": "={{ $json._error.status }}",
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
@@ -184,94 +269,140 @@
       "name": "Respond Agent 1 err",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2640, 420]
+      "position": [
+        2640,
+        420
+      ]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": { "__rl": true, "mode": "list", "value": "wf_event_log" },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "event_type": "openrouter_call",
-            "user_id":    "={{ $json.user_id }}",
-            "session_id": "={{ $json.session_id }}",
-            "payload":    "={{ { agent: 'orchestrator', ok: true } }}"
-          }
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Hycihwac8DqZzBje",
+          "cachedResultName": "wf_event_log"
         },
-        "options": { "waitForSubWorkflow": false }
+        "options": {
+          "waitForSubWorkflow": false
+        }
       },
       "id": "log_a1",
       "name": "Log Agent 1",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [2640, 660]
+      "position": [
+        2640,
+        660
+      ]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/rpc/retrieve_candidates_text",
+        "method": "GET",
+        "url": "={{ 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,room_type,style_tags,dominant_colors,detected_objects,quality_score&order=quality_score.desc.nullslast&limit=20' + ($json.inferred_room ? '&room_type=eq.' + $json.inferred_room : '') + ($json.style_tag ? '&style_tags=cs.%7B' + $json.style_tag + '%7D' : '') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Content-Type",  "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "__REDACTED_SUPABASE_SERVICE_KEY__"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ p_search_text: $json.fts_search_text, p_room_type: $json.inferred_room || null, p_style_tag: $json.style_tag || null, p_k: 20 }) }}",
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "fetch_pool",
       "name": "Fetch candidate pool",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2880, 660]
+      "position": [
+        2880,
+        660
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// If FTS-filtered pool is too small, fall back to unfiltered quality-ordered pool.\nconst rows = Array.isArray($json) ? $json : ($json.body || []);\nconst ctx  = $('Parse Agent 1').item.json;\nif (rows.length >= 3) {\n  return [{ json: { ...ctx, pool: rows, pool_fallback: false } }];\n}\nreturn [{ json: { ...ctx, pool: rows, pool_fallback: true } }];"
+        "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst ctx  = $('Parse Agent 1').item.json;\nif (rows.length >= 3) {\n  return [{ json: { ...ctx, pool: rows, pool_fallback: false } }];\n}\nreturn [{ json: { ...ctx, pool: rows, pool_fallback: true } }];"
       },
       "id": "check_pool",
       "name": "Check pool",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3120, 660]
+      "position": [
+        3120,
+        660
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "typeValidation": "strict" },
-          "conditions": [{ "id": "fallback", "leftValue": "={{ $json.pool_fallback }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "fallback",
+              "leftValue": "={{ $json.pool_fallback }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
       "id": "if_fallback",
       "name": "Need fallback?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [3360, 660]
+      "position": [
+        3360,
+        660
+      ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/reference_images?select=id,source_url,caption,caption_enhanced,spatial_signature,room_type,style_tags,dominant_colors,detected_objects,quality_score&order=quality_score.desc.nullslast&limit=20",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,caption_enhanced,spatial_signature,room_type,style_tags,dominant_colors,detected_objects,quality_score&order=quality_score.desc.nullslast&limit=20",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" }
+            {
+              "name": "apikey",
+              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+            }
           ]
         },
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "fetch_pool_all",
       "name": "Fetch candidate pool (all)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3600, 540]
+      "position": [
+        3600,
+        540
+      ]
     },
     {
       "parameters": {
@@ -281,36 +412,60 @@
       "name": "Shape pool (fallback)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3840, 540]
+      "position": [
+        3840,
+        540
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Agent 2 — Spatial-aware reference picker.\n// Reads enhanced captions + spatial signatures from pool cards.\n// Picks 3 references with spatial coverage: layout / style / lighting.\nconst ctx  = $json;\nconst pool = ctx.pool || [];\nif (pool.length < 3) {\n  return [{ json: { _error: { status: 500, body: { error: 'pool_too_small', code: 'internal_error', count: pool.length } } } }];\n}\n\nconst SYSTEM = `You are a spatial-aware reference-image selector for an interior design AI pipeline.\n\nYou receive:\n1. A CRITERIA block from a design director, including 3D spatial structure observations of the user\\'s room.\n2. A pool of candidate reference images, each shown as a card.\n\nCard format:\n[id=<uuid>] <enhanced caption or fallback caption>\n  spatial: shape=<room_shape> depth=<depth_cues> ceil=<ceiling_height> win=<window_wall> light=<light_direction> sym=<symmetry>\n  style:[<tags>] colors:[<hex>] room:<room_type>\n\nYour task: Pick exactly 3 reference IDs whose COMBINED coverage best satisfies the criteria.\n\nPICKING RULES (in priority order):\nReference 1 — SPATIAL MATCH: must have the closest 3D geometry to the user\\'s room.\n  Look for: same ceiling_height, same window_wall position, similar depth_cues, similar room_shape.\nReference 2 — STYLE MATCH: must best represent the target style, materials, and colour palette.\nReference 3 — AMBIENCE MATCH: must best represent the target lighting quality and mood.\n\nConstraints: complementary picks only (not redundant). Never invent IDs. Never repeat IDs.\n\nOutput — STRICT. Exactly three lines, nothing else:\nReference 1: <uuid> — <one sentence: which spatial feature matched>\nReference 2: <uuid> — <one sentence: which style/material matched>\nReference 3: <uuid> — <one sentence: which lighting/ambience matched>`;\n\nconst cards = pool.map(r => {\n  const style   = Array.isArray(r.style_tags) ? r.style_tags.join(',') : '';\n  const colors  = Array.isArray(r.dominant_colors) ? r.dominant_colors.join(',') : '';\n  const cap     = (r.caption_enhanced || r.caption || '').replace(/\\s+/g, ' ').trim().slice(0, 200);\n\n  let spatialLine = '';\n  const s = r.spatial_sig || r.spatial_signature;\n  if (s && typeof s === 'object') {\n    spatialLine = `\\n  spatial: shape=${s.room_shape||'?'} depth=${s.depth_cues||'?'} ceil=${s.ceiling_height||'?'} win=${s.window_wall||'?'} light=${s.light_direction||'?'} sym=${s.symmetry||'?'}`;\n  }\n\n  return `[id=${r.id}] ${cap}${spatialLine}\\n  style:[${style}] colors:[${colors}] room:${r.room_type||'?'}`;\n}).join('\\n\\n');\n\nconst user = `===CRITERIA===\\n${ctx.criteria}\\n===END===\\n\\n===CANDIDATES===\\n${cards}\\n===END===`;\n\nconst openrouter_body = {\n  model: $env.OPENROUTER_RETRIEVER_MODEL || $env.OPENROUTER_ORCHESTRATOR_MODEL || 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user',   content: user }\n  ],\n  temperature: 0.2,\n  max_tokens: 512\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
+        "jsCode": "const ctx  = $json;\nconst pool = ctx.pool || [];\nif (pool.length < 3) {\n  return [{ json: { _error: { status: 500, body: { error: 'pool_too_small', code: 'internal_error', count: pool.length } } } }];\n}\n\nconst SYSTEM = `You are a spatial-aware reference-image selector for an interior design AI pipeline.\n\nYou receive:\n1. A CRITERIA block from a design director, including 3D spatial structure observations of the user\\'s room.\n2. A pool of candidate reference images, each shown as a card.\n\nCard format:\n[id=<uuid>] <enhanced caption or fallback caption>\n  spatial: shape=<room_shape> depth=<depth_cues> ceil=<ceiling_height> win=<window_wall> light=<light_direction> sym=<symmetry>\n  style:[<tags>] colors:[<hex>] room:<room_type>\n\nYour task: Pick exactly 3 reference IDs whose COMBINED coverage best satisfies the criteria.\n\nPICKING RULES (in priority order):\nReference 1 \u2014 SPATIAL MATCH: must have the closest 3D geometry to the user\\'s room.\n  Look for: same ceiling_height, same window_wall position, similar depth_cues, similar room_shape.\nReference 2 \u2014 STYLE MATCH: must best represent the target style, materials, and colour palette.\nReference 3 \u2014 AMBIENCE MATCH: must best represent the target lighting quality and mood.\n\nConstraints: complementary picks only (not redundant). Never invent IDs. Never repeat IDs.\n\nOutput \u2014 STRICT. Exactly three lines, nothing else:\nReference 1: <uuid> \u2014 <one sentence: which spatial feature matched>\nReference 2: <uuid> \u2014 <one sentence: which style/material matched>\nReference 3: <uuid> \u2014 <one sentence: which lighting/ambience matched>`;\n\nconst cards = pool.map(r => {\n  const style   = Array.isArray(r.style_tags) ? r.style_tags.join(',') : '';\n  const colors  = Array.isArray(r.dominant_colors) ? r.dominant_colors.join(',') : '';\n  const cap     = (r.caption_enhanced || r.caption || '').replace(/\\s+/g, ' ').trim().slice(0, 200);\n\n  let spatialLine = '';\n  const s = r.spatial_sig || r.spatial_signature;\n  if (s && typeof s === 'object') {\n    spatialLine = `\\n  spatial: shape=${s.room_shape||'?'} depth=${s.depth_cues||'?'} ceil=${s.ceiling_height||'?'} win=${s.window_wall||'?'} light=${s.light_direction||'?'} sym=${s.symmetry||'?'}`;\n  }\n\n  return `[id=${r.id}] ${cap}${spatialLine}\\n  style:[${style}] colors:[${colors}] room:${r.room_type||'?'}`;\n}).join('\\n\\n');\n\nconst user = `===CRITERIA===\\n${ctx.criteria}\\n===END===\\n\\n===CANDIDATES===\\n${cards}\\n===END===`;\n\nconst openrouter_body = {\n  model: 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user',   content: user }\n  ],\n  temperature: 0.2,\n  max_tokens: 512\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
       },
       "id": "build_agent2",
       "name": "Build Agent 2 request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4080, 660]
+      "position": [
+        4080,
+        660
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "typeValidation": "strict" },
-          "conditions": [{ "id": "err", "leftValue": "={{ $json._error }}", "rightValue": "", "operator": { "type": "object", "operation": "exists" } }],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
       "id": "if_a2_build_err",
       "name": "Agent 2 build ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [4320, 660]
+      "position": [
+        4320,
+        660
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseCode": "={{ $json._error.status }}",
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
@@ -318,63 +473,101 @@
       "name": "Respond pool err",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [4560, 540]
+      "position": [
+        4560,
+        540
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ ($env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1') + '/chat/completions' }}",
+        "url": "={{ 'https://openrouter.ai/api/v1' + '/chat/completions' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{$env.OPENROUTER_API_KEY}}" },
-            { "name": "Content-Type",  "value": "application/json" },
-            { "name": "HTTP-Referer",  "value": "https://interior-design-rag.local" },
-            { "name": "X-Title",       "value": "Interior Design RAG — retriever" }
+            {
+              "name": "Authorization",
+              "value": "Bearer __REDACTED_OPENROUTER_API_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://interior-design-rag.local"
+            },
+            {
+              "name": "X-Title",
+              "value": "Interior Design RAG - retriever"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.openrouter_body) }}",
         "options": {
-          "timeout": 60000,
-          "retry": { "tryTimes": 3, "waitBetweenTries": 2000 }
+          "timeout": 60000
         }
       },
       "id": "agent2_call",
       "name": "Agent 2 (Retriever)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4560, 780]
+      "position": [
+        4560,
+        780
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Parse three UUIDs from Agent 2 output, validate against pool, dedupe.\nconst ctx  = $('Build Agent 2 request').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nconst uuidRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;\nconst matches = (content.match(uuidRe) || []).map(s => s.toLowerCase());\n\nconst poolIds = new Set((ctx.pool || []).map(r => r.id.toString().toLowerCase()));\nconst seen = new Set();\nconst picks = [];\nfor (const m of matches) {\n  if (!poolIds.has(m)) continue;\n  if (seen.has(m)) continue;\n  seen.add(m);\n  picks.push(m);\n  if (picks.length === 3) break;\n}\n\n// Fallback: if fewer than 3 valid picks, top up from pool sorted by quality_score.\nif (picks.length < 3) {\n  const sorted = [...(ctx.pool || [])].sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));\n  for (const r of sorted) {\n    const id = r.id.toString().toLowerCase();\n    if (seen.has(id)) continue;\n    seen.add(id);\n    picks.push(id);\n    if (picks.length === 3) break;\n  }\n}\n\nif (picks.length < 3) {\n  return [{ json: { _error: { status: 500, body: { error: 'retriever_picks_too_few', code: 'internal_error' } } } }];\n}\n\nreturn [{ json: { ...ctx, picked_reference_ids: picks } }];"
+        "jsCode": "const ctx  = $('Build Agent 2 request').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nconst uuidRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;\nconst matches = (content.match(uuidRe) || []).map(s => s.toLowerCase());\n\nconst poolIds = new Set((ctx.pool || []).map(r => r.id.toString().toLowerCase()));\nconst seen = new Set();\nconst picks = [];\nfor (const m of matches) {\n  if (!poolIds.has(m)) continue;\n  if (seen.has(m)) continue;\n  seen.add(m);\n  picks.push(m);\n  if (picks.length === 3) break;\n}\n\nif (picks.length < 3) {\n  const sorted = [...(ctx.pool || [])].sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));\n  for (const r of sorted) {\n    const id = r.id.toString().toLowerCase();\n    if (seen.has(id)) continue;\n    seen.add(id);\n    picks.push(id);\n    if (picks.length === 3) break;\n  }\n}\n\nif (picks.length < 3) {\n  return [{ json: { _error: { status: 500, body: { error: 'retriever_picks_too_few', code: 'internal_error' } } } }];\n}\n\nreturn [{ json: { ...ctx, picked_reference_ids: picks } }];"
       },
       "id": "parse_agent2",
       "name": "Parse Agent 2",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4800, 780]
+      "position": [
+        4800,
+        780
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "typeValidation": "strict" },
-          "conditions": [{ "id": "err", "leftValue": "={{ $json._error }}", "rightValue": "", "operator": { "type": "object", "operation": "exists" } }],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
       "id": "if_a2_err",
       "name": "Agent 2 ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [5040, 780]
+      "position": [
+        5040,
+        780
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseCode": "={{ $json._error.status }}",
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
@@ -382,66 +575,84 @@
       "name": "Respond Agent 2 err",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [5280, 660]
+      "position": [
+        5280,
+        660
+      ]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": { "__rl": true, "mode": "list", "value": "wf_event_log" },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "event_type": "openrouter_call",
-            "user_id":    "={{ $json.user_id }}",
-            "session_id": "={{ $json.session_id }}",
-            "payload":    "={{ { agent: 'retriever', picks: $json.picked_reference_ids } }}"
-          }
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Hycihwac8DqZzBje",
+          "cachedResultName": "wf_event_log"
         },
-        "options": { "waitForSubWorkflow": false }
+        "options": {
+          "waitForSubWorkflow": false
+        }
       },
       "id": "log_a2",
       "name": "Log Agent 2",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [5280, 900]
+      "position": [
+        5280,
+        900
+      ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/reference_images?id=in.({{ $json.picked_reference_ids.join(',') }})&select=id,source_url",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id=in.({{ $json.picked_reference_ids.join(',') }})&select=id,source_url",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" }
+            {
+              "name": "apikey",
+              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+            }
           ]
         },
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "fetch_pick_urls",
       "name": "Fetch picked URLs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [5520, 900]
+      "position": [
+        5520,
+        900
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const ctx  = $('Parse Agent 2').item.json;\nconst refs = Array.isArray($json) ? $json : ($json.body || []);\nconst byId = {};\nrefs.forEach(r => { byId[r.id.toString().toLowerCase()] = r.source_url; });\n\n// Ordered fetch list: upload first, then 3 references in Agent 2's pick order.\nconst urls = [ctx.upload_url];\nfor (const id of ctx.picked_reference_ids) {\n  if (byId[id]) urls.push(byId[id]);\n}\nif (urls.length !== 4) {\n  return [{ json: { _error: { status: 500, body: { error: 'picked_reference_url_missing', code: 'internal_error' } } } }];\n}\nreturn urls.map((url, i) => ({ json: { ...ctx, idx: i, fetch_url: url } }));"
+        "jsCode": "const ctx  = $('Parse Agent 2').item.json;\nconst refs = Array.isArray($json) ? $json : ($json.body || []);\nconst byId = {};\nrefs.forEach(r => { byId[r.id.toString().toLowerCase()] = r.source_url; });\n\nconst urls = [ctx.upload_url];\nfor (const id of ctx.picked_reference_ids) {\n  if (byId[id]) urls.push(byId[id]);\n}\nif (urls.length !== 4) {\n  return [{ json: { _error: { status: 500, body: { error: 'picked_reference_url_missing', code: 'internal_error' } } } }];\n}\nreturn urls.map((url, i) => ({ json: { ...ctx, idx: i, fetch_url: url } }));"
       },
       "id": "order_urls",
       "name": "Order fetch list",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [5760, 900]
+      "position": [
+        5760,
+        900
+      ]
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "={{ $json.fetch_url }}",
-        "sendHeaders": false,
-        "sendBody": false,
         "options": {
-          "response": { "response": { "responseFormat": "file", "outputPropertyName": "image" } },
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "image"
+            }
+          },
           "timeout": 30000
         }
       },
@@ -449,7 +660,10 @@
       "name": "Fetch image bytes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [6000, 900]
+      "position": [
+        6000,
+        900
+      ]
     },
     {
       "parameters": {
@@ -459,26 +673,39 @@
       "name": "Collect image parts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [6240, 900]
+      "position": [
+        6240,
+        900
+      ]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/app_config?key=eq.image_model&select=value",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.image_model&select=value",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" }
+            {
+              "name": "apikey",
+              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+            }
           ]
         },
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "fetch_model",
       "name": "Fetch image_model",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [6480, 900]
+      "position": [
+        6480,
+        900
+      ]
     },
     {
       "parameters": {
@@ -488,7 +715,10 @@
       "name": "Build Gemini request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [6720, 900]
+      "position": [
+        6720,
+        900
+      ]
     },
     {
       "parameters": {
@@ -497,23 +727,31 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-goog-api-key", "value": "={{$env.GEMINI_API_KEY}}" },
-            { "name": "Content-Type",   "value": "application/json" }
+            {
+              "name": "x-goog-api-key",
+              "value": "__REDACTED_GEMINI_API_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
         "options": {
-          "timeout": 120000,
-          "retry": { "tryTimes": 3, "waitBetweenTries": 2000 }
+          "timeout": 120000
         }
       },
       "id": "gemini_call",
       "name": "Agent 3 (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [6960, 900]
+      "position": [
+        6960,
+        900
+      ]
     },
     {
       "parameters": {
@@ -523,26 +761,47 @@
       "name": "Extract output PNG",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [7200, 900]
+      "position": [
+        7200,
+        900
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "typeValidation": "strict" },
-          "conditions": [{ "id": "err", "leftValue": "={{ $json._error }}", "rightValue": "", "operator": { "type": "object", "operation": "exists" } }],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
       "id": "if_gen_err",
       "name": "Gen error?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [7440, 900]
+      "position": [
+        7440,
+        900
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseCode": "={{ $json._error.status }}",
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
@@ -550,46 +809,56 @@
       "name": "Respond 502",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [7680, 780]
+      "position": [
+        7680,
+        780
+      ]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": { "__rl": true, "mode": "list", "value": "wf_save_generation" },
-        "workflowInputs": { "mappingMode": "autoMapInputData", "value": {} },
-        "options": { "waitForSubWorkflow": true }
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "CdB8jeEoxr2p3Nht",
+          "cachedResultName": "wf_save_generation"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
       },
       "id": "save",
       "name": "Save generation",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [7680, 1020]
+      "position": [
+        7680,
+        1020
+      ]
     },
     {
       "parameters": {
-        "source": "database",
-        "workflowId": { "__rl": true, "mode": "list", "value": "wf_event_log" },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "event_type": "orchestrated_ok",
-            "user_id":    "={{ $json.user_id }}",
-            "session_id": "={{ $json.session_id }}",
-            "payload":    "={{ { generation_id: $json.generation_id, model_id: $json.model_id, latency_ms: $json.latency_ms } }}"
-          }
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Hycihwac8DqZzBje",
+          "cachedResultName": "wf_event_log"
         },
-        "options": { "waitForSubWorkflow": false }
+        "options": {
+          "waitForSubWorkflow": false
+        }
       },
       "id": "log_done",
       "name": "Log orchestrated_ok",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
-      "position": [7920, 1020]
+      "position": [
+        7920,
+        1020
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseCode": 200,
         "responseBody": "={{ JSON.stringify({\n  generation_id:       $json.generation_id,\n  output_url:          $json.output_url,\n  latency_ms:          $json.latency_ms,\n  cost_usd:            $json.cost_usd,\n  model_id:            $json.model_id,\n  backend_id:          'gemini',\n  reference_image_ids: $('Parse Agent 2').item.json.picked_reference_ids,\n  criteria:            $('Parse Agent 1').item.json.criteria\n}) }}",
         "options": {}
       },
@@ -597,45 +866,436 @@
       "name": "Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [8160, 1020]
+      "position": [
+        8160,
+        1020
+      ]
     }
   ],
   "connections": {
-    "POST /generate/orchestrated": { "main": [[{ "node": "Verify JWT", "type": "main", "index": 0 }]] },
-    "Verify JWT":                  { "main": [[{ "node": "Token valid?", "type": "main", "index": 0 }]] },
-    "Token valid?":                { "main": [[{ "node": "Validate body", "type": "main", "index": 0 }], [{ "node": "Respond 401", "type": "main", "index": 0 }]] },
-    "Validate body":               { "main": [[{ "node": "Body valid?", "type": "main", "index": 0 }]] },
-    "Body valid?":                 { "main": [[{ "node": "Respond 400", "type": "main", "index": 0 }], [{ "node": "Fetch upload bytes", "type": "main", "index": 0 }]] },
-    "Fetch upload bytes":          { "main": [[{ "node": "Build Agent 1 request", "type": "main", "index": 0 }]] },
-    "Build Agent 1 request":       { "main": [[{ "node": "Agent 1 (Orchestrator)", "type": "main", "index": 0 }]] },
-    "Agent 1 (Orchestrator)":      { "main": [[{ "node": "Parse Agent 1", "type": "main", "index": 0 }]] },
-    "Parse Agent 1":               { "main": [[{ "node": "Agent 1 ok?", "type": "main", "index": 0 }]] },
-    "Agent 1 ok?":                 { "main": [[{ "node": "Respond Agent 1 err", "type": "main", "index": 0 }], [{ "node": "Log Agent 1", "type": "main", "index": 0 }]] },
-    "Log Agent 1":                 { "main": [[{ "node": "Fetch candidate pool", "type": "main", "index": 0 }]] },
-    "Fetch candidate pool":        { "main": [[{ "node": "Check pool", "type": "main", "index": 0 }]] },
-    "Check pool":                  { "main": [[{ "node": "Need fallback?", "type": "main", "index": 0 }]] },
-    "Need fallback?":              { "main": [[{ "node": "Fetch candidate pool (all)", "type": "main", "index": 0 }], [{ "node": "Build Agent 2 request", "type": "main", "index": 0 }]] },
-    "Fetch candidate pool (all)":  { "main": [[{ "node": "Shape pool (fallback)", "type": "main", "index": 0 }]] },
-    "Shape pool (fallback)":       { "main": [[{ "node": "Build Agent 2 request", "type": "main", "index": 0 }]] },
-    "Build Agent 2 request":       { "main": [[{ "node": "Agent 2 build ok?", "type": "main", "index": 0 }]] },
-    "Agent 2 build ok?":           { "main": [[{ "node": "Respond pool err", "type": "main", "index": 0 }], [{ "node": "Agent 2 (Retriever)", "type": "main", "index": 0 }]] },
-    "Agent 2 (Retriever)":         { "main": [[{ "node": "Parse Agent 2", "type": "main", "index": 0 }]] },
-    "Parse Agent 2":               { "main": [[{ "node": "Agent 2 ok?", "type": "main", "index": 0 }]] },
-    "Agent 2 ok?":                 { "main": [[{ "node": "Respond Agent 2 err", "type": "main", "index": 0 }], [{ "node": "Log Agent 2", "type": "main", "index": 0 }]] },
-    "Log Agent 2":                 { "main": [[{ "node": "Fetch picked URLs", "type": "main", "index": 0 }]] },
-    "Fetch picked URLs":           { "main": [[{ "node": "Order fetch list", "type": "main", "index": 0 }]] },
-    "Order fetch list":            { "main": [[{ "node": "Fetch image bytes", "type": "main", "index": 0 }]] },
-    "Fetch image bytes":           { "main": [[{ "node": "Collect image parts", "type": "main", "index": 0 }]] },
-    "Collect image parts":         { "main": [[{ "node": "Fetch image_model", "type": "main", "index": 0 }]] },
-    "Fetch image_model":           { "main": [[{ "node": "Build Gemini request", "type": "main", "index": 0 }]] },
-    "Build Gemini request":        { "main": [[{ "node": "Agent 3 (Gemini)", "type": "main", "index": 0 }]] },
-    "Agent 3 (Gemini)":            { "main": [[{ "node": "Extract output PNG", "type": "main", "index": 0 }]] },
-    "Extract output PNG":          { "main": [[{ "node": "Gen error?", "type": "main", "index": 0 }]] },
-    "Gen error?":                  { "main": [[{ "node": "Respond 502", "type": "main", "index": 0 }], [{ "node": "Save generation", "type": "main", "index": 0 }]] },
-    "Save generation":             { "main": [[{ "node": "Log orchestrated_ok", "type": "main", "index": 0 }]] },
-    "Log orchestrated_ok":         { "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]] }
+    "POST /generate/orchestrated": {
+      "main": [
+        [
+          {
+            "node": "Verify JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify JWT": {
+      "main": [
+        [
+          {
+            "node": "Token valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token valid?": {
+      "main": [
+        [
+          {
+            "node": "Validate body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate body": {
+      "main": [
+        [
+          {
+            "node": "Body valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Body valid?": {
+      "main": [
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch & encode upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch & encode upload": {
+      "main": [
+        [
+          {
+            "node": "Build Agent 1 request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Agent 1 request": {
+      "main": [
+        [
+          {
+            "node": "Agent 1 (Orchestrator)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 1 (Orchestrator)": {
+      "main": [
+        [
+          {
+            "node": "Parse Agent 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Agent 1": {
+      "main": [
+        [
+          {
+            "node": "Agent 1 ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 1 ok?": {
+      "main": [
+        [
+          {
+            "node": "Respond Agent 1 err",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Agent 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Agent 1": {
+      "main": [
+        [
+          {
+            "node": "Fetch candidate pool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch candidate pool": {
+      "main": [
+        [
+          {
+            "node": "Check pool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check pool": {
+      "main": [
+        [
+          {
+            "node": "Need fallback?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need fallback?": {
+      "main": [
+        [
+          {
+            "node": "Fetch candidate pool (all)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Agent 2 request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch candidate pool (all)": {
+      "main": [
+        [
+          {
+            "node": "Shape pool (fallback)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape pool (fallback)": {
+      "main": [
+        [
+          {
+            "node": "Build Agent 2 request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Agent 2 request": {
+      "main": [
+        [
+          {
+            "node": "Agent 2 build ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 2 build ok?": {
+      "main": [
+        [
+          {
+            "node": "Respond pool err",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agent 2 (Retriever)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 2 (Retriever)": {
+      "main": [
+        [
+          {
+            "node": "Parse Agent 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Agent 2": {
+      "main": [
+        [
+          {
+            "node": "Agent 2 ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 2 ok?": {
+      "main": [
+        [
+          {
+            "node": "Respond Agent 2 err",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Agent 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Agent 2": {
+      "main": [
+        [
+          {
+            "node": "Fetch picked URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch picked URLs": {
+      "main": [
+        [
+          {
+            "node": "Order fetch list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order fetch list": {
+      "main": [
+        [
+          {
+            "node": "Fetch image bytes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch image bytes": {
+      "main": [
+        [
+          {
+            "node": "Collect image parts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect image parts": {
+      "main": [
+        [
+          {
+            "node": "Fetch image_model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch image_model": {
+      "main": [
+        [
+          {
+            "node": "Build Gemini request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gemini request": {
+      "main": [
+        [
+          {
+            "node": "Agent 3 (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 3 (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Extract output PNG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract output PNG": {
+      "main": [
+        [
+          {
+            "node": "Gen error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gen error?": {
+      "main": [
+        [
+          {
+            "node": "Respond 502",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save generation": {
+      "main": [
+        [
+          {
+            "node": "Log orchestrated_ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log orchestrated_ok": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": true,
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "generate" }, { "name": "orchestrated" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "generate"
+    },
+    {
+      "name": "orchestrated"
+    }
+  ]
 }

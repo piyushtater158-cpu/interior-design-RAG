@@ -24,7 +24,8 @@
         "workflowId": {
           "__rl": true,
           "mode": "list",
-          "value": "wf_jwt_verify"
+          "value": "56BlN6jqFkXVszX2",
+          "cachedResultName": "wf_supabase_verify"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -115,8 +116,8 @@
               "leftValue": "={{ $json._error }}",
               "rightValue": "",
               "operator": {
-                "type": "object",
-                "operation": "exists"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
@@ -151,17 +152,17 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/generations?id=eq.{{$json.generation_id}}&user_id=eq.{{$json.user_id}}&select=id,output_image_path",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.{{$json.generation_id}}&user_id=eq.{{$json.user_id}}&select=id,output_image_path",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
             }
           ]
         },
@@ -180,7 +181,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst row  = rows[0];\nconst ctx  = $('Validate params').item.json;\nif (!row || !row.output_image_path) {\n  return [{ json: { _error: { status: 404, body: { error: 'generation_not_found', code: 'not_found' } } } }];\n}\nconst download_url = `${$env.SUPABASE_URL}/storage/v1/object/public/${row.output_image_path}`;\nreturn [{ json: { ...ctx, download_url } }];"
+        "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst row  = rows[0];\nconst ctx  = $('Validate params').item.json;\nif (!row || !row.output_image_path) {\n  return [{ json: { _error: { status: 404, body: { error: 'generation_not_found', code: 'not_found' } } } }];\n}\nconst download_url = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${row.output_image_path}`;\nreturn [{ json: { ...ctx, download_url } }];"
       },
       "id": "shape",
       "name": "Build download URL",
@@ -203,8 +204,8 @@
               "leftValue": "={{ $json._error }}",
               "rightValue": "",
               "operator": {
-                "type": "object",
-                "operation": "exists"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
@@ -242,7 +243,8 @@
         "workflowId": {
           "__rl": true,
           "mode": "list",
-          "value": "wf_event_log"
+          "value": "Hycihwac8DqZzBje",
+          "cachedResultName": "wf_event_log"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",

@@ -24,7 +24,8 @@
         "workflowId": {
           "__rl": true,
           "mode": "list",
-          "value": "wf_jwt_verify"
+          "value": "56BlN6jqFkXVszX2",
+          "cachedResultName": "wf_supabase_verify"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -115,8 +116,8 @@
               "leftValue": "={{ $json._error }}",
               "rightValue": "",
               "operator": {
-                "type": "object",
-                "operation": "exists"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
@@ -151,17 +152,17 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/generations?id=eq.{{$json.parent_generation_id}}&user_id=eq.{{$json.user_id}}&select=*",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.{{$json.parent_generation_id}}&user_id=eq.{{$json.user_id}}&select=*",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
             }
           ]
         },
@@ -180,7 +181,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows   = Array.isArray($json) ? $json : ($json.body || []);\nconst parent = rows[0];\nconst ctx    = $('Validate body').item.json;\nif (!parent) {\n  return [{ json: { _error: { status: 404, body: { error: 'parent_not_found', code: 'not_found' } } } }];\n}\nif (!parent.output_image_path || !parent.input_image_path) {\n  return [{ json: { _error: { status: 400, body: { error: 'parent_incomplete', code: 'invalid_state' } } } }];\n}\n// Walk up the chain to the root to recover the original upload. Commit should\n// render from the original room photo, not from an intermediate edit output.\n// parent.input_image_path on an edit points at the previous generation's output;\n// on a draft it points at user-uploads/<uid>/<upload_id>. For commit we want\n// to combine: the ORIGINAL upload + the latest parent output + reference images.\nreturn [{ json: {\n  ...ctx,\n  parent,\n  parent_input_url:  `${$env.SUPABASE_URL}/storage/v1/object/public/${parent.input_image_path}`,\n  parent_output_url: `${$env.SUPABASE_URL}/storage/v1/object/public/${parent.output_image_path}`\n} }];"
+        "jsCode": "const rows   = Array.isArray($json) ? $json : ($json.body || []);\nconst parent = rows[0];\nconst ctx    = $('Validate body').item.json;\nif (!parent) {\n  return [{ json: { _error: { status: 404, body: { error: 'parent_not_found', code: 'not_found' } } } }];\n}\nif (!parent.output_image_path || !parent.input_image_path) {\n  return [{ json: { _error: { status: 400, body: { error: 'parent_incomplete', code: 'invalid_state' } } } }];\n}\n// Walk up the chain to the root to recover the original upload. Commit should\n// render from the original room photo, not from an intermediate edit output.\n// parent.input_image_path on an edit points at the previous generation's output;\n// on a draft it points at user-uploads/<uid>/<upload_id>. For commit we want\n// to combine: the ORIGINAL upload + the latest parent output + reference images.\nreturn [{ json: {\n  ...ctx,\n  parent,\n  parent_input_url:  `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${parent.input_image_path}`,\n  parent_output_url: `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${parent.output_image_path}`\n} }];"
       },
       "id": "shape_parent",
       "name": "Shape parent",
@@ -203,8 +204,8 @@
               "leftValue": "={{ $json._error }}",
               "rightValue": "",
               "operator": {
-                "type": "object",
-                "operation": "exists"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
@@ -239,17 +240,17 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/reference_images?id=in.({{ ($json.parent.reference_image_ids || []).join(',') }})&select=id,source_url",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id=in.({{ ($json.parent.reference_image_ids || []).join(',') }})&select=id,source_url",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
             }
           ]
         },
@@ -320,17 +321,17 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/app_config?key=eq.image_model&select=value",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.image_model&select=value",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
             }
           ]
         },
@@ -369,7 +370,7 @@
           "parameters": [
             {
               "name": "x-goog-api-key",
-              "value": "={{$env.GEMINI_API_KEY}}"
+              "value": "={{__REDACTED_GEMINI_API_KEY__}}"
             },
             {
               "name": "Content-Type",
@@ -422,8 +423,8 @@
               "leftValue": "={{ $json._error }}",
               "rightValue": "",
               "operator": {
-                "type": "object",
-                "operation": "exists"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
@@ -461,7 +462,8 @@
         "workflowId": {
           "__rl": true,
           "mode": "list",
-          "value": "wf_save_generation"
+          "value": "CdB8jeEoxr2p3Nht",
+          "cachedResultName": "wf_save_generation"
         },
         "workflowInputs": {
           "mappingMode": "autoMapInputData",
@@ -486,7 +488,8 @@
         "workflowId": {
           "__rl": true,
           "mode": "list",
-          "value": "wf_event_log"
+          "value": "Hycihwac8DqZzBje",
+          "cachedResultName": "wf_event_log"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",

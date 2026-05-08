@@ -27,7 +27,8 @@
         "workflowId": {
           "__rl": true,
           "mode": "list",
-          "value": "wf_jwt_verify"
+          "value": "56BlN6jqFkXVszX2",
+          "cachedResultName": "wf_supabase_verify"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -95,7 +96,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Input: verify step returned { ok, user_id, email }.\n// The original webhook payload sits on the Webhook node; its binary is named 'file'.\nconst user_id = $json.user_id;\n\nconst binary = $('POST /uploads/room-photo').item.binary || {};\n// n8n webhook v2 stores multipart files as field0, field1... so check both 'file' and 'file0'\nconst file = binary.file || binary.file0 || Object.values(binary)[0] || null;\nif (!file) {\n  return [{ json: { _error: { status: 400, body: { error: 'missing_file', code: 'invalid_file' } } } }];\n}\n\nconst mime = (file.mimeType || '').toLowerCase();\nconst allowed = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png' };\nconst ext = allowed[mime];\nif (!ext) {\n  return [{ json: { _error: { status: 400, body: { error: 'unsupported_media_type', code: 'invalid_file_type' } } } }];\n}\n\nconst sizeBytes = Buffer.byteLength(file.data, 'base64');\nif (sizeBytes > 10 * 1024 * 1024) {\n  return [{ json: { _error: { status: 413, body: { error: 'file_too_large', code: 'file_too_large' } } } }];\n}\n\n// pure-JS UUID (no require('crypto') — blocked by n8n task-runner sandbox)\nconst upload_id = Array.from({length: 32}, () => (Math.random() * 16 | 0).toString(16)).join('');\nconst path = `${user_id}/${upload_id}`;\n\nreturn [{\n  json: { user_id, upload_id, ext, mime, path, storage_path: `user-uploads/${path}` },\n  binary: { file }\n}];"
+        "jsCode": "// Input: verify step returned { ok, user_id, email }.\n// The original webhook payload sits on the Webhook node; its binary is named 'file'.\nconst user_id = $json.user_id;\n\nconst binary = $('POST /uploads/room-photo').item.binary || {};\n// n8n webhook v2 stores multipart files as field0, field1... so check both 'file' and 'file0'\nconst file = binary.file || binary.file0 || Object.values(binary)[0] || null;\nif (!file) {\n  return [{ json: { _error: { status: 400, body: { error: 'missing_file', code: 'invalid_file' } } } }];\n}\n\nconst mime = (file.mimeType || '').toLowerCase();\nconst allowed = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png' };\nconst ext = allowed[mime];\nif (!ext) {\n  return [{ json: { _error: { status: 400, body: { error: 'unsupported_media_type', code: 'invalid_file_type' } } } }];\n}\n\nconst sizeBytes = Buffer.byteLength(file.data, 'base64');\nif (sizeBytes > 10 * 1024 * 1024) {\n  return [{ json: { _error: { status: 413, body: { error: 'file_too_large', code: 'file_too_large' } } } }];\n}\n\n// pure-JS UUID (no require('crypto') \u00e2\u20ac\u201d blocked by n8n task-runner sandbox)\nconst upload_id = Array.from({length: 32}, () => (Math.random() * 16 | 0).toString(16)).join('');\nconst path = `${user_id}/${upload_id}`;\n\nreturn [{\n  json: { user_id, upload_id, ext, mime, path, storage_path: `user-uploads/${path}` },\n  binary: { file }\n}];"
       },
       "id": "prepare",
       "name": "Validate + name",
@@ -115,11 +116,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
+              "leftValue": "={{ $json._error || '' }}",
               "rightValue": "",
               "operator": {
-                "type": "object",
-                "operation": "exists"
+                "type": "string",
+                "operation": "notEmpty"
               }
             }
           ],
@@ -154,17 +155,17 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.SUPABASE_URL}}/storage/v1/object/user-uploads/{{$json.path}}",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/user-uploads/{{$json.path}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
             },
             {
               "name": "Content-Type",
@@ -194,7 +195,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build the public URL for the uploaded object.\nconst row         = $('Validate + name').item.json;\nconst user_id     = row.user_id;\nconst upload_id   = row.upload_id;\nconst path        = row.path;\nconst preview_url = `${$env.SUPABASE_URL}/storage/v1/object/public/user-uploads/${path}`;\nreturn [{ json: { user_id, upload_id, preview_url, storage_path: `user-uploads/${path}`, mime: row.mime } }];"
+        "jsCode": "// Build the public URL for the uploaded object.\nconst row         = $('Validate + name').item.json;\nconst user_id     = row.user_id;\nconst upload_id   = row.upload_id;\nconst path        = row.path;\nconst preview_url = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/user-uploads/${path}`;\nreturn [{ json: { user_id, upload_id, preview_url, storage_path: `user-uploads/${path}`, mime: row.mime } }];"
       },
       "id": "build_url",
       "name": "Build preview_url",
@@ -211,7 +212,8 @@
         "workflowId": {
           "__rl": true,
           "mode": "list",
-          "value": "wf_event_log"
+          "value": "Hycihwac8DqZzBje",
+          "cachedResultName": "wf_event_log"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",

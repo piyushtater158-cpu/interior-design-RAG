@@ -29,7 +29,7 @@ function WorkspaceInner() {
     (async () => {
       try {
         const r = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5678/webhook'}/admin/ab-config`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'https://n8n.srv1649259.hstgr.cloud/webhook'}/admin/ab-config`,
         );
         if (!alive || !r.ok) return;
         const body: { config?: 'A' | 'B' } = await r.json();

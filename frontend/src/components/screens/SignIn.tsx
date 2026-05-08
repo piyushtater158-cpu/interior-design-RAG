@@ -1,22 +1,18 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import { AtelierMark } from '@/components/atelier/AtelierMark';
 import { BlueprintBg } from '@/components/atelier/BlueprintBg';
 import { Btn } from '@/components/atelier/Btn';
 import { Anno } from '@/components/atelier/Anno';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { Spinner } from '@/components/shared/Loader';
-import { api, ApiError } from '@/lib/api';
-import { useAppStore } from '@/store/app';
+import { supabase } from '@/lib/supabase';
 
 export function SignIn() {
-  const router = useRouter();
-  const setAuth = useAppStore((s) => s.setAuth);
-
-  const [email, setEmail] = useState('demo@example.com');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
@@ -24,13 +20,14 @@ export function SignIn() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.authMagicLink(email.trim());
-      // setAuth writes jwt into Zustand; the persist middleware saves it
-      // to localStorage under key 'atelier:app' automatically.
-      setAuth(res.token, res.user_id, email.trim());
-      router.push('/app');
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Sign-in failed. Try again.');
+      const { error: sbError } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (sbError) throw sbError;
+      setSent(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Sign-in failed. Try again.');
     } finally {
       setLoading(false);
     }
@@ -48,32 +45,38 @@ export function SignIn() {
           <div className="font-serif text-[22px]">Atelier</div>
         </div>
         <div>
-          <Anno className="block mb-2">sign in · mock magic link</Anno>
+          <Anno className="block mb-2">sign in · magic link</Anno>
           <h2 className="font-serif text-[26px] leading-tight">Enter your studio email</h2>
         </div>
 
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-ink-soft">Email</span>
-          <input
-            type="email"
-            required
-            autoFocus
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@studio.com"
-            className="rounded-lg px-3.5 h-11 bg-paper text-ink outline-none"
-            style={{ border: '1px solid #D8D0BE' }}
-          />
-        </label>
+        {sent ? (
+          <div className="rounded-lg px-4 py-3 bg-paper text-sm text-ink" style={{ border: '1px solid #D8D0BE' }}>
+            Check your inbox — we sent a magic link to <strong>{email}</strong>.
+          </div>
+        ) : (
+          <>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="text-ink-soft">Email</span>
+              <input
+                type="email"
+                required
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@studio.com"
+                className="rounded-lg px-3.5 h-11 bg-paper text-ink outline-none"
+                style={{ border: '1px solid #D8D0BE', fontSize: '16px' }}
+              />
+            </label>
 
-        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+            {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
-        <Btn type="submit" size="lg" disabled={loading || !email.trim()}>
-          {loading ? <Spinner size={14} color="#FBF8F2" /> : null}
-          {loading ? 'Signing in…' : 'Sign in'}
-        </Btn>
-
-        <Anno className="block text-center">mvp · jwt stored in localStorage</Anno>
+            <Btn type="submit" size="lg" disabled={loading || !email.trim()}>
+              {loading ? <Spinner size={14} color="#FBF8F2" /> : null}
+              {loading ? 'Sending link…' : 'Send magic link'}
+            </Btn>
+          </>
+        )}
       </form>
     </BlueprintBg>
   );

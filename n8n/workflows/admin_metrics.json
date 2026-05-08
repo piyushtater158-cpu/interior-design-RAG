@@ -12,24 +12,42 @@
       "name": "GET /admin/metrics",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "admin-metrics"
     },
     {
       "parameters": {
-        "jsCode": "const headers = $json.headers || {};\nconst provided = (headers['x-admin-token'] || headers['X-Admin-Token'] || '').toString();\nconst expected = ($env.ADMIN_TOKEN || '').toString();\nif (!expected) {\n  return [{ json: { _error: { status: 500, body: { error: 'admin_token_not_configured', code: 'misconfigured' } } } }];\n}\nif (provided !== expected) {\n  return [{ json: { _error: { status: 401, body: { error: 'invalid_admin_token', code: 'unauthorized' } } } }];\n}\nreturn [{ json: { ok: true } }];"
+        "jsCode": "const headers = $json.headers || {};\nconst provided = (headers['x-admin-token'] || headers['X-Admin-Token'] || '').toString();\nconst expected = '__REDACTED_ADMIN_TOKEN__';\nif (provided !== expected) {\n  return [{ json: { _error: { status: 401, body: { error: 'invalid_admin_token', code: 'unauthorized' } } } }];\n}\nreturn [{ json: { ok: true } }];"
       },
       "id": "check_token",
       "name": "Check admin token",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "typeValidation": "strict" },
-          "conditions": [{ "id": "err", "leftValue": "={{ $json._error }}", "rightValue": "", "operator": { "type": "object", "operation": "exists" } }],
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "err",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
           "combinator": "and"
         }
       },
@@ -37,7 +55,10 @@
       "name": "Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [720, 300]
+      "position": [
+        720,
+        300
+      ]
     },
     {
       "parameters": {
@@ -50,30 +71,47 @@
       "name": "Respond error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [960, 180]
+      "position": [
+        960,
+        180
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/rpc/admin_metrics",
+        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/rpc/admin_metrics",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Content-Type",  "value": "application/json" }
+            {
+              "name": "apikey",
+              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({}) }}",
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "rpc_metrics",
       "name": "RPC admin_metrics",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, 420]
+      "position": [
+        960,
+        420
+      ]
     },
     {
       "parameters": {
@@ -83,7 +121,10 @@
       "name": "Shape response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 420]
+      "position": [
+        1200,
+        420
+      ]
     },
     {
       "parameters": {
@@ -96,17 +137,83 @@
       "name": "Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1440, 420]
+      "position": [
+        1440,
+        420
+      ]
     }
   ],
   "connections": {
-    "GET /admin/metrics": { "main": [[{ "node": "Check admin token", "type": "main", "index": 0 }]] },
-    "Check admin token": { "main": [[{ "node": "Token valid?", "type": "main", "index": 0 }]] },
-    "Token valid?":      { "main": [[{ "node": "Respond error", "type": "main", "index": 0 }], [{ "node": "RPC admin_metrics", "type": "main", "index": 0 }]] },
-    "RPC admin_metrics": { "main": [[{ "node": "Shape response", "type": "main", "index": 0 }]] },
-    "Shape response":    { "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]] }
+    "GET /admin/metrics": {
+      "main": [
+        [
+          {
+            "node": "Check admin token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check admin token": {
+      "main": [
+        [
+          {
+            "node": "Token valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token valid?": {
+      "main": [
+        [
+          {
+            "node": "Respond error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RPC admin_metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC admin_metrics": {
+      "main": [
+        [
+          {
+            "node": "Shape response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape response": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": false,
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "admin" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "admin"
+    }
+  ]
 }

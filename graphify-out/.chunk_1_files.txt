@@ -1,0 +1,22 @@
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\CLAUDE.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\contracts\api-spec.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\contracts\backend-env.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\contracts\backend-url.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\contracts\db-connection.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\contracts\demo-script.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\contracts\frontend-url.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\contracts\schema.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\contracts\seed-report.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\database\README.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\database\requirements.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\frontend\README.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\frontend\tests\manual-test-script.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\1.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\10.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\100.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\101.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\102.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\103.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\104.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\11.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\12.txt

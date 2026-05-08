@@ -3,10 +3,11 @@
 Node-by-node explanation of every linear flow in the backend. This walks through all 13 HTTP endpoints and the 4 shared sub-workflows that compose them. Everything here has been merged into one consolidated n8n workflow (`JbnB5CPdoqgCl75F`, 220 nodes) — but each endpoint is still a distinct linear path through the canvas, namespaced by `ns::` (e.g. `draft::Validate body`).
 
 The design rules every endpoint follows:
-- All write/auth endpoints start with `Verify JWT` (rejects with 401 if absent/bad/expired).
+- All write/auth endpoints start with `Verify JWT` (calls `wf_supabase_verify`, rejects with 401 if absent/bad/expired).
+- Auth uses **Supabase Auth** — tokens are verified by hitting `https://uzghfpxboktnbcbbthns.supabase.co/auth/v1/user` with the bearer token. No custom secret or HMAC involved.
 - Validation errors short-circuit to `Respond 400`/`413`; parent-not-found → `404`; over-limit → `403`; upstream failures → `502`.
 - Success always includes a fire-and-forget `Log event` to the `events` table.
-- Credentials are **baked into code nodes at build time** (SUPABASE_URL, SUPABASE_SERVICE_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY, JWT_SECRET, ADMIN_TOKEN) because the n8n task-runner sandbox blocks `$env`. HTTP nodes reference them via a per-branch `ns::Config` Code node that exposes `_cfg.*`.
+- Credentials are **baked into code nodes at build time** (SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_ANON_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY, ADMIN_TOKEN) because the n8n task-runner sandbox blocks `$env`. HTTP nodes reference them via a per-branch `ns::Config` Code node that exposes `_cfg.*`.
 
 > **Auto-sync:** The node tables in every section below are regenerated automatically from the workflow JSON files by `n8n/sync_workflow_docs.py`. The script runs via a Claude Code `PostToolUse` hook after any `Write` or `Edit` tool call. Only content between `<!-- WFSYNC:stem:START -->` / `<!-- WFSYNC:stem:END -->` markers is replaced — all prose is preserved.
 
@@ -27,23 +28,16 @@ Used by monitoring, container orchestrators, and smoke tests.
 
 ---
 
-## 2. Magic-link login — `POST /webhook/auth/magic-link`
+## 2. Auth — Supabase Magic Link
 
-Body: `{ "email": "you@example.com" }` → returns a JWT. No email is actually sent — this is a frictionless login for the demo.
+**Removed** — `POST /webhook/auth/magic-link` is no longer used. Auth is handled directly by Supabase Auth:
 
-<!-- WFSYNC:auth_magic_link:START -->
-| Step | Node | Type | What it does |
-|---|---|---|---|
-| 1 | `POST /auth/magic-link` | Webhook | Receive `POST /webhook/auth/magic-link` |
-| 2 | `Validate email` | Code | Code |
-| 3 | `If validation failed` | IF | Route on `={{ $json._error }}` exists |
-| 4 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 5 | `Upsert user` | HTTP | `POST` =…/rest/v1/users?on_conflict=email |
-| 6 | `Extract user` | Code | Code |
-| 7 | `Sign JWT` | SubWF | Call sub-workflow `wf_jwt_sign` (sync) |
-| 8 | `Log event` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
-| 9 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ token: $('Sign JWT').first().json.token |
-<!-- WFSYNC:auth_magic_link:END -->
+- Frontend calls `supabase.auth.signInWithOtp({ email })` → Supabase sends the magic link email.
+- User clicks the link → redirects to `/auth/callback` (Next.js) or `window.origin/` (mobile) with `#access_token=...` in the URL hash.
+- `detectSessionInUrl: true` resolves the session automatically. The access token is a standard Supabase JWT.
+- All n8n protected endpoints verify the token via `wf_supabase_verify` (ID: `56BlN6jqFkXVszX2`), which calls `GET /auth/v1/user` on the Supabase project.
+
+**Deleted workflows:** `wf_jwt_sign`, `wf_jwt_verify`, `auth_magic_link` (archived on server).
 
 ---
 
@@ -55,9 +49,9 @@ Header: `Authorization: Bearer <jwt>` → returns the caller's `{ user_id, email
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `GET /auth/me` | Webhook | Receive `GET /webhook/auth/me` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `wf_jwt_verify` (sync) |
+| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
-| 4 | `Fetch user` | HTTP | `GET` =…/rest/v1/users?id=eq.…&select=id,email |
+| 4 | `Fetch user` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/users?id=eq.…&select |
 | 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
 | 6 | `Shape response` | Code | Code |
 | 7 | `Respond` | Respond | Respond ={{ $json._status }} — ={{ JSON.stringify($json._body) }} |
@@ -73,15 +67,15 @@ Multipart upload (binary field `file`) of a room photo. Stores in `user-uploads/
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /uploads/room-photo` | Webhook | Receive `POST /webhook/uploads/room-photo` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `wf_jwt_verify` (sync) |
+| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Validate + name` | Code | Input: verify step returned { ok, user_id, email }. |
 | 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Validation error?` | IF | Route on `={{ $json._error }}` exists |
+| 6 | `Validation error?` | IF | Route on `={{ $json._error || '' }}` notEmpty |
 | 7 | `Respond validation err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Upload to storage` | HTTP | `POST` =…/storage/v1/object/user-uploads/… |
+| 8 | `Upload to storage` | HTTP | `POST` =https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/user-uploa |
 | 9 | `Build preview_url` | Code | Build the public URL for the uploaded object. |
-| 10 | `Log event` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
+| 10 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
 | 11 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ upload_id: $json.upload_id, preview_url |
 <!-- WFSYNC:uploads_room_photo:END -->
 
@@ -130,7 +124,7 @@ After the vector search, `Prompt Re-rank` calls the LLM (retriever_model) to sem
 | 16 | `Log event` | HTTP | `POST` =…/rest/v1/events |
 | 17 | `Collect refs for draft` | Code | Package retrieve results to fire-and-forget generate/draft after retrieve response is sent |
 | 18 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ references: $json }) }} |
-| 19 | `Call generate/draft` | HTTP | `POST` http://localhost:5678/webhook/generate/draft |
+| 19 | `Call generate/draft` | HTTP | `POST` https://n8n.srv1649259.hstgr.cloud/webhook/generate/draft |
 <!-- WFSYNC:retrieve_references:END -->
 
 ---
@@ -179,30 +173,30 @@ Body: `{ generation_id, instruction }`. Takes an existing generation as the pare
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /generate/edit` | Webhook | Receive `POST /webhook/generate/edit` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `wf_jwt_verify` (sync) |
+| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Validate body` | Code | Code |
 | 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Body valid?` | IF | Route on `={{ $json._error }}` exists |
+| 6 | `Body valid?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 7 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Fetch parent generation` | HTTP | `GET` =…/rest/v1/generations?id=eq.…&user_id=eq.…&select=* |
+| 8 | `Fetch parent generation` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.…& |
 | 9 | `Shape parent` | Code | Code |
-| 10 | `Parent ok?` | IF | Route on `={{ $json._error }}` exists |
+| 10 | `Parent ok?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 11 | `Respond parent err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 12 | `Chain depth RPC` | HTTP | `POST` =…/rest/v1/rpc/generation_chain_depth |
+| 12 | `Chain depth RPC` | HTTP | `POST` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/rpc/generation_chain |
 | 13 | `Check cap` | Code | Parent itself consumes depth N ancestors; this new edit adds 1 more. |
-| 14 | `Under cap?` | IF | Route on `={{ $json._error }}` exists |
+| 14 | `Under cap?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 15 | `Respond cap exceeded` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
 | 16 | `Fetch parent PNG` | HTTP | `GET` =… |
 | 17 | `Build Gemini request` | Code | Code |
-| 18 | `Fetch image_model` | HTTP | `GET` =…/rest/v1/app_config?key=eq.image_model&select=value |
+| 18 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
 | 19 | `Attach model` | Code | Code |
 | 20 | `Call Gemini` | HTTP | `POST` =https://generativelanguage.googleapis.com/v1beta/models/…:generateCon |
 | 21 | `Extract output PNG` | Code | Code |
-| 22 | `Extract ok?` | IF | Route on `={{ $json._error }}` exists |
+| 22 | `Extract ok?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 23 | `Respond 502` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 24 | `Save generation` | SubWF | Call sub-workflow `wf_save_generation` (sync) |
-| 25 | `Log event` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
+| 24 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
+| 25 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
 | 26 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id: $json.generation_id,   |
 <!-- WFSYNC:generate_edit:END -->
 
@@ -216,28 +210,28 @@ Body: `{ parent_generation_id }`. Produces a polished "final deliverable" from a
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /generate/commit` | Webhook | Receive `POST /webhook/generate/commit` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `wf_jwt_verify` (sync) |
+| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Validate body` | Code | Code |
 | 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Body valid?` | IF | Route on `={{ $json._error }}` exists |
+| 6 | `Body valid?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 7 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Fetch parent generation` | HTTP | `GET` =…/rest/v1/generations?id=eq.…&user_id=eq.…&select=* |
+| 8 | `Fetch parent generation` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.…& |
 | 9 | `Shape parent` | Code | Code |
-| 10 | `Parent ok?` | IF | Route on `={{ $json._error }}` exists |
+| 10 | `Parent ok?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 11 | `Respond parent err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 12 | `Fetch reference URLs` | HTTP | `GET` =…/rest/v1/reference_images?id=in.(…)&select=id,source_url |
+| 12 | `Fetch reference URLs` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id= |
 | 13 | `Order fetch list` | Code | Build ordered fetch list: parent input (original room), then parent output, |
 | 14 | `Fetch image bytes` | HTTP | `GET` =… |
 | 15 | `Collect image parts` | Code | Code |
-| 16 | `Fetch image_model` | HTTP | `GET` =…/rest/v1/app_config?key=eq.image_model&select=value |
+| 16 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
 | 17 | `Build Gemini request` | Code | Code |
 | 18 | `Call Gemini` | HTTP | `POST` =https://generativelanguage.googleapis.com/v1beta/models/…:generateCon |
 | 19 | `Extract output PNG` | Code | Code |
-| 20 | `Gen error?` | IF | Route on `={{ $json._error }}` exists |
+| 20 | `Gen error?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 21 | `Respond 502` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 22 | `Save generation` | SubWF | Call sub-workflow `wf_save_generation` (sync) |
-| 23 | `Log event` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
+| 22 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
+| 23 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
 | 24 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id: $json.generation_id,   |
 <!-- WFSYNC:generate_commit:END -->
 
@@ -262,44 +256,44 @@ Three-agent pipeline:
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /generate/orchestrated` | Webhook | Receive `POST /webhook/generate/orchestrated` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `wf_jwt_verify` (sync) |
+| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Validate body` | Code | Code |
-| 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Body valid?` | IF | Route on `={{ $json._error }}` exists |
-| 7 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Fetch upload bytes` | HTTP | `GET` =… |
-| 9 | `Build Agent 1 request` | Code | Agent 1 — Orchestrator. |
+| 5 | `Respond 401` | Respond | Respond 200 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
+| 6 | `Body valid?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 7 | `Respond 400` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 8 | `Fetch & encode upload` | Code | Code |
+| 9 | `Build Agent 1 request` | Code | Code |
 | 10 | `Agent 1 (Orchestrator)` | HTTP | `POST` =… |
-| 11 | `Parse Agent 1` | Code | Parse Agent 1 output. Extract ===CRITERIA=== and ===PROMPT=== blocks. |
-| 12 | `Agent 1 ok?` | IF | Route on `={{ $json._error }}` exists |
-| 13 | `Respond Agent 1 err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 14 | `Log Agent 1` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
-| 15 | `Fetch candidate pool` | HTTP | `POST` =…/rest/v1/rpc/retrieve_candidates_text |
-| 16 | `Check pool` | Code | If FTS-filtered pool is too small, fall back to unfiltered quality-ordered pool. |
+| 11 | `Parse Agent 1` | Code | Code |
+| 12 | `Agent 1 ok?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 13 | `Respond Agent 1 err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 14 | `Log Agent 1` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
+| 15 | `Fetch candidate pool` | HTTP | `GET` =… |
+| 16 | `Check pool` | Code | Code |
 | 17 | `Need fallback?` | IF | Route on `={{ $json.pool_fallback }}` equals |
-| 18 | `Fetch candidate pool (all)` | HTTP | `GET` =…/rest/v1/reference_images?select=id,source_url,caption,caption_enhan |
-| 19 | `Build Agent 2 request` | Code | Agent 2 — Spatial-aware reference picker. |
+| 18 | `Fetch candidate pool (all)` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?sel |
+| 19 | `Build Agent 2 request` | Code | Code |
 | 20 | `Shape pool (fallback)` | Code | Code |
-| 21 | `Agent 2 build ok?` | IF | Route on `={{ $json._error }}` exists |
-| 22 | `Respond pool err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 21 | `Agent 2 build ok?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 22 | `Respond pool err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
 | 23 | `Agent 2 (Retriever)` | HTTP | `POST` =… |
-| 24 | `Parse Agent 2` | Code | Parse three UUIDs from Agent 2 output, validate against pool, dedupe. |
-| 25 | `Agent 2 ok?` | IF | Route on `={{ $json._error }}` exists |
-| 26 | `Respond Agent 2 err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 27 | `Log Agent 2` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
-| 28 | `Fetch picked URLs` | HTTP | `GET` =…/rest/v1/reference_images?id=in.(…)&select=id,source_url |
-| 29 | `Order fetch list` | Code | Ordered fetch list: upload first, then 3 references in Agent 2's pick order. |
+| 24 | `Parse Agent 2` | Code | Code |
+| 25 | `Agent 2 ok?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 26 | `Respond Agent 2 err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 27 | `Log Agent 2` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
+| 28 | `Fetch picked URLs` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id= |
+| 29 | `Order fetch list` | Code | Code |
 | 30 | `Fetch image bytes` | HTTP | `GET` =… |
 | 31 | `Collect image parts` | Code | Code |
-| 32 | `Fetch image_model` | HTTP | `GET` =…/rest/v1/app_config?key=eq.image_model&select=value |
+| 32 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
 | 33 | `Build Gemini request` | Code | Code |
 | 34 | `Agent 3 (Gemini)` | HTTP | `POST` =https://generativelanguage.googleapis.com/v1beta/models/…:generateCon |
 | 35 | `Extract output PNG` | Code | Code |
-| 36 | `Gen error?` | IF | Route on `={{ $json._error }}` exists |
-| 37 | `Respond 502` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 38 | `Save generation` | SubWF | Call sub-workflow `wf_save_generation` (sync) |
-| 39 | `Log orchestrated_ok` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
+| 36 | `Gen error?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 37 | `Respond 502` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 38 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
+| 39 | `Log orchestrated_ok` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
 | 40 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id:       $json.generation |
 <!-- WFSYNC:generate_orchestrated:END -->
 
@@ -313,13 +307,13 @@ Returns every generation in one session in chronological order so the UI can ren
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `GET /generations/session/:session_id` | Webhook | Receive `GET /webhook/generations/session/:session_id` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `wf_jwt_verify` (sync) |
+| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Validate params` | Code | Code |
 | 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Params valid?` | IF | Route on `={{ $json._error }}` exists |
+| 6 | `Params valid?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 7 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Fetch session generations` | HTTP | `GET` =…/rest/v1/generations?session_id=eq.…&user_id=eq.…&select=id,kind,out |
+| 8 | `Fetch session generations` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?session_ |
 | 9 | `Shape response` | Code | Code |
 | 10 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify($json) }} |
 <!-- WFSYNC:generations_session:END -->
@@ -334,17 +328,17 @@ Gives the user a download URL for a specific generation.
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /generations/:generation_id/export` | Webhook | Receive `POST /webhook/generations/:generation_id/export` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `wf_jwt_verify` (sync) |
+| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Validate params` | Code | Code |
 | 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Params valid?` | IF | Route on `={{ $json._error }}` exists |
+| 6 | `Params valid?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 7 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Fetch generation` | HTTP | `GET` =…/rest/v1/generations?id=eq.…&user_id=eq.…&select=id,output_image_pat |
+| 8 | `Fetch generation` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.…& |
 | 9 | `Build download URL` | Code | Code |
-| 10 | `Row exists?` | IF | Route on `={{ $json._error }}` exists |
+| 10 | `Row exists?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 11 | `Respond 404` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 12 | `Log event` | SubWF | Call sub-workflow `wf_event_log` (fire-and-forget) |
+| 12 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
 | 13 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ download_url: $json.download_url }) }} |
 <!-- WFSYNC:generations_export:END -->
 
@@ -359,9 +353,9 @@ Header: `X-Admin-Token: <ADMIN_TOKEN>` — no JWT, admin-token only.
 |---|---|---|---|
 | 1 | `GET /admin/metrics` | Webhook | Receive `GET /webhook/admin/metrics` |
 | 2 | `Check admin token` | Code | Code |
-| 3 | `Token valid?` | IF | Route on `={{ $json._error }}` exists |
+| 3 | `Token valid?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 4 | `Respond error` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 5 | `RPC admin_metrics` | HTTP | `POST` =…/rest/v1/rpc/admin_metrics |
+| 5 | `RPC admin_metrics` | HTTP | `POST` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/rpc/admin_metrics |
 | 6 | `Shape response` | Code | admin_metrics RPC returns a single JSONB. PostgREST may wrap it as an array. |
 | 7 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify($json) }} |
 <!-- WFSYNC:admin_metrics:END -->
@@ -443,11 +437,11 @@ All four originally lived as separate n8n workflows and were called via `execute
 
 ## Verification
 
-1. `curl http://localhost:5678/webhook/health` → `{"status":"ok",...}`
-2. `curl -X POST http://localhost:5678/webhook/auth/magic-link -H "Content-Type: application/json" -d '{"email":"you@test.com"}'` → returns `{token, user_id}`
-3. `curl http://localhost:5678/webhook/auth/me -H "Authorization: Bearer <token>"` → returns `{user_id, email}`
-4. `curl http://localhost:5678/webhook/admin/metrics -H "X-Admin-Token: __REDACTED_ADMIN_TOKEN__"` → returns metrics JSON
-5. In the n8n UI (`http://localhost:5678`), open workflow `JbnB5CPdoqgCl75F` → Executions tab → any execution shows the exact nodes that ran and their per-node inputs/outputs.
+1. `curl https://n8n.srv1649259.hstgr.cloud/webhook/health` → `{"status":"ok",...}`
+2. `curl -X POST https://n8n.srv1649259.hstgr.cloud/webhook/auth/magic-link -H "Content-Type: application/json" -d '{"email":"you@test.com"}'` → returns `{token, user_id}`
+3. `curl https://n8n.srv1649259.hstgr.cloud/webhook/auth/me -H "Authorization: Bearer <token>"` → returns `{user_id, email}`
+4. `curl https://n8n.srv1649259.hstgr.cloud/webhook/admin/metrics -H "X-Admin-Token: __REDACTED_ADMIN_TOKEN__"` → returns metrics JSON
+5. In the n8n UI (`https://n8n.srv1649259.hstgr.cloud`), open workflow `JbnB5CPdoqgCl75F` → Executions tab → any execution shows the exact nodes that ran and their per-node inputs/outputs.
 
 ---
 

@@ -1,0 +1,102 @@
+{
+  "name": "wf_supabase_verify",
+  "nodes": [
+    {
+      "id": "e36f4c1c-fa2e-49b6-9f5d-e3c77559b99d",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "359f7c07-1bfe-4c0d-9d57-9163ca355526",
+      "name": "Verify with Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://uzghfpxboktnbcbbthns.supabase.co/auth/v1/user",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.authorization || ($json.headers && $json.headers.authorization) || \"\" }}"
+            },
+            {
+              "name": "apikey",
+              "value": "__REDACTED_JWT_OR_ANON__"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "3e0851b0-7e0d-43c7-9560-769604f861b9",
+      "name": "Normalize Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const item = $input.first().json;\nif (item.id) {\n  return [{ json: { ok: true, user_id: item.id, email: item.email || null } }];\n}\nconst msg = item.msg || item.message || item.error || 'unauthorized';\nreturn [{ json: { ok: false, status: 401, error: msg, code: 'invalid_token' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Verify with Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify with Supabase": {
+      "main": [
+        [
+          {
+            "node": "Normalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "active": false,
+  "tags": [
+    {
+      "name": "shared"
+    }
+  ]
+}

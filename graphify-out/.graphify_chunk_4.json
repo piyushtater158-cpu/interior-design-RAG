@@ -1,0 +1,1167 @@
+{
+  "nodes": [
+    {
+      "id": "53_minimalist_living_room_fireplace",
+      "label": "Minimalist Living Room with Fireplace",
+      "file_type": "document",
+      "source_file": "Interior design samples/53.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "53_minimalist_style",
+      "label": "Minimalist Style",
+      "file_type": "document",
+      "source_file": "Interior design samples/53.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "53_cozy_environment",
+      "label": "Cozy Environment",
+      "file_type": "document",
+      "source_file": "Interior design samples/53.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "53_fireplace",
+      "label": "Fireplace",
+      "file_type": "document",
+      "source_file": "Interior design samples/53.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "54_minimalist_bedroom",
+      "label": "Minimalist Style Bedroom",
+      "file_type": "document",
+      "source_file": "Interior design samples/54.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "54_minimalist_style_bedroom",
+      "label": "Minimalist Style",
+      "file_type": "document",
+      "source_file": "Interior design samples/54.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "55_modern_ethnic_fusion_study",
+      "label": "Modern Ethnic Fusion Study Room with Balcony",
+      "file_type": "document",
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "55_ethnic_fusion_style",
+      "label": "Modern Ethnic Fusion Style",
+      "file_type": "document",
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "55_study_room",
+      "label": "Study Room",
+      "file_type": "document",
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "55_attached_balcony",
+      "label": "Attached Balcony",
+      "file_type": "document",
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "56_modern_ethnic_kids_room",
+      "label": "Modern Ethnic Fusion Kids Room",
+      "file_type": "document",
+      "source_file": "Interior design samples/56.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "56_kids_room",
+      "label": "Kids Room",
+      "file_type": "document",
+      "source_file": "Interior design samples/56.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "56_ethnic_fusion_kids",
+      "label": "Modern Ethnic Fusion Style (Kids)",
+      "file_type": "document",
+      "source_file": "Interior design samples/56.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "57_futuristic_mandir_holographic",
+      "label": "Modern Ethnic Fusion Futuristic Mandir with Holographic Design",
+      "file_type": "document",
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "57_futuristic_style",
+      "label": "Futuristic Interior Style",
+      "file_type": "document",
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "57_holographic_home_design",
+      "label": "Holographic Home Design",
+      "file_type": "document",
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "57_mandir_room",
+      "label": "Mandir Room",
+      "file_type": "document",
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "58_ethnic_fusion_bedroom_balcony",
+      "label": "Modern Ethnic Fusion Bedroom with Attached Balcony",
+      "file_type": "document",
+      "source_file": "Interior design samples/58.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "58_bedroom_balcony",
+      "label": "Bedroom with Balcony",
+      "file_type": "document",
+      "source_file": "Interior design samples/58.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "59_futuristic_monday_room_glowing",
+      "label": "Modern Ethnic Fusion Futuristic Monday Room with Glowing Gods and Futuristic Lighting",
+      "file_type": "document",
+      "source_file": "Interior design samples/59.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "59_glowing_spiritual_elements",
+      "label": "Glowing Gods Item and Futuristic Lighting",
+      "file_type": "document",
+      "source_file": "Interior design samples/59.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "59_futuristic_floor_backdrop",
+      "label": "Futuristic Floor and Backdrop Lighting",
+      "file_type": "document",
+      "source_file": "Interior design samples/59.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "6_industrial_study_green",
+      "label": "Industrial Style Study Room with Green Theme",
+      "file_type": "document",
+      "source_file": "Interior design samples/6.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "6_industrial_style",
+      "label": "Industrial Style",
+      "file_type": "document",
+      "source_file": "Interior design samples/6.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "6_green_theme",
+      "label": "Green Color Theme",
+      "file_type": "document",
+      "source_file": "Interior design samples/6.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "60_ethnic_fusion_bunk_beds",
+      "label": "Modern Ethnic Fusion with Bunk Beds (Ruined)",
+      "file_type": "document",
+      "source_file": "Interior design samples/60.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "60_bunk_beds",
+      "label": "Bunk Beds",
+      "file_type": "document",
+      "source_file": "Interior design samples/60.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "61_internet_fusion_kitchen_dining",
+      "label": "Modern Internet Fusion Kitchen with Dining Table",
+      "file_type": "document",
+      "source_file": "Interior design samples/61.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "61_kitchen_design",
+      "label": "Kitchen Design",
+      "file_type": "document",
+      "source_file": "Interior design samples/61.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "61_dining_table",
+      "label": "Dining Table",
+      "file_type": "document",
+      "source_file": "Interior design samples/61.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "62_ethnic_fusion_bedroom_balcony2",
+      "label": "Modern Ethnic Fusion Bedroom with Attached Balcony (2)",
+      "file_type": "document",
+      "source_file": "Interior design samples/62.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "63_ethnic_fusion_living_swing_fireplace",
+      "label": "Modern Ethnic Fusion Living Room with Swing, Fireplace, Curved Couch, and Lawn",
+      "file_type": "document",
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "63_swing",
+      "label": "Indoor Swing",
+      "file_type": "document",
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "63_curved_couch",
+      "label": "Curved Couch",
+      "file_type": "document",
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "63_attached_lawn",
+      "label": "Attached Lawn",
+      "file_type": "document",
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "63_fireplace_living",
+      "label": "Living Room Fireplace",
+      "file_type": "document",
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "64_ethnic_fusion_mandir_city_skyline",
+      "label": "Modern Ethnic Fusion Futuristic Mandir with City Skyline Backdrop",
+      "file_type": "document",
+      "source_file": "Interior design samples/64.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "64_city_skyline_backdrop",
+      "label": "City Skyline Backdrop Wall Panel",
+      "file_type": "document",
+      "source_file": "Interior design samples/64.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "64_mandir_room_futuristic",
+      "label": "Futuristic Mandir Room",
+      "file_type": "document",
+      "source_file": "Interior design samples/64.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "65_ethnic_beauty_study_chandelier_balcony",
+      "label": "Modern Ethnic Beauty Study Room with Chandelier and Balcony",
+      "file_type": "document",
+      "source_file": "Interior design samples/65.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "65_chandelier",
+      "label": "Chandelier",
+      "file_type": "document",
+      "source_file": "Interior design samples/65.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "65_study_room_ethnic",
+      "label": "Ethnic Study Room",
+      "file_type": "document",
+      "source_file": "Interior design samples/65.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "66_ethnic_fusion_kitchen_seating",
+      "label": "Modern Ethnic Fusion Kitchen with Seating",
+      "file_type": "document",
+      "source_file": "Interior design samples/66.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "66_kitchen_seating",
+      "label": "Kitchen Seating",
+      "file_type": "document",
+      "source_file": "Interior design samples/66.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "67_ethnic_fusion_kids_room",
+      "label": "Modern Ethnic Fusion Kids Room Design",
+      "file_type": "document",
+      "source_file": "Interior design samples/67.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "68_ethnic_fusion_bedroom_balcony3",
+      "label": "Modern Ethnic Fusion Bedroom with Attached Balcony (3)",
+      "file_type": "document",
+      "source_file": "Interior design samples/68.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "69_ethnic_fusion_bedroom",
+      "label": "Modern Ethnic Fusion Bedroom Design",
+      "file_type": "document",
+      "source_file": "Interior design samples/69.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "7_industrial_living_room",
+      "label": "Industrial Style Living Room Design",
+      "file_type": "document",
+      "source_file": "Interior design samples/7.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "7_industrial_style_living",
+      "label": "Industrial Style (Living Room)",
+      "file_type": "document",
+      "source_file": "Interior design samples/7.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "70_ethnic_fusion_mandir_holographic_symbols",
+      "label": "Modern Ethnic Fusion Mandir with Holographic Symbols",
+      "file_type": "document",
+      "source_file": "Interior design samples/70.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "70_holographic_symbols",
+      "label": "Holographic Symbols",
+      "file_type": "document",
+      "source_file": "Interior design samples/70.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "71_ethnic_fusion_living_room",
+      "label": "Modern Ethnic Fusion Living Room Design",
+      "file_type": "document",
+      "source_file": "Interior design samples/71.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "72_ethnic_fusion_bedroom_city_skyline",
+      "label": "Modern Ethnic Fusion Bedroom with Balcony Overlooking City Skyline",
+      "file_type": "document",
+      "source_file": "Interior design samples/72.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "72_city_skyline_view",
+      "label": "City Skyline View from Balcony",
+      "file_type": "document",
+      "source_file": "Interior design samples/72.txt",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "53_minimalist_living_room_fireplace",
+      "target": "53_minimalist_style",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/53.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "53_minimalist_living_room_fireplace",
+      "target": "53_fireplace",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/53.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "53_minimalist_living_room_fireplace",
+      "target": "53_cozy_environment",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/53.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "53_minimalist_style",
+      "target": "53_cozy_environment",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "Interior design samples/53.txt",
+      "source_location": null,
+      "weight": 0.7
+    },
+    {
+      "source": "54_minimalist_bedroom",
+      "target": "54_minimalist_style_bedroom",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/54.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "55_modern_ethnic_fusion_study",
+      "target": "55_ethnic_fusion_style",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "55_modern_ethnic_fusion_study",
+      "target": "55_study_room",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "55_modern_ethnic_fusion_study",
+      "target": "55_attached_balcony",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "56_modern_ethnic_kids_room",
+      "target": "56_kids_room",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/56.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "56_modern_ethnic_kids_room",
+      "target": "56_ethnic_fusion_kids",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/56.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "57_futuristic_mandir_holographic",
+      "target": "57_futuristic_style",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "57_futuristic_mandir_holographic",
+      "target": "57_holographic_home_design",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "57_futuristic_mandir_holographic",
+      "target": "57_mandir_room",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "57_holographic_home_design",
+      "target": "57_futuristic_style",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "58_ethnic_fusion_bedroom_balcony",
+      "target": "58_bedroom_balcony",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/58.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "59_futuristic_monday_room_glowing",
+      "target": "59_glowing_spiritual_elements",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/59.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "59_futuristic_monday_room_glowing",
+      "target": "59_futuristic_floor_backdrop",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/59.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "59_glowing_spiritual_elements",
+      "target": "59_futuristic_floor_backdrop",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "Interior design samples/59.txt",
+      "source_location": null,
+      "weight": 0.8
+    },
+    {
+      "source": "6_industrial_study_green",
+      "target": "6_industrial_style",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/6.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "6_industrial_study_green",
+      "target": "6_green_theme",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/6.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "60_ethnic_fusion_bunk_beds",
+      "target": "60_bunk_beds",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/60.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "61_internet_fusion_kitchen_dining",
+      "target": "61_kitchen_design",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/61.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "61_internet_fusion_kitchen_dining",
+      "target": "61_dining_table",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/61.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "63_ethnic_fusion_living_swing_fireplace",
+      "target": "63_swing",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "63_ethnic_fusion_living_swing_fireplace",
+      "target": "63_curved_couch",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "63_ethnic_fusion_living_swing_fireplace",
+      "target": "63_attached_lawn",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "63_ethnic_fusion_living_swing_fireplace",
+      "target": "63_fireplace_living",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "64_ethnic_fusion_mandir_city_skyline",
+      "target": "64_city_skyline_backdrop",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/64.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "64_ethnic_fusion_mandir_city_skyline",
+      "target": "64_mandir_room_futuristic",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/64.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "65_ethnic_beauty_study_chandelier_balcony",
+      "target": "65_chandelier",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/65.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "65_ethnic_beauty_study_chandelier_balcony",
+      "target": "65_study_room_ethnic",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/65.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "66_ethnic_fusion_kitchen_seating",
+      "target": "66_kitchen_seating",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/66.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "70_ethnic_fusion_mandir_holographic_symbols",
+      "target": "70_holographic_symbols",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/70.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "72_ethnic_fusion_bedroom_city_skyline",
+      "target": "72_city_skyline_view",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "Interior design samples/72.txt",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "53_minimalist_style",
+      "target": "54_minimalist_style_bedroom",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "Interior design samples/53.txt",
+      "source_location": null,
+      "weight": 0.95
+    },
+    {
+      "source": "6_industrial_style",
+      "target": "7_industrial_style_living",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "Interior design samples/6.txt",
+      "source_location": null,
+      "weight": 0.95
+    },
+    {
+      "source": "55_ethnic_fusion_style",
+      "target": "58_ethnic_fusion_bedroom_balcony",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "55_ethnic_fusion_style",
+      "target": "62_ethnic_fusion_bedroom_balcony2",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "55_ethnic_fusion_style",
+      "target": "68_ethnic_fusion_bedroom_balcony3",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "55_ethnic_fusion_style",
+      "target": "69_ethnic_fusion_bedroom",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.88,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 0.88
+    },
+    {
+      "source": "55_ethnic_fusion_style",
+      "target": "72_ethnic_fusion_bedroom_city_skyline",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.88,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 0.88
+    },
+    {
+      "source": "56_ethnic_fusion_kids",
+      "target": "67_ethnic_fusion_kids_room",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "Interior design samples/56.txt",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "57_mandir_room",
+      "target": "64_mandir_room_futuristic",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.88,
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "weight": 0.88
+    },
+    {
+      "source": "57_mandir_room",
+      "target": "70_ethnic_fusion_mandir_holographic_symbols",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "57_holographic_home_design",
+      "target": "70_holographic_symbols",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "57_futuristic_style",
+      "target": "59_futuristic_floor_backdrop",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "Interior design samples/57.txt",
+      "source_location": null,
+      "weight": 0.8
+    },
+    {
+      "source": "63_fireplace_living",
+      "target": "53_fireplace",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "61_kitchen_design",
+      "target": "66_ethnic_fusion_kitchen_seating",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "Interior design samples/61.txt",
+      "source_location": null,
+      "weight": 0.8
+    },
+    {
+      "source": "55_study_room",
+      "target": "65_study_room_ethnic",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.82,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 0.82
+    },
+    {
+      "source": "55_attached_balcony",
+      "target": "58_bedroom_balcony",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.78,
+      "source_file": "Interior design samples/55.txt",
+      "source_location": null,
+      "weight": 0.78
+    },
+    {
+      "source": "64_city_skyline_backdrop",
+      "target": "72_city_skyline_view",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "Interior design samples/64.txt",
+      "source_location": null,
+      "weight": 0.8
+    },
+    {
+      "source": "63_ethnic_fusion_living_swing_fireplace",
+      "target": "71_ethnic_fusion_living_room",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.82,
+      "source_file": "Interior design samples/63.txt",
+      "source_location": null,
+      "weight": 0.82
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "modern_ethnic_fusion_bedroom_balcony_cluster",
+      "label": "Modern Ethnic Fusion Bedrooms with Balcony",
+      "nodes": [
+        "58_ethnic_fusion_bedroom_balcony",
+        "62_ethnic_fusion_bedroom_balcony2",
+        "68_ethnic_fusion_bedroom_balcony3",
+        "69_ethnic_fusion_bedroom",
+        "72_ethnic_fusion_bedroom_city_skyline"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "Interior design samples/58.txt"
+    },
+    {
+      "id": "futuristic_ethnic_mandir_room_cluster",
+      "label": "Futuristic Ethnic Fusion Mandir Room Designs",
+      "nodes": [
+        "57_futuristic_mandir_holographic",
+        "59_futuristic_monday_room_glowing",
+        "64_ethnic_fusion_mandir_city_skyline",
+        "70_ethnic_fusion_mandir_holographic_symbols"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.88,
+      "source_file": "Interior design samples/57.txt"
+    },
+    {
+      "id": "minimalist_industrial_style_cluster",
+      "label": "Minimalist and Industrial Interior Styles",
+      "nodes": [
+        "53_minimalist_living_room_fireplace",
+        "54_minimalist_bedroom",
+        "6_industrial_study_green",
+        "7_industrial_living_room"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "Interior design samples/53.txt"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

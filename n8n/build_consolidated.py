@@ -56,9 +56,8 @@ def _load_env() -> dict:
         "OPENROUTER_ORCHESTRATOR_MODEL": orch,
         "OPENROUTER_RETRIEVER_MODEL":    get("OPENROUTER_RETRIEVER_MODEL", default=orch),
         "OPENROUTER_EMBED_MODEL":        get("OPENROUTER_EMBED_MODEL", default="nvidia/llama-nemotron-embed-vl-1b-v2:free"),
-        "JWT_SECRET":                    get("JWT_SECRET", "JWT Secret"),
+        "SUPABASE_ANON_KEY":             get("SUPABASE_ANON_KEY"),
         "ADMIN_TOKEN":                   get("ADMIN_TOKEN", "Admin Token"),
-        "JWT_TTL_HOURS":                 get("JWT_TTL_HOURS", default="24"),
     }
 
 _ENV = _load_env()
@@ -75,9 +74,8 @@ ENV_TO_CFG: dict = {
     "OPENROUTER_ORCHESTRATOR_MODEL": "orch_model",
     "OPENROUTER_RETRIEVER_MODEL":    "retriever_model",
     "OPENROUTER_EMBED_MODEL":        "embed_model",
+    "SUPABASE_ANON_KEY":             "supabase_anon_key",
     "ADMIN_TOKEN":                   "admin_token",
-    "JWT_SECRET":                    "jwt_secret",
-    "JWT_TTL_HOURS":                 "jwt_ttl",
 }
 
 def _js(s: str) -> str:
@@ -98,64 +96,21 @@ CONFIG_CODE = (
     f"      orch_model:      '{_js(_ENV['OPENROUTER_ORCHESTRATOR_MODEL'])}',\n"
     f"      retriever_model: '{_js(_ENV['OPENROUTER_RETRIEVER_MODEL'])}',\n"
     f"      embed_model:     '{_js(_ENV['OPENROUTER_EMBED_MODEL'])}',\n"
-    f"      admin_token:     '{_js(_ENV['ADMIN_TOKEN'])}',\n"
-    f"      jwt_secret:      '{_js(_ENV['JWT_SECRET'])}',\n"
-    f"      jwt_ttl:         {_ENV['JWT_TTL_HOURS']}\n"
+    f"      supabase_anon_key: '{_js(_ENV['SUPABASE_ANON_KEY'])}',\n"
+    f"      admin_token:     '{_js(_ENV['ADMIN_TOKEN'])}'\n"
     "    }\n"
     "  },\n"
     "  binary: $input.first().binary || {}\n"
     "}];"
 )
 
-# ── Inline code templates ────────────────────────────────────────────────────
-
-_JWT_SECRET = _js(_ENV["JWT_SECRET"])
-_JWT_TTL    = _ENV["JWT_TTL_HOURS"]
-
-# Pure-JS SHA-256 + HMAC preamble — no require() needed, works in any n8n sandbox.
-_HMAC_PREAMBLE = (
-    "const _sha256=(m)=>{const H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\n"
-    "const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\n"
-    "if(typeof m==='string')m=Buffer.from(m,'utf8');\n"
-    "const L=m.length,ex=((L%64)<56?56:120)-(L%64),M=Buffer.alloc(L+ex+8);\n"
-    "m.copy(M);M[L]=0x80;M.writeUInt32BE(L*8>>>0,M.length-4);\n"
-    "const add=(a,b)=>(a+b)>>>0,r=(v,n)=>(v>>>n)|(v<<(32-n));\n"
-    "for(let i=0;i<M.length;i+=64){const W=[];\n"
-    "for(let j=0;j<16;j++)W[j]=M.readUInt32BE(i+j*4);\n"
-    "for(let j=16;j<64;j++){const s0=r(W[j-15],7)^r(W[j-15],18)^(W[j-15]>>>3),s1=r(W[j-2],17)^r(W[j-2],19)^(W[j-2]>>>10);W[j]=add(add(add(W[j-16],s0),W[j-7]),s1);}\n"
-    "let[a,b,c,d,e,f,g,hh]=H.slice();\n"
-    "for(let j=0;j<64;j++){const T1=add(add(add(add(hh,r(e,6)^r(e,11)^r(e,25)),(e&f)^(~e&g)),K[j]),W[j]),T2=add(r(a,2)^r(a,13)^r(a,22),(a&b)^(a&c)^(b&c));hh=g;g=f;f=e;e=add(d,T1);d=c;c=b;b=a;a=add(T1,T2);}\n"
-    "H[0]=add(H[0],a);H[1]=add(H[1],b);H[2]=add(H[2],c);H[3]=add(H[3],d);H[4]=add(H[4],e);H[5]=add(H[5],f);H[6]=add(H[6],g);H[7]=add(H[7],hh);}\n"
-    "const res=Buffer.alloc(32);H.forEach((v,i)=>res.writeUInt32BE(v,i*4));return res;};\n"
-    "const _hmac=(key,data)=>{if(typeof key==='string')key=Buffer.from(key,'utf8');if(typeof data==='string')data=Buffer.from(data,'utf8');if(key.length>64)key=_sha256(key);const kp=Buffer.alloc(64);key.copy(kp);const ik=Buffer.alloc(64),ok=Buffer.alloc(64);for(let i=0;i<64;i++){ik[i]=kp[i]^0x36;ok[i]=kp[i]^0x5c;}return _sha256(Buffer.concat([ok,_sha256(Buffer.concat([ik,data]))]));};\n"
-)
-
-JWT_VERIFY_CODE = (
-    _HMAC_PREAMBLE +
-    "const token = ($json.headers?.authorization || '').replace(/^Bearer /i, '').trim();\n"
-    "if (!token) return [{ json: { ok: false, status: 401, error: 'missing_token', code: 'unauthorized' } }];\n"
-    "const parts = token.split('.');\n"
-    "if (parts.length !== 3) return [{ json: { ok: false, status: 401, error: 'malformed_token', code: 'unauthorized' } }];\n"
-    "const [hp, pp, sp] = parts;\n"
-    f"const expected = _hmac('{_JWT_SECRET}', hp + '.' + pp).toString('base64url');\n"
-    "if (sp !== expected) return [{ json: { ok: false, status: 401, error: 'invalid_token', code: 'unauthorized' } }];\n"
-    "let decoded;\n"
-    "try { decoded = JSON.parse(Buffer.from(pp, 'base64url').toString()); }\n"
-    "catch(e) { return [{ json: { ok: false, status: 401, error: 'malformed_payload', code: 'unauthorized' } }]; }\n"
-    "if (decoded.exp && decoded.exp < Date.now() / 1000)\n"
-    "  return [{ json: { ok: false, status: 401, error: 'token_expired', code: 'unauthorized' } }];\n"
-    "return [{ json: { ok: true, user_id: decoded.sub, email: decoded.email } }];"
-)
-
-JWT_SIGN_CODE = (
-    _HMAC_PREAMBLE +
-    "const { user_id, email } = $json;\n"
-    f"const ttl = {_JWT_TTL} * 3600;\n"
-    "const now = Math.floor(Date.now() / 1000);\n"
-    "const hp = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');\n"
-    "const pp = Buffer.from(JSON.stringify({ sub: user_id, email, iat: now, exp: now + ttl })).toString('base64url');\n"
-    f"const sig = _hmac('{_JWT_SECRET}', hp + '.' + pp).toString('base64url');\n"
-    "return [{ json: { token: hp + '.' + pp + '.' + sig, user_id, email } }];"
+# Supabase verify normalizer — runs after HTTP Request to /auth/v1/user
+_SUPABASE_VERIFY_NORMALIZE = (
+    "const status = $json.statusCode || $json.status || 200;\n"
+    "if (status !== 200 || !$json.id) {\n"
+    "  return [{ json: { ok: false, status: 401, error: $json.error_description || 'invalid_token', code: 'invalid_token' } }];\n"
+    "}\n"
+    "return [{ json: { ok: true, user_id: $json.id, email: $json.email || null } }];"
 )
 
 ASSEMBLE_ROW_CODE = (
@@ -242,12 +197,27 @@ def http_node(name: str, params: dict, x: int, y: int) -> dict:
 
 # ── Sub-workflow inline factories ────────────────────────────────────────────
 
-def inline_jwt_verify(name: str, x: int, y: int) -> list:
-    return [code_node(name, JWT_VERIFY_CODE, x, y)]
+_SUPA_URL = _js(_ENV["SUPABASE_URL"])
+_SUPA_ANON = _js(_ENV["SUPABASE_ANON_KEY"])
 
-
-def inline_jwt_sign(name: str, x: int, y: int) -> list:
-    return [code_node(name, JWT_SIGN_CODE, x, y)]
+def inline_supabase_verify(name: str, x: int, y: int) -> list:
+    """Inline wf_supabase_verify: HTTP Request to /auth/v1/user + normalize."""
+    http_name = name + " (HTTP)"
+    http_params = {
+        "method": "GET",
+        "url": f"{_ENV['SUPABASE_URL']}/auth/v1/user",
+        "sendHeaders": True,
+        "headerParameters": {"parameters": [
+            {"name": "Authorization", "value": "={{ $json.authorization || ($json.headers && $json.headers.authorization) || '' }}"},
+            {"name": "apikey",        "value": _ENV["SUPABASE_ANON_KEY"]},
+        ]},
+        "options": {
+            "timeout": 10000,
+            "response": {"response": {"neverError": True}},
+        },
+    }
+    normalize = code_node(name, _SUPABASE_VERIFY_NORMALIZE, x + 240, y)
+    return [http_node(http_name, http_params, x, y), normalize]
 
 
 def inline_event_log(name: str, inputs: dict, x: int, y: int) -> list:
@@ -385,10 +355,8 @@ class WorkflowMerger:
                 wf_id  = node["parameters"]["workflowId"]["value"]
                 inputs = node["parameters"].get("workflowInputs", {}).get("value", {})
 
-                if wf_id == "wf_jwt_verify":
-                    inline = inline_jwt_verify(nname, x, ny)
-                elif wf_id == "wf_jwt_sign":
-                    inline = inline_jwt_sign(nname, x, ny)
+                if wf_id in ("56BlN6jqFkXVszX2", "wf_supabase_verify", "wf_jwt_verify", "iPfGe1kcq5Uz1bLV", "PN5YANsmuOGA6qGe"):
+                    inline = inline_supabase_verify(nname, x, ny)
                 elif wf_id == "wf_event_log":
                     inline = inline_event_log(nname, inputs, x, ny)
                 elif wf_id == "wf_save_generation":

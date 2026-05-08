@@ -1,34 +1,44 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/app';
-import { useHydrated } from '@/hooks/useHydrated';
+import { supabase } from '@/lib/supabase';
 import { Spinner } from './Loader';
 
-function jwtIsExpired(token: string): boolean {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return typeof payload.exp === 'number' && payload.exp < Date.now() / 1000;
-  } catch {
-    return true;
-  }
-}
-
 export function AuthGate({ children }: { children: ReactNode }) {
-  const hydrated = useHydrated();
+  const [sessionReady, setSessionReady] = useState(false);
   const jwt = useAppStore((s) => s.jwt);
+  const setAuth = useAppStore((s) => s.setAuth);
   const clearAuth = useAppStore((s) => s.clearAuth);
   const router = useRouter();
 
   useEffect(() => {
-    if (hydrated && (!jwt || jwtIsExpired(jwt))) {
-      clearAuth();
-      router.replace('/signin');
-    }
-  }, [hydrated, jwt, clearAuth, router]);
+    // Resolve current session (handles auto-refresh of Supabase tokens)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setAuth(session.access_token, session.user.id, session.user.email ?? '');
+      } else {
+        clearAuth();
+        router.replace('/signin');
+      }
+      setSessionReady(true);
+    });
 
-  if (!hydrated || !jwt || jwtIsExpired(jwt)) {
+    // Keep store in sync with token refreshes and sign-outs
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setAuth(session.access_token, session.user.id, session.user.email ?? '');
+      } else {
+        clearAuth();
+        router.replace('/signin');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setAuth, clearAuth, router]);
+
+  if (!sessionReady || !jwt) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bone-deep">
         <Spinner />

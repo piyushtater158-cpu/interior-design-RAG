@@ -1,8 +1,8 @@
 import type { components } from './api.d';
 import { useAppStore } from '@/store/app';
+import { supabase } from './supabase';
 import { MOCK_SESSIONS, MOCK_NOTIFICATIONS, type MockSession, type MockNotification } from './mockLibrary';
 
-export type TokenResponse = components['schemas']['TokenResponse'];
 export type MeResponse = components['schemas']['MeResponse'];
 export type UploadResponse = components['schemas']['UploadResponse'];
 export type GenerationResponse = components['schemas']['GenerationResponse'];
@@ -10,7 +10,7 @@ export type HistoryItem = components['schemas']['HistoryItem'];
 export type ExportResponse = components['schemas']['ExportResponse'];
 export type ABConfigResponse = components['schemas']['ABConfigResponse'];
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5678/webhook').replace(/\/$/, '');
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://n8n.srv1649259.hstgr.cloud/webhook').replace(/\/$/, '');
 
 export class ApiError extends Error {
   status: number;
@@ -63,8 +63,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       body.error ??
       (typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail ?? r.statusText));
     if (r.status === 401 && typeof window !== 'undefined') {
-      useAppStore.getState().clearAuth();
-      window.location.replace('/signin');
+      supabase.auth.signOut().finally(() => {
+        useAppStore.getState().clearAuth();
+        window.location.replace('/signin');
+      });
     }
     throw new ApiError(message, r.status, body.code ?? `http_${r.status}`);
   }
@@ -79,12 +81,6 @@ export function absoluteUrl(url: string): string {
 }
 
 export const api = {
-  authMagicLink: (email: string) =>
-    request<TokenResponse>('/auth/magic-link', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    }),
-
   authMe: () => request<MeResponse>('/auth/me'),
 
   uploadRoomPhoto: (file: File) => {

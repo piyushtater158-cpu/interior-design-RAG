@@ -1,0 +1,12 @@
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\93.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\94.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\95.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\96.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\97.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\98.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\Interior design samples\99.txt
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\mobile-app\index.html
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\n8n\WORKFLOW_SYSTEM.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\plans\backend-implementation-plan.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\plans\continue-n8n-workflow.md
+C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG\plans\full_audit_report.md

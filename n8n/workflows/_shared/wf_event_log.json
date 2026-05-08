@@ -3,60 +3,72 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "trigger",
+      "id": "eb2fe273-f86f-49b2-9ef7-beec248b5fd4",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [240, 300]
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json;\nlet event_type = raw.event_type;\nif (!event_type) {\n  if (raw.generation_id || raw.output_url) {\n    event_type = \"generation_complete\";\n  } else if (raw.picked_reference_ids) {\n    event_type = \"agent2_complete\";\n  } else if (raw.agent_prompt || raw.criteria) {\n    event_type = \"agent1_complete\";\n  } else {\n    event_type = \"workflow_event\";\n  }\n}\nconst payload = raw.payload || (() => {\n  if (event_type === \"generation_complete\") {\n    return { generation_id: raw.generation_id, output_url: raw.output_url, latency_ms: raw.latency_ms, model_id: raw.model_id };\n  } else if (event_type === \"agent2_complete\") {\n    return { picked_reference_ids: raw.picked_reference_ids };\n  } else if (event_type === \"agent1_complete\") {\n    return { inferred_room: raw.inferred_room, style_tag: raw.style_tag, fts_search: raw.fts_search_text };\n  }\n  return {};\n})();\nreturn [{ json: { user_id: raw.user_id || null, session_id: raw.session_id || null, event_type, payload } }];"
+      },
+      "id": "7d21e238-e6f2-4d9d-a8bf-4ce0a6e841e7",
+      "name": "Shape event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [224, 0]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.SUPABASE_URL}}/rest/v1/events",
+        "url": "https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/events",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{$env.SUPABASE_SERVICE_KEY}}" },
-            { "name": "Authorization", "value": "=Bearer {{$env.SUPABASE_SERVICE_KEY}}" },
+            { "name": "apikey",        "value": "__REDACTED_SUPABASE_SERVICE_KEY__" },
+            { "name": "Authorization", "value": "Bearer __REDACTED_SUPABASE_SERVICE_KEY__" },
             { "name": "Content-Type",  "value": "application/json" },
             { "name": "Prefer",        "value": "return=minimal" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  user_id:    $json.user_id    || null,\n  session_id: $json.session_id || null,\n  event_type: $json.event_type,\n  payload:    $json.payload    || {}\n}) }}",
+        "jsonBody": "={{ JSON.stringify({ user_id: $json.user_id, session_id: $json.session_id, event_type: $json.event_type, payload: $json.payload }) }}",
         "options": {
           "timeout": 10000,
-          "redirect": { "redirect": {} },
           "response": { "response": { "neverError": true, "fullResponse": false } }
         }
       },
-      "id": "insert",
+      "id": "a983ab9b-c3ae-4933-af1c-b14ab1bf4d5d",
       "name": "Insert into events",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 300]
+      "position": [448, 0]
     },
     {
       "parameters": {
-        "jsCode": "// Fire-and-forget: never propagate failures back to the caller.\nreturn [{ json: { logged: true } }];"
+        "jsCode": "return [{ json: { logged: true } }];"
       },
-      "id": "swallow",
+      "id": "c968f4be-1569-49f5-8639-4ba3c5afa29f",
       "name": "Return OK",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 300]
+      "position": [672, 0]
     }
   ],
   "connections": {
     "When Executed by Another Workflow": {
+      "main": [[{ "node": "Shape event", "type": "main", "index": 0 }]]
+    },
+    "Shape event": {
       "main": [[{ "node": "Insert into events", "type": "main", "index": 0 }]]
     },
     "Insert into events": {
       "main": [[{ "node": "Return OK", "type": "main", "index": 0 }]]
     }
   },
-  "active": false,
-  "settings": { "executionOrder": "v1" },
+  "active": true,
+  "settings": { "executionOrder": "v1", "availableInMCP": true },
   "tags": [{ "name": "shared" }]
 }

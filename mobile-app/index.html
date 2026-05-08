@@ -2,10 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
 <meta name="theme-color" content="#EAE2D4"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png"/>
 <title>Atelier · Mobile Studio</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -415,13 +419,19 @@ textarea,input{font-family:inherit}
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const API = (localStorage.getItem('atelier:api') || 'http://localhost:5678/webhook').replace(/\/$/, '');
+const API = (localStorage.getItem('atelier:api') || 'https://n8n.srv1649259.hstgr.cloud/webhook').replace(/\/$/, '');
+
+const SUPABASE_URL  = 'https://uzghfpxboktnbcbbthns.supabase.co';
+const SUPABASE_ANON = '__REDACTED_JWT_OR_ANON__';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+});
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
-  jwt:    localStorage.getItem('atelier:jwt') || '',
-  userId: localStorage.getItem('atelier:userId') || '',
-  email:  localStorage.getItem('atelier:email') || '',
+  jwt:    '',
+  userId: '',
+  email:  '',
   credits: +localStorage.getItem('atelier:credits') || 24,
   notifPrefs: JSON.parse(localStorage.getItem('atelier:prefs') || '{"lowBalance":true,"commitDone":true,"features":false,"storage":true}'),
 
@@ -463,9 +473,6 @@ const S = {
 };
 
 function savePersist() {
-  localStorage.setItem('atelier:jwt',     S.jwt);
-  localStorage.setItem('atelier:userId',  S.userId);
-  localStorage.setItem('atelier:email',   S.email);
   localStorage.setItem('atelier:credits', String(S.credits));
   localStorage.setItem('atelier:prefs',   JSON.stringify(S.notifPrefs));
 }
@@ -488,7 +495,8 @@ const IC = {
 // ── API CLIENT ────────────────────────────────────────────────────────────────
 async function apiReq(path, opts = {}) {
   const headers = {};
-  if (S.jwt) headers['Authorization'] = `Bearer ${S.jwt}`;
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
   if (opts.json !== undefined) {
     headers['Content-Type'] = 'application/json';
     opts = { ...opts, body: JSON.stringify(opts.json) };
@@ -505,15 +513,13 @@ async function apiReq(path, opts = {}) {
 }
 
 const WH = {
-  authMagicLink: (email)   => apiReq('/auth/magic-link',   { method:'POST', json:{email} }),
-  authMe:        ()         => apiReq('/auth/me'),
-  uploadPhoto:   (file)     => { const f=new FormData(); f.append('file',file); return apiReq('/uploads/room-photo',{method:'POST',body:f}); },
-  retrieveRefs:  (a)        => apiReq('/retrieve/references',              { method:'POST', json:a }),
-  generateDraft: (a)        => apiReq('/generate/draft',                   { method:'POST', json:a }),
-  generateEdit:  (a)        => apiReq('/generate/edit',                    { method:'POST', json:a }),
-  generateCommit:(a)        => apiReq('/generate/commit',                  { method:'POST', json:a }),
-  listSessGens:  (id)       => apiReq(`/generations/session/${encodeURIComponent(id)}`),
-  exportGen:     (id)       => apiReq(`/generations/${encodeURIComponent(id)}/export`, { method:'POST' }),
+  authMe:              ()  => apiReq('/auth/me'),
+  uploadPhoto:         (file) => { const f=new FormData(); f.append('file',file); return apiReq('/uploads/room-photo',{method:'POST',body:f}); },
+  generateOrchestrated:(a) => apiReq('/generate/orchestrated', { method:'POST', json:a }),
+  generateEdit:        (a) => apiReq('/generate/edit',         { method:'POST', json:a }),
+  generateCommit:      (a) => apiReq('/generate/commit',       { method:'POST', json:a }),
+  listSessGens:        (id)=> apiReq(`/generations/session/${encodeURIComponent(id)}`),
+  exportGen:           (id)=> apiReq(`/generations/${encodeURIComponent(id)}/export`, { method:'POST' }),
 };
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
@@ -633,27 +639,11 @@ function scrLanding() {
     </p>
     <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:310px">
       <button class="btn btn-olive btn-lg btn-full" onclick="go('signin')">Sign in to start</button>
-      <button class="btn btn-ghost btn-lg btn-full" id="demo-btn" onclick="doDemo()">
-        Continue as demo →
-      </button>
     </div>
-    <div class="anno" style="margin-top:8px">phase 3 · n8n webhooks · port 3002</div>
+    <div class="anno" style="margin-top:8px">phase 3 · n8n webhooks · supabase auth</div>
   </div>`;
 }
 function afterLanding() {}
-
-async function doDemo() {
-  const b = document.getElementById('demo-btn');
-  b.disabled = true; b.textContent = 'Starting…';
-  try {
-    const r = await WH.authMagicLink('demo@example.com');
-    S.jwt = r.token; S.userId = r.user_id; S.email = 'demo@example.com';
-    savePersist(); S.tab = 'home'; go('home');
-  } catch(e) {
-    toast('Demo sign-in failed: ' + e.message);
-    b.disabled = false; b.textContent = 'Continue as demo →';
-  }
-}
 
 // ════════════════════════════════════════════════════════════════════════
 // SCREEN: SIGN IN
@@ -669,18 +659,21 @@ function scrSignIn() {
     </div>
     <div style="padding:28px 24px;display:flex;flex-direction:column;gap:20px">
       <p style="color:var(--mute);font-size:14px;line-height:1.6">
-        Enter your email — we'll issue a JWT token immediately. No password needed.
+        Enter your email — we'll send a magic link. No password needed.
       </p>
-      <div>
+      <div id="signin-form">
         <div class="anno" style="margin-bottom:8px">◆ email</div>
         <input id="email-in" type="email" class="inp" placeholder="studio@example.com"
-          autocomplete="email" inputmode="email" onkeydown="if(event.key==='Enter')doSignIn()"/>
+          autocomplete="email" inputmode="email" style="font-size:16px"
+          onkeydown="if(event.key==='Enter')doSignIn()"/>
       </div>
       <button class="btn btn-olive btn-lg btn-full" id="signin-btn" onclick="doSignIn()">
         Send magic link
       </button>
-      <div class="divider"></div>
-      <button class="btn btn-ghost btn-full" onclick="doDemo()">Or continue as demo →</button>
+      <div id="sent-msg" style="display:none;padding:14px;border-radius:12px;
+          background:var(--bone);border:1px solid var(--line);font-size:14px;line-height:1.6">
+        Check your inbox — we sent a magic link.
+      </div>
     </div>
   </div>`;
 }
@@ -694,10 +687,14 @@ async function doSignIn() {
   const b = document.getElementById('signin-btn');
   b.disabled = true; b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Sending…';
   try {
-    const r = await WH.authMagicLink(email);
-    S.jwt = r.token; S.userId = r.user_id; S.email = email;
-    savePersist(); S.tab = 'home'; go('home');
-    toast('Signed in!', 'ok');
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin + '/' },
+    });
+    if (error) throw error;
+    b.style.display = 'none';
+    document.getElementById('signin-form').style.display = 'none';
+    document.getElementById('sent-msg').style.display = 'block';
   } catch(e) {
     toast('Sign-in failed: ' + e.message);
     b.disabled = false; b.textContent = 'Send magic link';
@@ -1050,35 +1047,21 @@ async function startGeneration() {
   try {
     const sessionId = uid();
 
-    // Step 0 — retrieve references
-    let refs = [];
-    try {
-      const rr = await WH.retrieveRefs({
-        upload_id:  S.flow.uploadId,
-        room_type:  S.flow.roomType,
-        style_tag:  S.flow.style,
-        k: 6,
-        prompt:     S.flow.prompt || undefined,
-      });
-      refs = rr.references || [];
-    } catch {}
-
     stepDone(0); stepActive(1);
-    await wait(350);
+    await wait(200);
     stepDone(1); stepActive(2);
 
-    // Step 2 — generate draft  ← core webhook call
-    const draft = await WH.generateDraft({
-      upload_id:     S.flow.uploadId,
-      room_type:     S.flow.roomType,
-      style_tag:     S.flow.style,
-      reference_ids: refs.map(r=>r.id),
-      session_id:    sessionId,
-      prompt:        S.flow.prompt || undefined,
+    // Single orchestrated call — retrieval + generation in one webhook
+    const draft = await WH.generateOrchestrated({
+      upload_id:  S.flow.uploadId,
+      brief:      S.flow.prompt || `${S.flow.style} ${S.flow.roomType}`,
+      style_tag:  S.flow.style,
+      room_type:  S.flow.roomType,
+      session_id: sessionId,
     });
 
     stepDone(2); stepActive(3);
-    await wait(250);
+    await wait(200);
     stepDone(3);
 
     // Commit to state
@@ -1088,11 +1071,11 @@ async function startGeneration() {
       style:    S.flow.style,
       revisions: [{
         id: draft.generation_id, kind:'draft',
-        url: absUrl(draft.output_url),
+        url: absUrl(draft.output_url || draft.image_url),
         parentId: null, createdAt: Date.now(), modelId: draft.model_id,
       }],
       currentId:  draft.generation_id,
-      references: refs.map(r=>({id:r.id, url:absUrl(r.url), similarity:r.similarity, tags:r.style_tags})),
+      references: (draft.refs_used || []).map(r=>({id:r.id, url:absUrl(r.url), similarity:r.similarity, tags:r.style_tags})),
       chat: [],
     };
     S.credits = Math.max(0, S.credits - 2);
@@ -1584,16 +1567,45 @@ function topUp(inr, cr) {
   go('profile');
 }
 
-function signOut() {
+async function signOut() {
+  await sb.auth.signOut();
   S.jwt = ''; S.userId = ''; S.email = ''; S.credits = 24;
   S.sess = { id:null,roomType:null,style:null,revisions:[],currentId:null,references:[],chat:[] };
   savePersist(); go('landing');
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
-S.screen = (S.jwt && S.jwt !== '') ? 'home' : 'landing';
-S.tab    = 'home';
+S.tab = 'home';
+S.screen = 'landing'; // show landing while session resolves
 render();
+
+sb.auth.getSession().then(({ data: { session } }) => {
+  if (session) {
+    S.jwt = session.access_token;
+    S.userId = session.user.id;
+    S.email  = session.user.email || '';
+    S.screen = 'home';
+    render();
+  }
+});
+
+sb.auth.onAuthStateChange((_event, session) => {
+  if (session) {
+    S.jwt = session.access_token;
+    S.userId = session.user.id;
+    S.email  = session.user.email || '';
+    if (S.screen === 'landing' || S.screen === 'signin') {
+      S.screen = 'home'; render();
+    }
+  } else {
+    S.jwt = ''; S.userId = ''; S.email = '';
+    S.screen = 'landing'; render();
+  }
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}
 </script>
 </body>
 </html>
