@@ -48,7 +48,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer __REDACTED_OPENROUTER_API_KEY__" },
+            { "name": "Authorization", "value": "==Bearer {{ $env.OPENROUTER_API_KEY }}" },
             { "name": "Content-Type",  "value": "application/json" },
             { "name": "HTTP-Referer",  "value": "https://interior-design-rag.local" },
             { "name": "X-Title",       "value": "Interior Design RAG — caption enhancer" }
@@ -116,8 +116,8 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "=__REDACTED_SUPABASE_SERVICE_KEY__" },
-            { "name": "Authorization", "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__" },
+            { "name": "apikey",        "value": "=={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}" },
             { "name": "Content-Type",  "value": "application/json" },
             { "name": "Prefer",        "value": "return=minimal" }
           ]

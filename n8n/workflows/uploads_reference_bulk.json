@@ -1,0 +1,195 @@
+{
+  "name": "uploads_reference_bulk",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "POST /uploads/reference/bulk",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uploads/reference/bulk",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "uploads-reference-bulk"
+    },
+    {
+      "id": "verify",
+      "name": "Verify JWT",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [480, 300],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "56BlN6jqFkXVszX2",
+          "cachedResultName": "wf_supabase_verify"
+        },
+        "options": { "waitForSubWorkflow": true }
+      }
+    },
+    {
+      "id": "if_ok",
+      "name": "Auth ok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [720, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "auth-ok",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "respond_401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 180],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"error\": \"unauthorized\", \"code\": \"invalid_session\" }",
+        "options": { "responseCode": 401 }
+      }
+    },
+    {
+      "id": "validate_body",
+      "name": "Validate & split files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 420],
+      "parameters": {
+        "jsCode": "const webhookItem = $('POST /uploads/reference/bulk').item.json;\nconst authItem    = $('Verify JWT').item.json;\nconst _raw = webhookItem.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch(_) {}\n  }\n  return _raw;\n})();\n\nconst user_id      = authItem.user_id;\nconst bearer_token = $('POST /uploads/reference/bulk').item.json.headers?.authorization ||\n                     $('POST /uploads/reference/bulk').item.json.headers?.Authorization || '';\n\nconst VALID_STYLES = ['scandinavian','japandi','midcentury','traditional','industrial','boho'];\nconst VALID_ROOMS  = ['bedroom','kids room','dining room','kitchen','mandir','living room'];\n\nconst style_tag = (body.style_tag || '').trim();\nconst room_type = (body.room_type || '').trim();\nconst files     = Array.isArray(body.files) ? body.files : [];\n\nif (!VALID_STYLES.includes(style_tag)) {\n  return [{ json: { _error: { status: 400, body: { error: `invalid_style_tag: ${style_tag}`, code: 'invalid_request' } } } }];\n}\nif (!VALID_ROOMS.includes(room_type)) {\n  return [{ json: { _error: { status: 400, body: { error: `invalid_room_type: ${room_type}`, code: 'invalid_request' } } } }];\n}\nif (files.length === 0) {\n  return [{ json: { _error: { status: 400, body: { error: 'files_array_empty', code: 'invalid_request' } } } }];\n}\n\n// Rough total size check (~80 MB base64 limit)\nconst totalB64 = files.reduce((s, f) => s + (f.content_b64 || '').length, 0);\nif (Math.floor(totalB64 * 3 / 4) > 80 * 1024 * 1024) {\n  return [{ json: { _error: { status: 413, body: { error: 'payload_too_large_max_80mb', code: 'invalid_request' } } } }];\n}\n\n// Expand each file into its own item\nreturn files.map((f, idx) => ({\n  json: {\n    file_b64:     f.content_b64,\n    file_mime:    f.mime || 'image/jpeg',\n    filename:     f.filename || `file_${idx}`,\n    style_tag,\n    room_type,\n    user_id,\n    bearer_token,\n    file_index:   idx,\n  }\n}));"
+      }
+    },
+    {
+      "id": "if_valid",
+      "name": "Body valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1200, 420],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "no-error",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "empty" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "respond_400",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1440, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": { "responseCode": "={{ $json._error.status }}" }
+      }
+    },
+    {
+      "id": "process_each",
+      "name": "Process each file",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1440, 540],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Rld1UXU0W81sZIiH",
+          "cachedResultName": "uploads_reference"
+        },
+        "options": { "waitForSubWorkflow": true }
+      }
+    },
+    {
+      "id": "aggregate",
+      "name": "Aggregate results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1680, 540],
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "results",
+        "options": {}
+      }
+    },
+    {
+      "id": "respond_207",
+      "name": "Respond 207",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1920, 540],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ results: $json.results }) }}",
+        "options": { "responseCode": 207 }
+      }
+    }
+  ],
+  "connections": {
+    "POST /uploads/reference/bulk": {
+      "main": [
+        [{ "node": "Verify JWT", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verify JWT": {
+      "main": [
+        [{ "node": "Auth ok?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Auth ok?": {
+      "main": [
+        [{ "node": "Validate & split files", "type": "main", "index": 0 }],
+        [{ "node": "Respond 401", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate & split files": {
+      "main": [
+        [{ "node": "Body valid?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Body valid?": {
+      "main": [
+        [{ "node": "Process each file", "type": "main", "index": 0 }],
+        [{ "node": "Respond 400", "type": "main", "index": 0 }]
+      ]
+    },
+    "Process each file": {
+      "main": [
+        [{ "node": "Aggregate results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aggregate results": {
+      "main": [
+        [{ "node": "Respond 207", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [],
+  "staticData": null
+}

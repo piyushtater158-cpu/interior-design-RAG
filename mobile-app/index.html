@@ -325,6 +325,36 @@ textarea,input{font-family:inherit}
   letter-spacing:.06em;color:var(--mute);white-space:nowrap;flex-shrink:0;
 }
 .chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.chip-row::-webkit-scrollbar{display:none}
+.db-card-wrap{position:relative;overflow:visible}
+.db-upload-pill{
+  position:absolute;top:12px;right:12px;z-index:2;
+  font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;
+  letter-spacing:.1em;padding:8px 12px;border-radius:999px;
+  background:var(--ink);color:var(--paper);border:none;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.db-tile{
+  padding:14px;border-radius:14px;border:1px solid var(--line);
+  background:var(--paper);text-align:left;cursor:pointer;width:100%;
+  box-shadow:0 2px 0 rgba(28,27,23,.04),0 1px 2px rgba(28,27,23,.06);
+  -webkit-tap-highlight-color:transparent;
+}
+.db-tile:active{opacity:.88}
+.db-empty{
+  border:1px dashed var(--line);border-radius:12px;background:#FEFCF6;
+  padding:36px 16px;text-align:center;
+}
+.db-back{
+  display:flex;align-items:center;gap:8px;background:none;border:none;padding:6px 0;
+  font-size:13px;color:var(--ink-soft);cursor:pointer;font-family:inherit;
+}
+.db-row{display:flex;gap:12px;padding:12px;border:1px solid var(--bone-deep);border-radius:10px;background:var(--paper)}
+.db-thumb{width:72px;height:72px;border-radius:8px;overflow:hidden;flex-shrink:0;border:1px solid var(--line);background:var(--bone)}
+.db-thumb img{width:100%;height:100%;object-fit:cover}
+.spin{width:14px;height:14px;border:2px solid var(--olive);border-top-color:transparent;border-radius:50%;
+  animation:spin .8s linear infinite;flex-shrink:0}
 
 /* ── Room grid ──────────────────────────────────────────────────────── */
 .room-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -470,6 +500,23 @@ const S = {
   // library filter state
   libFilter: 'all',
   libQuery: '',
+
+  // profile → database (Supabase reference_images + storage)
+  profilePanel: 'account', // 'account' | 'database'
+  db: {
+    step: 'styles',
+    style: 'scandinavian',
+    room: 'bedroom',
+    styleCounts: {},
+    roomCounts: {},
+    detailRows: [],
+    stylesLoading: false,
+    roomsLoading: false,
+    detailLoading: false,
+    listError: '',
+    uploading: false,
+    deletingId: null,
+  },
 };
 
 function savePersist() {
@@ -659,45 +706,34 @@ function scrSignIn() {
     </div>
     <div style="padding:28px 24px;display:flex;flex-direction:column;gap:20px">
       <p style="color:var(--mute);font-size:14px;line-height:1.6">
-        Enter your email — we'll send a magic link. No password needed.
+        Sign in with your Google account to access your private design studio.
       </p>
-      <div id="signin-form">
-        <div class="anno" style="margin-bottom:8px">◆ email</div>
-        <input id="email-in" type="email" class="inp" placeholder="studio@example.com"
-          autocomplete="email" inputmode="email" style="font-size:16px"
-          onkeydown="if(event.key==='Enter')doSignIn()"/>
-      </div>
       <button class="btn btn-olive btn-lg btn-full" id="signin-btn" onclick="doSignIn()">
-        Send magic link
+        Continue with Google
       </button>
-      <div id="sent-msg" style="display:none;padding:14px;border-radius:12px;
-          background:var(--bone);border:1px solid var(--line);font-size:14px;line-height:1.6">
-        Check your inbox — we sent a magic link.
+      <div id="signin-error" style="display:none;padding:14px;border-radius:12px;
+          background:#fff0f0;border:1px solid #fcc;font-size:14px;line-height:1.6;color:#900">
       </div>
     </div>
   </div>`;
 }
-function afterSignIn() {
-  setTimeout(() => document.getElementById('email-in')?.focus(), 100);
-}
+function afterSignIn() {}
 
 async function doSignIn() {
-  const email = document.getElementById('email-in')?.value.trim();
-  if (!email || !email.includes('@')) { toast('Please enter a valid email'); return; }
   const b = document.getElementById('signin-btn');
-  b.disabled = true; b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Sending…';
+  b.disabled = true;
+  b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Opening Google…';
   try {
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin + '/' },
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/' },
     });
     if (error) throw error;
-    b.style.display = 'none';
-    document.getElementById('signin-form').style.display = 'none';
-    document.getElementById('sent-msg').style.display = 'block';
   } catch(e) {
-    toast('Sign-in failed: ' + e.message);
-    b.disabled = false; b.textContent = 'Send magic link';
+    const errDiv = document.getElementById('signin-error');
+    if (errDiv) { errDiv.textContent = 'Sign-in failed: ' + e.message; errDiv.style.display = 'block'; }
+    b.disabled = false;
+    b.textContent = 'Continue with Google';
   }
 }
 
@@ -705,10 +741,12 @@ async function doSignIn() {
 // SCREEN: HOME (STUDIO)
 // ════════════════════════════════════════════════════════════════════════
 const ROOMS = [
-  { id:'bedroom',  name:'Bedroom',  sub:'calm · personal · low light'  },
-  { id:'dining',   name:'Dining',   sub:'gathering · warm · focal'      },
-  { id:'kitchen',  name:'Kitchen',  sub:'utility · surfaces · flow'     },
-  { id:'mandir',   name:'Mandir',   sub:'sacred · still · intimate'     },
+  { id:'bedroom',  name:'Bedroom',   sub:'calm · personal · low light'  },
+  { id:'kids',     name:"Kids' room", sub:'playful · safe · storage'      },
+  { id:'dining',   name:'Dining',    sub:'gathering · warm · focal'       },
+  { id:'kitchen',  name:'Kitchen',   sub:'utility · surfaces · flow'      },
+  { id:'mandir',   name:'Mandir',    sub:'sacred · still · intimate'      },
+  { id:'living',   name:'Living room', sub:'lounge · daylight · circulation' },
 ];
 
 function scrHome() {
@@ -1056,7 +1094,7 @@ async function startGeneration() {
       upload_id:  S.flow.uploadId,
       brief:      S.flow.prompt || `${S.flow.style} ${S.flow.roomType}`,
       style_tag:  S.flow.style,
-      room_type:  S.flow.roomType,
+      room_type:  REF_CANONICAL_ROOM[S.flow.roomType] || S.flow.roomType,
       session_id: sessionId,
     });
 
@@ -1356,7 +1394,7 @@ function scrLibrary() {
     </div>
 
     <div style="padding:0 20px 14px;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch">
-      ${['all','bedroom','dining','kitchen','mandir','favourites'].map(f=>`
+      ${['all','bedroom','kids','dining','kitchen','mandir','living','favourites'].map(f=>`
         <button class="chip ${S.libFilter===f?'active':''}"
           onclick="S.libFilter='${f}';render()">${f}</button>`).join('')}
     </div>
@@ -1463,25 +1501,395 @@ function scrNotifs() {
 }
 
 // ════════════════════════════════════════════════════════════════════════
+// PROFILE: database (reference dataset) + helpers
+// ════════════════════════════════════════════════════════════════════════
+const DB_STYLES = [
+  ['scandinavian','Scandinavian','pale wood · airy · restrained'],
+  ['japandi','Japandi','quiet · textural · warm minimal'],
+  ['midcentury','Mid-century','teak · tapered · bold color'],
+  ['traditional','Traditional','carved · layered · rich tones'],
+  ['industrial','Industrial','steel · concrete · patina'],
+  ['boho','Boho','rattan · weave · sun-faded'],
+];
+const DB_ROOMS = [
+  ['bedroom','Bedroom','calm / personal / low light'],
+  ['kids',"Kids' room",'playful / safe / storage'],
+  ['dining','Dining room','gathering / warm / focal'],
+  ['kitchen','Kitchen','utility / surfaces / flow'],
+  ['mandir','Mandir room','sacred / still / intimate'],
+  ['living','Living room','lounge / daylight / circulation'],
+];
+
+const REF_ROOM_VARIANTS = {
+  bedroom: ['bedroom'],
+  kids: ['kids room', 'nursery', 'kids_room'],
+  dining: ['dining', 'dining room'],
+  kitchen: ['kitchen'],
+  mandir: ['mandir'],
+  living: ['living', 'living room', 'living area', 'lounge', 'study room', 'hallway'],
+};
+/** Disjoint style tag sets — same as frontend referenceCatalog (no shared minimalist, etc.). */
+const REF_STYLE_ALIASES = {
+  scandinavian: ['scandinavian', 'scandi', 'nordic'],
+  japandi: ['japandi', 'japanese'],
+  midcentury: ['midcentury', 'mid-century-modern', 'mid century modern', 'mcm'],
+  traditional: ['traditional', 'classic', 'neo-contemporary', 'farmhouse'],
+  industrial: ['industrial', 'loft', 'futuristic'],
+  boho: ['boho', 'bohemian', 'eclectic', 'rustic', 'modern-ethnic-fusion', 'biophilic'],
+};
+function refStyleTagsFor(st) {
+  return REF_STYLE_ALIASES[st] || [st];
+}
+const REF_CANONICAL_ROOM = {
+  bedroom: 'bedroom',
+  kids: 'kids room',
+  dining: 'dining room',
+  kitchen: 'kitchen',
+  mandir: 'mandir',
+  living: 'living room',
+};
+
+function dbStyleLabel(id) { const x = DB_STYLES.find(a => a[0] === id); return x ? x[1] : id; }
+function dbRoomLabel(id) { const x = DB_ROOMS.find(a => a[0] === id); return x ? x[1] : id; }
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/"/g, '&quot;');
+}
+function refDisplayCaption(row) {
+  const c = (row.caption || '').trim();
+  return c;
+}
+
+async function dbFetchStyleCounts() {
+  S.db.stylesLoading = true;
+  S.db.listError = '';
+  render();
+  try {
+    const o = {};
+    for (const [id] of DB_STYLES) {
+      const { count, error } = await sb.from('reference_images')
+        .select('*', { count: 'exact', head: true })
+        .overlaps('style_tags', refStyleTagsFor(id));
+      if (error) throw error;
+      o[id] = count ?? 0;
+    }
+    S.db.styleCounts = o;
+  } catch (e) {
+    S.db.listError = e.message || String(e);
+  } finally {
+    S.db.stylesLoading = false;
+    render();
+  }
+}
+
+async function dbFetchRoomCounts() {
+  const st = S.db.style;
+  S.db.roomsLoading = true;
+  S.db.listError = '';
+  render();
+  try {
+    const o = {};
+    for (const [rid] of DB_ROOMS) {
+      const variants = REF_ROOM_VARIANTS[rid] || [rid];
+      const { count, error } = await sb.from('reference_images')
+        .select('*', { count: 'exact', head: true })
+        .in('room_type', variants)
+        .overlaps('style_tags', refStyleTagsFor(st));
+      if (error) throw error;
+      o[rid] = count ?? 0;
+    }
+    S.db.roomCounts = o;
+  } catch (e) {
+    S.db.listError = e.message || String(e);
+  } finally {
+    S.db.roomsLoading = false;
+    render();
+  }
+}
+
+async function dbFetchDetailRows() {
+  const st = S.db.style, rm = S.db.room;
+  const variants = REF_ROOM_VARIANTS[rm] || [rm];
+  S.db.detailLoading = true;
+  S.db.listError = '';
+  render();
+  try {
+    const { data, error } = await sb.from('reference_images')
+      .select('id, source_url, storage_path, caption, room_type, style_tags, dominant_colors, detected_objects, quality_score, created_at, source, source_id, owner_id, owner_email')
+      .in('room_type', variants)
+      .overlaps('style_tags', refStyleTagsFor(st))
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    S.db.detailRows = data || [];
+  } catch (e) {
+    S.db.listError = e.message || String(e);
+    S.db.detailRows = [];
+  } finally {
+    S.db.detailLoading = false;
+    render();
+  }
+}
+
+function setProfilePanel(panel) {
+  S.profilePanel = panel;
+  if (panel === 'database') {
+    S.db.step = 'styles';
+    render();
+    dbFetchStyleCounts();
+  } else {
+    render();
+  }
+}
+function dbNavRooms(styleId) {
+  S.db.style = styleId;
+  S.db.step = 'rooms';
+  render();
+  dbFetchRoomCounts();
+}
+function dbNavDetail(roomId) {
+  S.db.room = roomId;
+  S.db.step = 'detail';
+  render();
+  dbFetchDetailRows();
+}
+function dbBackToStyles() {
+  S.db.step = 'styles';
+  render();
+  dbFetchStyleCounts();
+}
+function dbBackToRooms() {
+  S.db.step = 'rooms';
+  render();
+  dbFetchRoomCounts();
+}
+function dbPickFiles() {
+  if (!S.jwt) { toast('Sign in to upload', 'err'); return; }
+  const el = document.getElementById('db-file-input');
+  if (el) el.click();
+}
+
+async function dbFilesPicked(ev) {
+  if (!S.jwt) { toast('Sign in to upload', 'err'); ev.target.value = ''; return; }
+  const files = ev.target.files;
+  if (!files || !files.length) return;
+  const st = S.db.style, rm = S.db.room;
+
+  const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+  ev.target.value = '';
+  if (!imageFiles.length) return;
+
+  S.db.uploading = true;
+  S.db.listError = '';
+  S.db.uploadProgress = imageFiles.map((f, i) => ({ index: i, filename: f.name, status: 'uploading' }));
+  render();
+
+  try {
+    const fileData = await Promise.all(imageFiles.map(f => new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = e => res({ filename: f.name, content_b64: e.target.result.split(',')[1], mime: f.type || 'image/jpeg' });
+      reader.onerror = rej;
+      reader.readAsDataURL(f);
+    })));
+
+    const { results } = await apiReq('/uploads/reference/bulk', {
+      method: 'POST',
+      json: { style_tag: st, room_type: rm, files: fileData },
+    });
+
+    S.db.uploadProgress = results.map(r => ({
+      index: r.file_index,
+      filename: imageFiles[r.file_index]?.name || `file ${r.file_index}`,
+      status: r.status,
+      error: r.error,
+      caption_preview: r.caption_preview,
+    }));
+
+    const failed = results.filter(r => r.status !== 'ok').length;
+    if (failed > 0) S.db.listError = `${failed} of ${results.length} file(s) failed — see details below.`;
+    await dbFetchDetailRows();
+  } catch (e) {
+    S.db.listError = e.message || String(e);
+    S.db.uploadProgress = [];
+  } finally {
+    S.db.uploading = false;
+    render();
+  }
+}
+
+async function dbDeleteRef(rowId) {
+  if (!S.jwt) { toast('Sign in to delete', 'err'); return; }
+  if (!confirm('Remove this image from the catalog?')) return;
+  const row = S.db.detailRows.find(r => r.id === rowId);
+  if (!row) return;
+  S.db.deletingId = rowId;
+  S.db.listError = '';
+  render();
+  try {
+    const { error: dErr } = await sb.from('reference_images').delete().eq('id', row.id);
+    if (dErr) throw dErr;
+    await sb.storage.from('reference-images').remove([row.storage_path]);
+    S.db.detailRows = S.db.detailRows.filter(r => r.id !== rowId);
+  } catch (e) {
+    S.db.listError = e.message || String(e);
+  } finally {
+    S.db.deletingId = null;
+    render();
+  }
+}
+
+function scrProfileDatabase() {
+  const step = S.db.step || 'styles';
+  const st = S.db.style, rm = S.db.room;
+  const rows = S.db.detailRows || [];
+  const errBanner = S.db.listError
+    ? `<div class="card" style="padding:10px;margin-bottom:12px;font-size:12px;color:#b44;line-height:1.4">${escHtml(S.db.listError)}</div>`
+    : '';
+
+  const rowHtml = rows.map(row => {
+    const cap = refDisplayCaption(row);
+    const tags = [...new Set([...(row.style_tags || []), row.room_type].filter(Boolean))];
+    const tagHtml = tags.map(t =>
+      `<span class="anno" style="display:inline-block;margin:2px 4px 0 0;padding:2px 8px;border-radius:999px;background:var(--line);text-transform:none;font-size:11px">${escHtml(t)}</span>`
+    ).join('');
+    const delBusy = S.db.deletingId === row.id;
+    const fname = row.storage_path ? String(row.storage_path).split('/').pop() : '';
+    const ownerLine = row.owner_email
+      ? `<div class="anno" style="text-transform:none;font-size:11px;margin-bottom:4px">owner · ${escHtml(row.owner_email)}</div>`
+      : `<div class="anno" style="text-transform:none;font-size:11px;margin-bottom:4px;color:var(--mute)">shared catalog</div>`;
+    const meta = [row.quality_score != null ? `quality ${row.quality_score}` : '', fname].filter(Boolean).join(' · ');
+    const objArr = Array.isArray(row.detected_objects) ? row.detected_objects : [];
+    const objs = objArr.length
+      ? `<div class="anno" style="text-transform:none;font-size:11px;margin-top:4px">${escHtml(objArr.slice(0, 6).join(', '))}</div>`
+      : '';
+    return `<div class="db-row">
+      <div class="db-thumb">${row.source_url ? `<img src="${escHtml(row.source_url)}" alt="">` : ''}</div>
+      <div style="flex:1;min-width:0">
+        ${tagHtml ? `<div style="margin-bottom:6px">${tagHtml}</div>` : ''}
+        ${cap ? `<div style="font-size:12px;color:var(--ink-soft);line-height:1.45;margin-bottom:6px">${escHtml(cap)}</div>` : ''}
+        ${ownerLine}
+        ${meta ? `<div class="anno" style="text-transform:none;font-size:11px;margin-bottom:4px">${escHtml(meta)}</div>` : ''}
+        ${objs}
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          ${delBusy ? '<span class="spin"></span><span class="anno" style="text-transform:none">removing…</span>' :
+            `<button type="button" class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="dbDeleteRef('${row.id}')" ${S.jwt && row.owner_id && row.owner_id === S.userId ? '' : 'disabled'} title="${row.owner_id && row.owner_id === S.userId ? '' : 'Only your own uploads can be deleted'}">Delete</button>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (step === 'styles') {
+    const grid = DB_STYLES.map(([id, name, desc]) => {
+      const n = S.db.styleCounts[id];
+      const badge = typeof n === 'number'
+        ? `<div class="anno" style="margin-top:8px;text-transform:none">${n} image${n === 1 ? '' : 's'}</div>`
+        : (S.db.stylesLoading ? `<div class="anno" style="margin-top:8px;text-transform:none">…</div>` : '');
+      return `
+      <button type="button" class="db-tile" onclick="dbNavRooms('${id}')">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--line)"></span>
+          <span class="serif" style="font-size:17px">${name}</span>
+        </div>
+        <div class="anno" style="text-transform:none;line-height:1.35">${desc}</div>
+        ${badge}
+      </button>`;
+    }).join('');
+    return `
+      ${errBanner}
+      <div class="anno" style="margin-bottom:8px">reference dataset</div>
+      <div style="font-size:13px;color:var(--mute);line-height:1.45;margin-bottom:14px">
+        Live data from Supabase (<code style="font-size:11px">reference_images</code>). Sign in to upload or delete.
+      </div>
+      <div class="anno" style="margin-bottom:10px">◆ interior style</div>
+      <div class="style-grid">${grid}</div>`;
+  }
+
+  if (step === 'rooms') {
+    const grid = DB_ROOMS.map(([id, name, sub]) => {
+      const n = S.db.roomCounts[id];
+      const badge = typeof n === 'number'
+        ? `<div class="anno" style="margin-top:8px;text-transform:none">${n} image${n === 1 ? '' : 's'}</div>`
+        : (S.db.roomsLoading ? `<div class="anno" style="margin-top:8px;text-transform:none">…</div>` : '');
+      return `
+      <button type="button" class="db-tile" onclick="dbNavDetail('${id}')">
+        <div class="serif" style="font-size:17px;margin-bottom:4px">${name}</div>
+        <div class="anno" style="text-transform:none;line-height:1.35">${sub}</div>
+        ${badge}
+      </button>`;
+    }).join('');
+    return `
+      ${errBanner}
+      <button type="button" class="db-back" onclick="dbBackToStyles()">← All styles</button>
+      <div class="anno" style="margin-top:8px;margin-bottom:4px">room type</div>
+      <div class="serif" style="font-size:24px;line-height:1.15;margin-bottom:6px">${dbStyleLabel(st)}</div>
+      <div style="font-size:13px;color:var(--mute);line-height:1.45;margin-bottom:14px">
+        Open a room to see reference images for this style.
+      </div>
+      <div class="style-grid">${grid}</div>`;
+  }
+
+  const rmMeta = DB_ROOMS.find(a => a[0] === rm);
+  const sub = rmMeta ? rmMeta[2] : '';
+  const uploadDim = !S.jwt || S.db.uploading;
+  let empty;
+  if (S.db.detailLoading && !rows.length) {
+    empty = `<div class="db-empty"><span class="spin"></span><div class="anno" style="margin-top:10px;text-transform:none">Loading images…</div></div>`;
+  } else if (!rows.length) {
+    empty = `
+    <div class="db-empty">
+      <div class="serif" style="font-size:18px;margin-bottom:8px">No images yet</div>
+      <div class="anno" style="text-transform:none;line-height:1.45;max-width:280px;margin:0 auto">
+        Sign in and use Upload new; files go under <code style="font-size:11px">studio/&lt;your-id&gt;/${st}/${rm}/</code>.
+      </div>
+    </div>`;
+  } else {
+    empty = `
+    <div class="anno" style="margin-bottom:10px">library · ${rows.length} image${rows.length === 1 ? '' : 's'}</div>
+    ${rowHtml}`;
+  }
+
+  const progItems = S.db.uploadProgress || [];
+  const progHtml = progItems.length ? `
+    <div style="margin-top:12px;margin-bottom:4px">
+      ${progItems.map(p => {
+        const icon = p.status === 'ok' ? '✓' : p.status === 'error' ? '✗' : '…';
+        const col  = p.status === 'ok' ? '#3a7' : p.status === 'error' ? '#b44' : 'var(--mute)';
+        return `<div style="display:flex;align-items:baseline;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);font-size:12px">
+          <span style="color:${col};font-weight:600;flex-shrink:0">${icon}</span>
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.filename)}</span>
+          ${p.error ? `<span style="color:#b44;font-size:11px;flex-shrink:0">${escHtml(p.error)}</span>` : ''}
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  return `
+    ${errBanner}
+    <button type="button" class="db-back" onclick="dbBackToRooms()" style="padding-right:100px">← ${dbStyleLabel(st)}</button>
+    <button type="button" class="db-upload-pill" onclick="dbPickFiles()" style="${uploadDim ? 'opacity:0.45;pointer-events:none' : ''}">${S.db.uploading ? 'Uploading…' : 'Upload new'}</button>
+    <div style="padding-right:4px;margin-top:4px">
+      <div class="anno">${dbStyleLabel(st)}</div>
+      <div class="serif" style="font-size:24px;line-height:1.15;margin-top:2px">${dbRoomLabel(rm)}</div>
+      <div style="font-size:12px;color:var(--mute);margin-top:4px">${sub}</div>
+    </div>
+    <input type="file" id="db-file-input" multiple accept="image/jpeg,image/png,image/webp" style="display:none" onchange="dbFilesPicked(event)">
+    ${progHtml}
+    <div style="margin-top:16px">${empty}</div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════════
 // SCREEN: PROFILE
 // ════════════════════════════════════════════════════════════════════════
 function scrProfile() {
   const initial = (S.email || 'D')[0].toUpperCase();
-  return `<div style="min-height:100%;padding-bottom:100px">
-    <div class="mob-nav">
-      <div style="flex:1">
-        <div class="mob-nav-sub">atelier · account</div>
-        <div class="mob-nav-title">Profile</div>
-      </div>
-      <button onclick="go('notifications')"
-          style="position:relative;background:none;border:none;padding:4px">
-        ${IC.notif}
-        ${S.unread>0?`<span style="position:absolute;top:0;right:0;width:8px;height:8px;
-          border-radius:50%;background:var(--clay);border:1.5px solid var(--paper)"></span>`:''}
-      </button>
-    </div>
+  const panel = S.profilePanel || 'account';
+  const chips = `
+    <div class="chip-row" style="margin-bottom:4px">
+      <button type="button" class="chip ${panel === 'account' ? 'active' : ''}" onclick="setProfilePanel('account')">Account</button>
+      <button type="button" class="chip ${panel === 'database' ? 'active' : ''}" onclick="setProfilePanel('database')">Database</button>
+    </div>`;
 
-    <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+  const accountBlock = `
       <!-- Identity -->
       <div class="card" style="padding:16px;display:flex;align-items:center;gap:14px">
         <div style="width:52px;height:52px;border-radius:50%;background:var(--olive);
@@ -1550,7 +1958,29 @@ function scrProfile() {
       <div class="card" style="padding:16px">
         <div class="anno" style="margin-bottom:10px">account</div>
         <button class="btn btn-ghost btn-full" onclick="signOut()">Sign out</button>
+      </div>`;
+
+  const body = panel === 'database'
+    ? `<div class="card db-card-wrap" style="padding:16px">${scrProfileDatabase()}</div>`
+    : accountBlock;
+
+  return `<div style="min-height:100%;padding-bottom:100px">
+    <div class="mob-nav">
+      <div style="flex:1">
+        <div class="mob-nav-sub">atelier · account</div>
+        <div class="mob-nav-title">Profile</div>
       </div>
+      <button onclick="go('notifications')"
+          style="position:relative;background:none;border:none;padding:4px">
+        ${IC.notif}
+        ${S.unread>0?`<span style="position:absolute;top:0;right:0;width:8px;height:8px;
+          border-radius:50%;background:var(--clay);border:1.5px solid var(--paper)"></span>`:''}
+      </button>
+    </div>
+
+    <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+      ${chips}
+      ${body}
     </div>
   </div>`;
 }
@@ -1571,6 +2001,13 @@ async function signOut() {
   await sb.auth.signOut();
   S.jwt = ''; S.userId = ''; S.email = ''; S.credits = 24;
   S.sess = { id:null,roomType:null,style:null,revisions:[],currentId:null,references:[],chat:[] };
+  S.profilePanel = 'account';
+  S.db = {
+    step: 'styles', style: 'scandinavian', room: 'bedroom',
+    styleCounts: {}, roomCounts: {}, detailRows: [],
+    stylesLoading: false, roomsLoading: false, detailLoading: false,
+    listError: '', uploading: false, deletingId: null,
+  };
   savePersist(); go('landing');
 }
 

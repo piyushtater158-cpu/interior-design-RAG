@@ -8,7 +8,8 @@ import os
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # === Paths ===
-IMAGES_DIR = os.path.join(PROJECT_ROOT, "interior design lora training data set")
+# Styled reference folders live here (see STYLE_FOLDERS). Rename or symlink if migrating from an older dataset folder.
+IMAGES_DIR = os.path.join(PROJECT_ROOT, "reference_dataset")
 CAPTIONS_DIR = os.path.join(PROJECT_ROOT, "Interior design samples")
 CACHE_DIR = os.path.join(PROJECT_ROOT, "database", "seed", "cache")
 
@@ -41,7 +42,3 @@ MIN_QUALITY_SCORE = 0.7
 # === Supabase Storage ===
 STORAGE_BUCKET = "reference-images"
 
-# === Embedding ===
-CLIP_MODEL_NAME = "sentence-transformers/clip-ViT-B-32"
-CLIP_EMBEDDING_DIM = 512
-EMBEDDING_TYPE = "clip-vit-b32"

@@ -161,11 +161,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Content-Type",

@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const headers = $json.headers || {};\nconst provided = (headers['x-admin-token'] || headers['X-Admin-Token'] || '').toString();\nconst expected = '__REDACTED_ADMIN_TOKEN__';\nif (provided !== expected) {\n  return [{ json: { _error: { status: 401, body: { error: 'invalid_admin_token', code: 'unauthorized' } } } }];\n}\nreturn [{ json: { ok: true } }];"
+        "jsCode": "const headers = $json.headers || {};\nconst provided = (headers['x-admin-token'] || headers['X-Admin-Token'] || '').toString();\nconst expected = '' + (process.env.ADMIN_TOKEN || $env.ADMIN_TOKEN || '') + '';\nif (provided !== expected) {\n  return [{ json: { _error: { status: 401, body: { error: 'invalid_admin_token', code: 'unauthorized' } } } }];\n}\nreturn [{ json: { ok: true } }];"
       },
       "id": "check_token",
       "name": "Check admin token",
@@ -85,11 +85,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Content-Type",

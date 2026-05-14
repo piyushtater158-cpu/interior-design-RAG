@@ -36,7 +36,7 @@
             },
             {
               "name": "apikey",
-              "value": "__REDACTED_JWT_OR_ANON__"
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
             }
           ]
         },

@@ -587,19 +587,16 @@ class WorkflowMerger:
 # (filename, namespace, y_offset)
 
 WORKFLOWS = [
-    ("health.json",                    "health",   0),
-    ("auth_magic_link.json",           "auth-ml",  1200),
-    ("auth_me.json",                   "auth-me",  2400),
-    ("uploads_room_photo.json",        "upload",   3600),
-    ("retrieve_references.json",       "retrieve", 4800),
-    ("generate_draft.json",            "draft",    6000),
-    ("generate_edit.json",             "edit",     7200),
-    ("generate_commit.json",           "commit",   8400),
-    ("generate_orchestrated.json",     "orch",     9600),
-    ("generations_session.json",       "gen-sess", 10800),
-    ("generations_export.json",        "gen-exp",  12000),
-    ("admin_metrics.json",             "admin",    13200),
-    ("_seed_nemotron_references.json", "seed",     14400),
+    ("health.json",                "health",    0),
+    ("auth_me.json",               "auth-me",   1200),
+    ("uploads_room_photo.json",    "upload",    2400),
+    ("uploads_reference_bulk.json","ref-bulk",  3600),
+    ("generate_edit.json",         "edit",      4800),
+    ("generate_commit.json",       "commit",    6000),
+    ("generate_orchestrated.json", "orch",      7200),
+    ("generations_session.json",   "gen-sess",  8400),
+    ("generations_export.json",    "gen-exp",   9600),
+    ("admin_metrics.json",         "admin",     10800),
 ]
 
 # ── Main ──────────────────────────────────────────────────────────────────────

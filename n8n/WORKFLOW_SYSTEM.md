@@ -33,7 +33,7 @@ Used by monitoring, container orchestrators, and smoke tests.
 **Removed** — `POST /webhook/auth/magic-link` is no longer used. Auth is handled directly by Supabase Auth:
 
 - Frontend calls `supabase.auth.signInWithOtp({ email })` → Supabase sends the magic link email.
-- User clicks the link → redirects to `/auth/callback` (Next.js) or `window.origin/` (mobile) with `#access_token=...` in the URL hash.
+- User clicks the link → redirects to `/auth/callback` (if used) or `window.origin/` (mobile PWA) with `#access_token=...` in the URL hash.
 - `detectSessionInUrl: true` resolves the session automatically. The access token is a standard Supabase JWT.
 - All n8n protected endpoints verify the token via `wf_supabase_verify` (ID: `56BlN6jqFkXVszX2`), which calls `GET /auth/v1/user` on the Supabase project.
 
@@ -81,50 +81,16 @@ Multipart upload (binary field `file`) of a room photo. Stores in `user-uploads/
 
 ---
 
-## 5. Retrieve references — `POST /webhook/retrieve/references`
+## 5. Retrieve references — `POST /webhook/retrieve/references` (legacy / optional)
 
-Body: `{ upload_id, room_type?, style_tag?, prompt?, k?, session_id? }`.
+**Removed from the active product path.** The primary generation flow is `POST /generate/orchestrated`, which builds a candidate pool from `reference_images` using the Supabase RPC `retrieve_candidates_text` (full-text search on `caption_enhanced` / `caption`), not vector similarity.
 
-**Embedding strategy — three-field text + image query vector:**
-
-`Build embeddings request` builds a combined text string from all three available context fields:
-
-```
-textInput = prompt + ". style: " + style_tag + ". room type: " + room_type
-```
-
-Any combination of the three fields is supported — e.g. only `style_tag`, only `prompt`, all three together. The text string and the image data URI are then sent as `input: [textInput, imageDataUri]` to Nemotron VL 1B v2, which returns **two** 2048-dim embeddings. `Shape vector` averages them into a single 2048-dim query vector.
-
-This means the vector search retrieves reference images that are nearest to the **combined semantic space** of the user's design intent (prompt), their target aesthetic (style_tag), and the room category (room_type) — not just visual similarity to the upload alone.
-
-When no text context is present at all (no prompt, no style_tag, no room_type), the embedder falls back to `input: [imageDataUri]` — image-only retrieval.
-
-After the vector search, `Prompt Re-rank` calls the LLM (retriever_model) to semantically re-order the candidates using the raw `prompt` text. This is a second-pass refinement on top of the vector ranking.
-
-**Prompt parsing:** `Validate body` extracts `body.prompt`, `body.style_tag`, `body.room_type`, and `body.session_id` using the single-key-wrap parser so malformed Content-Type submissions are handled. All four fields are on `ctx.*` and available to every downstream node — embedding, re-ranking, and the fire-and-forget `Call generate/draft` trigger.
+If your deployed consolidated workflow still exposes `POST /retrieve/references`, it depended on the `reference_embeddings` table and `retrieve_references` Postgres RPCs — both removed by `supabase/migrations/016_remove_embeddings_and_vector_rpcs.sql`. Do not rely on Nemotron image embeddings for new deployments.
 
 <!-- WFSYNC:retrieve_references:START -->
 | Step | Node | Type | What it does |
 |---|---|---|---|
-| 1 | `POST /retrieve/references` | Webhook | Receive `POST /webhook/retrieve/references` |
-| 2 | `Config` | Code | Code |
-| 3 | `Verify JWT` | Code | Code |
-| 4 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
-| 5 | `Validate body` | Code | Code |
-| 6 | `Respond 401` | Respond | Respond 200 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 7 | `Body valid?` | IF | Route on `={{ $json._error ? 'err' : '' }}` notEmpty |
-| 8 | `Respond 400` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 9 | `Fetch upload bytes` | HTTP | `GET` =… |
-| 10 | `Build embeddings request` | Code | Embed upload image + text query → single 2048-dim vector matching _seed_nemotron_references storage  |
-| 11 | `OpenRouter embed` | HTTP | `POST` =… |
-| 12 | `Shape vector` | Code | Extract embedding from response; averaging path kept for resilience but normally dataArr.length ===  |
-| 13 | `RPC retrieve_references` | HTTP | `POST` =…/rest/v1/rpc/retrieve_references |
-| 14 | `Prompt Re-rank` | Code | Re-rank RPC results by semantic relevance to the user prompt; falls back to vector order if no promp |
-| 15 | `Aggregate for response` | Code | Shape the final references array (id, url, style_tag, room_type, caption, prompt, similarity) for th |
-| 16 | `Log event` | HTTP | `POST` =…/rest/v1/events |
-| 17 | `Collect refs for draft` | Code | Package retrieve results to fire-and-forget generate/draft after retrieve response is sent |
-| 18 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ references: $json }) }} |
-| 19 | `Call generate/draft` | HTTP | `POST` https://n8n.srv1649259.hstgr.cloud/webhook/generate/draft |
+| (deprecated) | — | — | Vector + `retrieve_references` pipeline removed from schema |
 <!-- WFSYNC:retrieve_references:END -->
 
 ---
@@ -191,7 +157,7 @@ Body: `{ generation_id, instruction }`. Takes an existing generation as the pare
 | 17 | `Build Gemini request` | Code | Code |
 | 18 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
 | 19 | `Attach model` | Code | Code |
-| 20 | `Call Gemini` | HTTP | `POST` =https://generativelanguage.googleapis.com/v1beta/models/…:generateCon |
+| 20 | `Call Gemini` | HTTP | `POST` https://openrouter.ai/api/v1/chat/completions |
 | 21 | `Extract output PNG` | Code | Code |
 | 22 | `Extract ok?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 23 | `Respond 502` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
@@ -226,7 +192,7 @@ Body: `{ parent_generation_id }`. Produces a polished "final deliverable" from a
 | 15 | `Collect image parts` | Code | Code |
 | 16 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
 | 17 | `Build Gemini request` | Code | Code |
-| 18 | `Call Gemini` | HTTP | `POST` =https://generativelanguage.googleapis.com/v1beta/models/…:generateCon |
+| 18 | `Call Gemini` | HTTP | `POST` https://openrouter.ai/api/v1/chat/completions |
 | 19 | `Extract output PNG` | Code | Code |
 | 20 | `Gen error?` | IF | Route on `={{ $json._error }}` notEmpty |
 | 21 | `Respond 502` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
@@ -240,6 +206,8 @@ Body: `{ parent_generation_id }`. Produces a polished "final deliverable" from a
 ## 9. Generate orchestrated — `POST /webhook/generate/orchestrated`  ← PRIMARY GENERATION PATH
 
 Body: `{ upload_id, brief, style_tag?, room_type?, session_id? }`.
+
+`room_type` may be an Atelier UI token (`bedroom`, `kids`, `dining`, `kitchen`, `mandir`, `living`). `Validate body` maps known tokens to `reference_images.room_type` slugs (for example `kids` → `kids room`, `living` → `living room`) before Supabase reference pool queries; clients may also send the slug directly.
 
 **This is the primary generation path.** When the user uploads a photo, selects a style, and writes a brief, this endpoint handles everything in a single call — no separate retrieve step needed.
 
@@ -260,41 +228,45 @@ Three-agent pipeline:
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Validate body` | Code | Code |
 | 5 | `Respond 401` | Respond | Respond 200 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Body valid?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 6 | `Body valid?` | IF | Route on `={{ Boolean($json._error) }}` equals |
 | 7 | `Respond 400` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
 | 8 | `Fetch & encode upload` | Code | Code |
 | 9 | `Build Agent 1 request` | Code | Code |
 | 10 | `Agent 1 (Orchestrator)` | HTTP | `POST` =… |
 | 11 | `Parse Agent 1` | Code | Code |
-| 12 | `Agent 1 ok?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 12 | `Agent 1 ok?` | IF | Route on `={{ Boolean($json._error) }}` equals |
 | 13 | `Respond Agent 1 err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
 | 14 | `Log Agent 1` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
 | 15 | `Fetch candidate pool` | HTTP | `GET` =… |
 | 16 | `Check pool` | Code | Code |
-| 17 | `Need fallback?` | IF | Route on `={{ $json.pool_fallback }}` equals |
-| 18 | `Fetch candidate pool (all)` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?sel |
-| 19 | `Build Agent 2 request` | Code | Code |
-| 20 | `Shape pool (fallback)` | Code | Code |
-| 21 | `Agent 2 build ok?` | IF | Route on `={{ $json._error }}` notEmpty |
-| 22 | `Respond pool err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 23 | `Agent 2 (Retriever)` | HTTP | `POST` =… |
-| 24 | `Parse Agent 2` | Code | Code |
-| 25 | `Agent 2 ok?` | IF | Route on `={{ $json._error }}` notEmpty |
-| 26 | `Respond Agent 2 err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 27 | `Log Agent 2` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
-| 28 | `Fetch picked URLs` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id= |
-| 29 | `Order fetch list` | Code | Code |
-| 30 | `Fetch image bytes` | HTTP | `GET` =… |
-| 31 | `Collect image parts` | Code | Code |
-| 32 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
-| 33 | `Build Gemini request` | Code | Code |
-| 34 | `Agent 3 (Gemini)` | HTTP | `POST` =https://generativelanguage.googleapis.com/v1beta/models/…:generateCon |
-| 35 | `Extract output PNG` | Code | Code |
-| 36 | `Gen error?` | IF | Route on `={{ $json._error }}` notEmpty |
-| 37 | `Respond 502` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 38 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
-| 39 | `Log orchestrated_ok` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
-| 40 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id:       $json.generation |
+| 17 | `Empty pool?` | IF | Route on `={{ $json.pool_empty }}` equals |
+| 18 | `Respond no refs` | Respond | Respond 200 — ={ "error": "no_reference_images", "code": "empty_catalog",  |
+| 19 | `Need fallback?` | IF | Route on `={{ $json.pool_fallback }}` equals |
+| 20 | `Fetch candidate pool (all)` | HTTP | `GET` ={{ (() => {
+  const c = $json;
+  const base = 'https://uzghfpxboktnbc |
+| 21 | `Build Agent 2 request` | Code | Code |
+| 22 | `Shape pool (fallback)` | Code | Code |
+| 23 | `Agent 2 build ok?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 24 | `Respond pool err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 25 | `Agent 2 (Retriever)` | HTTP | `POST` =… |
+| 26 | `Parse Agent 2` | Code | Code |
+| 27 | `Agent 2 ok?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 28 | `Respond Agent 2 err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 29 | `Log Agent 2` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
+| 30 | `Fetch picked URLs` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id= |
+| 31 | `Order fetch list` | Code | Code |
+| 32 | `Fetch image bytes` | HTTP | `GET` =… |
+| 33 | `Collect image parts` | Code | Code |
+| 34 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
+| 35 | `Build Gemini request` | Code | Code |
+| 36 | `Agent 3 (Gemini)` | HTTP | `POST` https://openrouter.ai/api/v1/chat/completions |
+| 37 | `Extract output PNG` | Code | OpenRouter returns choices[0].message.content as array of content parts |
+| 38 | `Gen error?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 39 | `Respond 502` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 40 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
+| 41 | `Log orchestrated_ok` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
+| 42 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id:       $json.generation |
 <!-- WFSYNC:generate_orchestrated:END -->
 
 ---
@@ -362,7 +334,32 @@ Header: `X-Admin-Token: <ADMIN_TOKEN>` — no JWT, admin-token only.
 
 ---
 
-## 13. Seed enhanced captions (manual trigger, not an HTTP endpoint)
+## 13. Caption generate — `POST /webhook/caption/generate`
+
+Body: `{ image_url, style_tag, room_type }`. Fetches the image from the given URL and calls `qwen/qwen3-vl-8b-instruct` via OpenRouter to produce a highly detailed enhanced caption. The caption weaves together 3D spatial geometry, furniture, objects, materials, colour, lighting, style expression, and mood into a single flowing description (6–10 sentences). Returns `{ caption, style_tag, room_type, latency_ms }`.
+
+<!-- WFSYNC:caption_generate:START -->
+| Step | Node | Type | What it does |
+|---|---|---|---|
+| 1 | `POST /caption/generate` | Webhook | Receive `POST /webhook/caption/generate` |
+| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
+| 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
+| 4 | `Respond 401` | Respond | Respond 200 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
+| 5 | `Validate body` | Code | Code |
+| 6 | `Body valid?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 7 | `Respond 400` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 8 | `Fetch & encode image` | Code | Code |
+| 9 | `Build caption request` | Code | Code |
+| 10 | `Call OpenRouter` | HTTP | `POST` =… |
+| 11 | `Parse response` | Code | Code |
+| 12 | `Parse ok?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 13 | `Respond 502` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 14 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ caption: $json.caption, spatial_signatu |
+<!-- WFSYNC:caption_generate:END -->
+
+---
+
+## 14. Seed enhanced captions (manual trigger, not an HTTP endpoint)
 
 One-time (or incremental) population of `caption_enhanced` + `spatial_signature` for the reference image library. Calls `wf_enhance_caption` once per image with a 4-second rate-limit delay between calls (OpenRouter free-tier safe). Skips images that already have `caption_enhanced`. Run this once after applying migration 012.
 
@@ -378,32 +375,6 @@ One-time (or incremental) population of `caption_enhanced` + `spatial_signature`
 | 7 | `Summary` | Code | splitInBatches done-branch: all items processed. |
 | 8 | `Rate limit (4s)` | wait | wait |
 <!-- WFSYNC:_seed_enhanced_captions:END -->
-
----
-
-## 14. Seed Nemotron embeddings (manual trigger, legacy)
-
-One-time population of `reference_embeddings` for the 104 pre-loaded `reference_images`. **Optional in the new pipeline** — embeddings are no longer the primary retrieval signal (replaced by FTS on `caption_enhanced`). Run if you want the old `retrieve_references` endpoint to continue working for fallback. *In this project the seed flow was bypassed and run as a standalone Python script (`n8n/seed_embeddings.py`) because n8n's test-mode loop execution didn't iterate the `splitInBatches` loop.* The flow still lives in the workflow.
-
-<!-- WFSYNC:_seed_nemotron_references:START -->
-| Step | Node | Type | What it does |
-|---|---|---|---|
-| 1 | `Manual trigger` | Manual | Manual trigger (n8n UI) |
-| 2 | `Config` | Code | Code |
-| 3 | `Fetch all reference_images` | HTTP | `GET` =…/rest/v1/reference_images?select=id,source_url,source_id,caption&ord |
-| 4 | `One item per row` | Code | Flatten response into one item per reference image row. |
-| 5 | `Batch (3/loop)` | Batch | Process 3 at a time |
-| 6 | `Summary` | Code | After Batch drains, summarise counts. |
-| 7 | `Fetch image bytes` | HTTP | `GET` =… |
-| 8 | `Build embed body` | Code | Build Nemotron embed request: concat caption + dataUri into ONE string (matches retrieve_references  |
-| 9 | `OpenRouter embed` | HTTP | `POST` =… |
-| 10 | `Shape insert row` | Code | Code |
-| 11 | `Has embedding?` | IF | Route on `={{ $json.embedding }}` notEmpty |
-| 12 | `Delete existing embedding` | HTTP | `DELETE` =…/rest/v1/reference_embeddings?reference_image_id=eq.…&embedding_type |
-| 13 | `Note skip` | Code | Skipped row — keep going. Return a marker so the summary tracks failures. |
-| 14 | `Insert embedding` | HTTP | `POST` =…/rest/v1/reference_embeddings |
-| 15 | `Loop tail` | Code | Re-enter the batch loop until drained. |
-<!-- WFSYNC:_seed_nemotron_references:END -->
 
 ---
 
@@ -423,7 +394,7 @@ All four originally lived as separate n8n workflows and were called via `execute
 
 | Block | Where | Role |
 |---|---|---|
-| `ns::Config` Code node | Right after the webhook of every branch that touches Supabase/OpenRouter/Gemini | Exposes baked creds as `$('ns::Config').first().json._cfg.{supabase_url, supabase_key, gemini_key, openrouter_key, openrouter_base, orch_model, retriever_model, embed_model, admin_token, jwt_secret, jwt_ttl}`. Needed because HTTP nodes can't read `$env` in the sandbox. |
+| `ns::Config` Code node | Right after the webhook of every branch that touches Supabase/OpenRouter/Gemini | Exposes baked creds as `$('ns::Config').first().json._cfg.{supabase_url, supabase_key, gemini_key, openrouter_key, openrouter_base, orch_model, retriever_model, admin_token, jwt_secret, jwt_ttl}`. Needed because HTTP nodes can't read `$env` in the sandbox. |
 | JWT gate | Every authed endpoint (everything except `/health`, `/auth/magic-link`, `/admin/metrics`) | `Verify JWT` Code → `Token valid?` IF → `Respond 401` on false |
 | Validation Code + `Body/Params valid?` IF | Every endpoint with input | Code node returns `{_error:{status, body:{error, code}}}` on failure; the IF routes to a pre-built `Respond <status>` node. Error codes are stable machine strings (`invalid_email`, `chain_too_long`, `missing_upload_id`, ...) |
 | `Log event` | Every success path | Fire-and-forget Supabase insert; never blocks the response |
@@ -431,7 +402,6 @@ All four originally lived as separate n8n workflows and were called via `execute
 | Supabase Storage | `user-uploads/*`, `user-outputs/*`, `reference-images/*` | Binary PUT/GET through `/storage/v1/object/` |
 | Gemini image model | draft, edit, commit, orchestrated | Model ID read from `app_config.key=image_model` at request time, not hard-coded |
 | OpenRouter chat | Orchestrator (Agent 1, Agent 2) | `chat/completions` with multimodal `image_url` content |
-| OpenRouter embeddings | retrieve, seed | Nemotron VL 1B v2 free; **critical**: `input` must be an array of strings (`[dataUri]` or `[promptText, dataUri]`), not an array of `{type,image_url}` objects. Returns 2048 dims per input item. When multiple items are sent, `Shape vector` averages all returned embeddings into one query vector. |
 
 ---
 

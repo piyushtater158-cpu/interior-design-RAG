@@ -1,0 +1,35 @@
+{
+  "name": "uploads_reference",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": { "inputSource": "passthrough" }
+    },
+    {
+      "id": "process_file",
+      "name": "Process file (validate → storage → caption → insert)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nconst SUPABASE_URL = $env.SUPABASE_URL || 'https://uzghfpxboktnbcbbthns.supabase.co';\nconst SERVICE_KEY  = $env.SUPABASE_SERVICE_KEY;\nconst ANON_KEY     = $env.SUPABASE_ANON_KEY;\nconst N8N_BASE_URL = $env.N8N_BASE_URL || 'https://n8n.srv1649259.hstgr.cloud';\n\nconst VALID_STYLES = ['scandinavian','japandi','midcentury','traditional','industrial','boho'];\nconst VALID_ROOMS  = ['bedroom','kids room','dining room','kitchen','mandir','living room'];\n\nfunction errResult(error, phase, detail) {\n  return [{ json: { file_index: item.file_index ?? 0, status: 'error', error, phase, detail: detail || null } }];\n}\n\n// 1. Validate inputs\nconst { file_b64, file_mime, filename, style_tag, room_type, user_id, bearer_token } = item;\nconst file_index = item.file_index ?? 0;\n\nif (!file_b64) return errResult('missing_file_b64', 'validate');\nif (!VALID_STYLES.includes(style_tag)) return errResult(`invalid_style_tag: ${style_tag}`, 'validate');\nif (!VALID_ROOMS.includes(room_type))  return errResult(`invalid_room_type: ${room_type}`, 'validate');\nif (!file_mime || !file_mime.startsWith('image/')) return errResult('invalid_mime_type', 'validate');\nif (!user_id || !bearer_token) return errResult('missing_user_credentials', 'validate');\n\nconst b64Bytes = Math.floor(file_b64.length * 3 / 4);\nif (b64Bytes > 10 * 1024 * 1024) return errResult('file_too_large_max_10mb', 'validate');\n\n// 2. Prepare storage path\nconst ext = file_mime === 'image/png' ? 'png' : file_mime === 'image/webp' ? 'webp' : 'jpg';\nconst uuid = require('crypto').randomUUID();\nconst storage_path = `studio/${user_id}/${style_tag}/${room_type}/${uuid}.${ext}`;\nconst source_url   = `${SUPABASE_URL}/storage/v1/object/reference-images/${storage_path}`;\n\n// 3. Upload binary to Supabase Storage (service key — server-side)\nconst binary = Buffer.from(file_b64, 'base64');\nlet uploadResp;\ntry {\n  uploadResp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${SUPABASE_URL}/storage/v1/object/reference-images/${storage_path}`,\n    headers: { 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': file_mime, 'x-upsert': 'false' },\n    body: binary,\n    returnFullResponse: true,\n    ignoreHttpStatusErrors: true,\n  });\n} catch(e) {\n  return errResult('storage_upload_exception', 'storage', e.message);\n}\nif (uploadResp.statusCode !== 200) {\n  return errResult('storage_upload_failed', 'storage', uploadResp.body);\n}\n\n// Helper: delete storage object (compensating action on later failures)\nasync function deleteStorage() {\n  try {\n    await this.helpers.httpRequest({\n      method: 'DELETE',\n      url: `${SUPABASE_URL}/storage/v1/object/reference-images/${storage_path}`,\n      headers: { 'Authorization': `Bearer ${SERVICE_KEY}`, 'apikey': SERVICE_KEY },\n      ignoreHttpStatusErrors: true,\n    });\n  } catch(_) {}\n}\n\n// 4. Get 5-min signed URL for the captioner to fetch the image\nlet signResp;\ntry {\n  signResp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${SUPABASE_URL}/storage/v1/object/sign/reference-images/${storage_path}`,\n    headers: { 'Authorization': `Bearer ${SERVICE_KEY}`, 'apikey': SERVICE_KEY, 'Content-Type': 'application/json' },\n    body: JSON.stringify({ expiresIn: 300 }),\n    ignoreHttpStatusErrors: true,\n  });\n} catch(e) {\n  await deleteStorage.call(this);\n  return errResult('signed_url_exception', 'storage', e.message);\n}\nconst signedPath = signResp.signedURL || signResp.signedUrl || signResp.signed_url;\nif (!signedPath) {\n  await deleteStorage.call(this);\n  return errResult('signed_url_missing', 'storage', signResp);\n}\nconst signed_url = signedPath.startsWith('http') ? signedPath : `${SUPABASE_URL}${signedPath}`;\n\n// 5. Call caption_generate webhook\nlet captionResp;\ntry {\n  captionResp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${N8N_BASE_URL}/webhook/caption/generate`,\n    headers: { 'Authorization': `Bearer ${bearer_token}`, 'Content-Type': 'application/json' },\n    body: JSON.stringify({ image_url: signed_url, style_tag, room_type }),\n    returnFullResponse: true,\n    ignoreHttpStatusErrors: true,\n  });\n} catch(e) {\n  await deleteStorage.call(this);\n  return errResult('caption_exception', 'caption', e.message);\n}\nif (captionResp.statusCode !== 200) {\n  await deleteStorage.call(this);\n  return errResult('caption_failed', 'caption', captionResp.body);\n}\nconst captionBody = captionResp.body;\nif (captionBody.error || !captionBody.caption) {\n  await deleteStorage.call(this);\n  return errResult('caption_parse_error', 'caption', captionBody);\n}\nconst { caption, spatial_signature } = captionBody;\n\n// 6. Insert reference_images row using user's bearer (RLS enforces owner_id)\nlet insertResp;\ntry {\n  insertResp = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${SUPABASE_URL}/rest/v1/reference_images`,\n    headers: {\n      'Authorization': `Bearer ${bearer_token}`,\n      'apikey': ANON_KEY,\n      'Content-Type': 'application/json',\n      'Prefer': 'return=representation',\n    },\n    body: JSON.stringify({\n      owner_id: user_id,\n      source: 'studio',\n      source_id: uuid,\n      source_url,\n      license: 'owned',\n      storage_path,\n      caption,\n      spatial_signature,\n      room_type,\n      style_tags: [style_tag],\n    }),\n    returnFullResponse: true,\n    ignoreHttpStatusErrors: true,\n  });\n} catch(e) {\n  await deleteStorage.call(this);\n  return errResult('insert_exception', 'database', e.message);\n}\nif (insertResp.statusCode !== 201) {\n  await deleteStorage.call(this);\n  return errResult('insert_failed', 'database', insertResp.body);\n}\n\nconst inserted = Array.isArray(insertResp.body) ? insertResp.body[0] : insertResp.body;\nreturn [{ json: {\n  file_index,\n  status: 'ok',\n  id: inserted.id,\n  storage_path,\n  caption_preview: caption.slice(0, 200),\n} }];"
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [{ "node": "Process file (validate → storage → caption → insert)", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [],
+  "staticData": null
+}

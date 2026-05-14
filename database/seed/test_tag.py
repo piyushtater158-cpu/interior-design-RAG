@@ -8,7 +8,9 @@ from dotenv import load_dotenv
 load_dotenv(".env")
 client = genai.Client(api_key=os.getenv("GOOGLE_AI_STUDIO_KEY"))
 
-with open("interior design lora training data set/industrial/1.png", "rb") as f:
+_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+_sample = os.path.join(_root, "reference_dataset", "industrial", "1.png")
+with open(_sample, "rb") as f:
     img_data = f.read()
 
 prompt = 'Classify this interior design image. Return JSON: {"room_type":"...","style_tags":["..."],"dominant_colors":["#hex"],"detected_objects":["..."],"quality_score":0.0}'

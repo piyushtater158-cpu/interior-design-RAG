@@ -1,13 +1,13 @@
 # Database Layer — Phase 1
 
-AI-Powered Interior Design Assistant: database schema, seed pipeline, and vector search setup.
+AI-Powered Interior Design Assistant: database schema, seed pipeline, and full-text reference retrieval (`retrieve_candidates_text` on `reference_images`).
 
 ## Quick Start
 
 ### 1. Prerequisites
 
 - Python 3.10+
-- Supabase project with pgvector enabled
+- Supabase project (Postgres)
 - API keys in `.env` (see `.env.example`)
 
 ### 2. Install Dependencies
@@ -33,16 +33,17 @@ GOOGLE_AI_STUDIO_KEY=<gemini-api-key>
 python database/migrate.py
 ```
 
-This creates all tables (`users`, `reference_images`, `reference_embeddings`, `generations`, `events`) and indexes.
+This runs, in order, every `*.sql` file in **`database/migrations/`** and **`supabase/migrations/`** (sorted by filename). That includes base tables plus Supabase-only DDL (auth/RLS, `retrieve_candidates_text`, catalog fixes **013–015**, and **016** which removes the legacy `reference_embeddings` table and vector RPCs).
+
+**If `migrate.py` fails to connect** (pooler `tenant/user … not found`, timeout, etc.): fix `DATABASE_URL` in `.env` to match [Supabase connect settings](https://supabase.com/dashboard/project/_/settings/database) (direct `db.<ref>.supabase.co:5432` or pooler `…:6543` with the correct username format for your pool mode). Alternatively, open **SQL Editor** in the dashboard and run pending `supabase/migrations/*.sql` in filename order.
+
+**Verify after apply:** run `database/scripts/verify_reference_catalog.sql` in the SQL editor; the first two queries should return **zero rows**.
 
 ### 5. Run Seed Pipeline
 
 ```bash
-# Full pipeline (tag + upload + insert, no embeddings)
+# Full pipeline (tag + upload + insert)
 python database/seed/run_seed.py
-
-# With CLIP embeddings (requires sentence-transformers)
-python database/seed/run_seed.py --with-embeddings
 
 # Tag only (useful for testing Gemini tagging)
 python database/seed/run_seed.py --tag-only
@@ -53,32 +54,13 @@ python database/seed/run_seed.py --skip-upload     # Use cached upload URLs
 python database/seed/run_seed.py --no-insert       # Don't insert into DB
 ```
 
-### 6. Generate Embeddings on VPS
-
-If running CLIP on a remote VPS:
-
-```bash
-# On VPS:
-bash database/vps/setup.sh
-python3 database/vps/embed_images.py \
-    --images-dir /path/to/images \
-    --output-dir /path/to/output \
-    --batch-size 32 --gpu
-
-# Copy results back locally:
-scp -r user@vps:/path/to/output/* database/seed/cache/embeddings/
-
-# Re-run seed to insert embeddings:
-python database/seed/run_seed.py --skip-tag --skip-upload
-```
-
-### 7. Verify Seed
+### 6. Verify Seed
 
 ```bash
 python database/tests/verify_seed.py
 ```
 
-Runs 9 assertions. Exits 0 if all pass.
+Runs assertions on catalog shape and FTS RPC. Exits 0 if all pass.
 
 ---
 
@@ -90,38 +72,35 @@ database/
   db.py                   # Shared DB connection utility
   requirements.txt        # Python dependencies
   migrations/
-    001_extensions.sql     # pgvector + uuid-ossp
-    002_create_tables.sql  # All 5 tables
-    003_create_indexes.sql # All indexes (GIN, HNSW, B-tree)
+    001_extensions.sql     # uuid-ossp
+    002_create_tables.sql  # Core tables (no vector embeddings)
+    003_create_indexes.sql # GIN + B-tree indexes
   seed/
-    config.py              # Paths, styles, thresholds
+    config.py              # Paths (IMAGES_DIR → reference_dataset/), styles, thresholds
     run_seed.py            # Main orchestrator
     uploader.py            # Supabase Storage upload
     inserter.py            # Database insertion
     processors/
-      tagger.py            # Gemini 2.5 Flash auto-tagging
-      embedder.py          # CLIP ViT-B/32 embedding
+      tagger.py            # Gemini auto-tagging
     cache/                 # Cached API responses (gitignored)
   tests/
     verify_seed.py         # Seed verification test suite
   vps/
-    setup.sh               # VPS dependency installer
-    embed_images.py        # Standalone CLIP embedding script
+    setup.sh               # VPS helper notes (optional)
 
 contracts/
   schema.sql               # Full DDL
   schema.md                # Human-readable schema docs
-  db-connection.md         # Connection info for backend
   seed-report.md           # Generated after seed run
 ```
 
 ## Re-running
 
 The pipeline is idempotent:
+
 - **Migrations**: Track applied files in `_migrations` table
 - **Tagging**: Cached in `database/seed/cache/tags/`
 - **Uploads**: Skips existing files in Supabase Storage
 - **Insertions**: Uses `ON CONFLICT` upsert on `(source, source_id)`
-- **Embeddings**: Cached in `database/seed/cache/embeddings/`
 
 To fully reset: `python database/migrate.py --reset`

@@ -22,6 +22,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 MIGRATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "migrations")
+# Supabase-hosted DDL + catalog fixes (style_tags, room_type, RLS, RPC) live here.
+SUPABASE_MIGRATIONS_DIR = os.path.join(PROJECT_ROOT, "supabase", "migrations")
 
 
 def fix_database_url(url):
@@ -79,10 +81,13 @@ def get_applied_migrations(conn):
 
 
 def get_migration_files():
-    """Return sorted list of migration SQL files."""
-    pattern = os.path.join(MIGRATIONS_DIR, "*.sql")
-    files = sorted(glob.glob(pattern))
-    return files
+    """Return sorted list of migration SQL files (database/migrations then supabase/migrations)."""
+    files = []
+    for d in (MIGRATIONS_DIR, SUPABASE_MIGRATIONS_DIR):
+        if os.path.isdir(d):
+            files.extend(glob.glob(os.path.join(d, "*.sql")))
+    # Sort by basename so 001…004 run before 009…015
+    return sorted(files, key=lambda p: os.path.basename(p))
 
 
 def apply_migration(conn, filepath):
@@ -112,7 +117,6 @@ def reset_database(conn):
     tables = [
         "events",
         "generations",
-        "reference_embeddings",
         "reference_images",
         "users",
         "_migrations",

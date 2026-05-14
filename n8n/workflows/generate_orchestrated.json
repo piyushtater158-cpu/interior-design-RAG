@@ -89,7 +89,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const _raw = $('POST /generate/orchestrated').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id    = $json.user_id;\nconst upload_id  = (body.upload_id  || '').toString().trim();\nconst brief      = (body.brief      || '').toString().trim();\nconst session_id = body.session_id  ? body.session_id.toString() : null;\nconst room_hint  = body.room_type   ? body.room_type.toString().trim() : null;\nconst style_tag  = body.style_tag   ? body.style_tag.toString().trim() : null;\n\nconst missing = [];\nif (!upload_id) missing.push('upload_id');\nif (!brief)     missing.push('brief');\nif (missing.length) {\n  return [{ json: { _error: { status: 400, body: { error: `missing_fields: ${missing.join(',')}`, code: 'invalid_request' } } } }];\n}\n\nconst storage_path = `user-uploads/${user_id}/${upload_id}`;\nconst upload_url   = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${storage_path}`;\nreturn [{ json: { user_id, upload_id, brief, session_id, room_hint, style_tag, upload_url, started_at_ms: Date.now() } }];"
+        "jsCode": "const _raw = $('POST /generate/orchestrated').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id    = $json.user_id;\n// Capture bearer token for downstream RLS-scoped DB reads\nconst bearer_token = ($('POST /generate/orchestrated').item.json.headers?.authorization ||\n                      $('POST /generate/orchestrated').item.json.headers?.Authorization || '')\n                       .replace(/^Bearer\\s+/i, '');\nconst upload_id  = (body.upload_id  || '').toString().trim();\nconst brief      = (body.brief      || '').toString().trim();\nconst session_id = body.session_id  ? body.session_id.toString() : null;\nconst room_type_raw = body.room_type   ? body.room_type.toString().trim() : null;\nconst UI_ROOM_TO_DB = { bedroom: 'bedroom', kids: 'kids room', dining: 'dining room', kitchen: 'kitchen', mandir: 'mandir', living: 'living room' };\nconst room_hint  = room_type_raw && UI_ROOM_TO_DB[room_type_raw] ? UI_ROOM_TO_DB[room_type_raw] : room_type_raw;\nconst style_tag  = body.style_tag   ? body.style_tag.toString().trim() : null;\n\nconst missing = [];\nif (!upload_id) missing.push('upload_id');\nif (!brief)     missing.push('brief');\nif (missing.length) {\n  return [{ json: { _error: { status: 400, body: { error: `missing_fields: ${missing.join(',')}`, code: 'invalid_request' } } } }];\n}\n\nconst storage_path = `user-uploads/${user_id}/${upload_id}`;\nconst upload_url   = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${storage_path}`;\nreturn [{ json: { user_id, bearer_token, upload_id, brief, session_id, room_hint, style_tag, upload_url, started_at_ms: Date.now() } }];"
       },
       "id": "validate",
       "name": "Validate body",
@@ -112,11 +112,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ Boolean($json._error) }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -163,7 +163,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx  = $input.item.json;\nconst b64  = ctx.upload_b64;\nconst mime = ctx.upload_mime || 'image/jpeg';\nconst dataUri = `data:${mime};base64,${b64}`;\n\nconst styleContext = ctx.style_tag\n  ? `The user has selected style: \"${ctx.style_tag}\". Use this as the primary style direction.`\n  : 'No style was pre-selected. Infer the best style from the user brief and room photo.';\n\nconst SYSTEM = `You are an interior-design reference retrieval and prompt-orchestration agent for Nano Banana 2.\n\nYour mission: given a user\\'s design brief, a style selection (if provided), and a photograph of the actual room, you must:\n1. Interpret every usable specification in the brief.\n2. Critically reason about the room\\'s 3D spatial structure as visible in the photograph \u2014 wall positions visible, perceived depth, ceiling height, window placement and size, natural light direction, focal wall.\n3. Write retrieval criteria that the NEXT AGENT will use to pick exactly 3 reference images from the database.\n4. Write one curated Nano Banana 2 generation prompt.\n\n${styleContext}\n\nOutput format \u2014 STRICT. No preamble. No code fences. Exactly two delimited blocks:\n\n===CRITERIA===\nRoom type:\n<state the room type explicitly>\n\n3D spatial structure (grounded in photo):\n<Precise observations: number of walls visible, room depth, ceiling height (low/standard/high/vaulted), window wall position (left/right/back/front/multiple), natural light direction and intensity, floor coverage visible>\n\nStyle intent:\n<Target aesthetic, material palette, colour story \u2014 use selected style if provided>\n\nDaylight & ambience:\n<Lighting mood, warmth, time-of-day feel desired in the output>\n\nFunctional requirements:\n<Furniture types, zones, layout priorities>\n\nComplementarity guidance:\nReference 1 must match the 3D spatial geometry: similar room proportions, ceiling height, and window placement.\nReference 2 must match the style, materials, and colour palette.\nReference 3 must match the lighting quality and ambience.\n===END===\n\n===PROMPT===\n<One polished Nano Banana 2 creative brief in natural sentences. Must: (a) instruct to preserve the exact room geometry shown in the first input image \u2014 walls, windows, ceiling; (b) apply style \\'${ctx.style_tag || 'as derived from brief'}\\'; (c) describe the desired furnishing, materials, palette, and lighting. No keyword soup. No people, no text, no logos.>\n===END===`;\n\nconst openrouter_body = {\n  model: 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user', content: [\n      { type: 'text', text: `User brief:\\n${ctx.brief}\\n\\n${ctx.style_tag ? `Selected style: ${ctx.style_tag}\\n\\n` : ''}Room type hint: ${ctx.room_hint || '(infer from photo)'}\\n\\nRoom photograph attached. Ground ALL 3D spatial reasoning in this image \u2014 do not assume, only observe.` },\n      { type: 'image_url', image_url: { url: dataUri } }\n    ]}\n  ],\n  temperature: 0.4,\n  max_tokens: 2048\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
+        "jsCode": "const ctx  = $input.item.json;\nconst b64  = ctx.upload_b64;\nconst mime = ctx.upload_mime || 'image/jpeg';\nconst dataUri = `data:${mime};base64,${b64}`;\n\nconst styleContext = ctx.style_tag\n  ? `The user has selected style: \"${ctx.style_tag}\". Use this as the primary style direction.`\n  : 'No style was pre-selected. Infer the best style from the user brief and room photo.';\n\nconst SYSTEM = `You are an interior-design reference retrieval and prompt-orchestration agent for Nano Banana 2.\n\nYour mission: given a user\\'s design brief, a style selection (if provided), and a photograph of the actual room, you must:\n1. Interpret every usable specification in the brief.\n2. Critically reason about the room\\'s 3D spatial structure as visible in the photograph — wall positions visible, perceived depth, ceiling height, window placement and size, natural light direction, focal wall.\n3. Write retrieval criteria that the NEXT AGENT will use to pick exactly 3 reference images from the database.\n4. Write one curated Nano Banana 2 generation prompt.\n\n${styleContext}\n\nOutput format — STRICT. No preamble. No code fences. Exactly two delimited blocks:\n\n===CRITERIA===\nRoom type:\n<state the room type explicitly>\n\n3D spatial structure (grounded in photo):\n<Precise observations: number of walls visible, room depth, ceiling height (low/standard/high/vaulted), window wall position (left/right/back/front/multiple), natural light direction and intensity, floor coverage visible>\n\nStyle intent:\n<Target aesthetic, material palette, colour story — use selected style if provided>\n\nDaylight & ambience:\n<Lighting mood, warmth, time-of-day feel desired in the output>\n\nFunctional requirements:\n<Furniture types, zones, layout priorities>\n\nComplementarity guidance:\nReference 1 must match the 3D spatial geometry: similar room proportions, ceiling height, and window placement.\nReference 2 must match the style, materials, and colour palette.\nReference 3 must match the lighting quality and ambience.\n===END===\n\n===PROMPT===\n<One polished Nano Banana 2 creative brief in natural sentences. Must: (a) instruct to preserve the exact room geometry shown in the first input image — walls, windows, ceiling; (b) apply style \\'${ctx.style_tag || 'as derived from brief'}\\'; (c) describe the desired furnishing, materials, palette, and lighting. No keyword soup. No people, no text, no logos.>\n===END===`;\n\nconst openrouter_body = {\n  model: 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user', content: [\n      { type: 'text', text: `User brief:\\n${ctx.brief}\\n\\n${ctx.style_tag ? `Selected style: ${ctx.style_tag}\\n\\n` : ''}Room type hint: ${ctx.room_hint || '(infer from photo)'}\\n\\nRoom photograph attached. Ground ALL 3D spatial reasoning in this image — do not assume, only observe.` },\n      { type: 'image_url', image_url: { url: dataUri } }\n    ]}\n  ],\n  temperature: 0.4,\n  max_tokens: 2048\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
       },
       "id": "build_agent1",
       "name": "Build Agent 1 request",
@@ -178,11 +178,14 @@
       "parameters": {
         "method": "POST",
         "url": "={{ 'https://openrouter.ai/api/v1' + '/chat/completions' }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+            },
             {
               "name": "Content-Type",
               "value": "application/json"
@@ -215,7 +218,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx     = $('Build Agent 1 request').item.json;\nconst resp    = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nif (!content) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_empty_response', code: 'upstream_error' } } } }];\n}\n\nfunction extractBlock(text, startTag) {\n  const startRe = new RegExp(`={3,}\\\\s*${startTag}\\\\s*={3,}`, 'i');\n  const endRe   = /={3,}\\s*END\\s*={3,}/i;\n  const s = text.search(startRe);\n  if (s < 0) return null;\n  const after = text.slice(s).replace(startRe, '');\n  const e = after.search(endRe);\n  if (e < 0) return after.trim();\n  return after.slice(0, e).trim();\n}\n\nconst criteria = extractBlock(content, 'CRITERIA');\nconst prompt   = extractBlock(content, 'PROMPT');\nif (!criteria || !prompt) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_bad_format', code: 'upstream_error', raw: content.slice(0, 500) } } } }];\n}\n\nconst roomWords = ['bedroom','living room','kitchen','dining room','bathroom','office','study room','kids room','nursery','hallway','entryway','mandir'];\nconst lc = (criteria + ' ' + (ctx.brief || '') + ' ' + (ctx.room_hint || '')).toLowerCase();\nlet inferred_room = ctx.room_hint || null;\nif (!inferred_room) {\n  for (const w of roomWords) { if (lc.includes(w)) { inferred_room = w; break; } }\n}\n\nconst ftsTerms = [ctx.brief, ctx.style_tag, inferred_room].filter(Boolean).join(' ');\n\nreturn [{ json: { ...ctx, criteria, agent_prompt: prompt, inferred_room, fts_search_text: ftsTerms } }];"
+        "jsCode": "const ctx     = $('Build Agent 1 request').item.json;\nconst resp    = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nif (!content) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_empty_response', code: 'upstream_error' } } } }];\n}\n\nfunction extractBlock(text, startTag) {\n  const startRe = new RegExp(`={3,}\\\\s*${startTag}\\\\s*={3,}`, 'i');\n  const endRe   = /={3,}\\s*END\\s*={3,}/i;\n  const s = text.search(startRe);\n  if (s < 0) return null;\n  const after = text.slice(s).replace(startRe, '');\n  const e = after.search(endRe);\n  if (e < 0) return after.trim();\n  return after.slice(0, e).trim();\n}\n\nconst criteria = extractBlock(content, 'CRITERIA');\nconst prompt   = extractBlock(content, 'PROMPT');\nif (!criteria || !prompt) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_bad_format', code: 'upstream_error', raw: content.slice(0, 500) } } } }];\n}\n\nconst roomWordsRaw = ['bedroom','living room','kitchen','dining room','bathroom','office','study room','kids room','nursery','hallway','entryway','mandir'];\nconst roomWords = [...roomWordsRaw].sort((a, b) => b.length - a.length);\nconst lc = (criteria + ' ' + (ctx.brief || '') + ' ' + (ctx.room_hint || '')).toLowerCase();\nlet inferred_room = ctx.room_hint || null;\nif (!inferred_room) {\n  for (const w of roomWords) { if (lc.includes(w)) { inferred_room = w; break; } }\n}\n\nconst ftsTerms = [ctx.brief, ctx.style_tag, inferred_room].filter(Boolean).join(' ');\n\nreturn [{ json: { ...ctx, criteria, agent_prompt: prompt, inferred_room, fts_search_text: ftsTerms } }];"
       },
       "id": "parse_agent1",
       "name": "Parse Agent 1",
@@ -238,11 +241,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ Boolean($json._error) }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -298,17 +301,17 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,room_type,style_tags,dominant_colors,detected_objects,quality_score&order=quality_score.desc.nullslast&limit=20' + ($json.inferred_room ? '&room_type=eq.' + $json.inferred_room : '') + ($json.style_tag ? '&style_tags=cs.%7B' + $json.style_tag + '%7D' : '') }}",
+        "url": "={{ 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent($json.user_id) + '&order=quality_score.desc.nullslast&limit=20' + ($json.inferred_room ? '&room_type=eq.' + encodeURIComponent($json.inferred_room) : '') + ($json.style_tag ? '&style_tags=cs.%7B' + encodeURIComponent($json.style_tag) + '%7D' : '') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer {{ $json.bearer_token }}"
             },
             {
               "name": "Accept",
@@ -331,7 +334,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst ctx  = $('Parse Agent 1').item.json;\nif (rows.length >= 3) {\n  return [{ json: { ...ctx, pool: rows, pool_fallback: false } }];\n}\nreturn [{ json: { ...ctx, pool: rows, pool_fallback: true } }];"
+        "jsCode": "let rows;\nif (Array.isArray($json)) {\n  rows = $json;\n} else if (Array.isArray($json?.body)) {\n  rows = $json.body;\n} else if ($json?.body && typeof $json.body === 'object') {\n  rows = [$json.body];\n} else if ($json && typeof $json === 'object') {\n  rows = [$json];\n} else {\n  rows = [];\n}\nfunction dedupePool(arr) {\n  const seen = new Set();\n  const seenUrl = new Set();\n  const out = [];\n  for (const r of arr) {\n    if (!r || r.id == null) continue;\n    const id = r.id.toString().toLowerCase();\n    const u = (r.source_url || '').split('?')[0].trim().toLowerCase();\n    if (seen.has(id)) continue;\n    if (u && seenUrl.has(u)) continue;\n    seen.add(id);\n    if (u) seenUrl.add(u);\n    out.push(r);\n  }\n  return out;\n}\nconst pool = dedupePool(rows);\nconst ctx  = $('Parse Agent 1').item.json;\nconst pool_empty    = pool.length === 0;\nconst pool_fallback = pool.length > 0 && pool.length < 3;\nreturn [{ json: { ...ctx, pool, pool_empty, pool_fallback } }];"
       },
       "id": "check_pool",
       "name": "Check pool",
@@ -377,17 +380,17 @@
     },
     {
       "parameters": {
-        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,caption_enhanced,spatial_signature,room_type,style_tags,dominant_colors,detected_objects,quality_score&order=quality_score.desc.nullslast&limit=20",
+        "url": "={{ (() => {\n  const c = $json;\n  const base = 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent(c.user_id) + '&order=quality_score.desc.nullslast&limit=20';\n  const st = (c.style_tag || '').toString().trim();\n  const rm = (c.inferred_room || c.room_hint || '').toString().trim();\n  const styleTop = st ? ('&style_tags=cs.%7B' + encodeURIComponent(st) + '%7D') : '';\n  const roomTop  = rm ? ('&room_type=eq.' + encodeURIComponent(rm)) : '';\n  return base + roomTop + styleTop;\n})() }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer {{ $json.bearer_token }}"
             }
           ]
         },
@@ -406,7 +409,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst ctx  = $('Check pool').item.json;\nreturn [{ json: { ...ctx, pool: rows } }];"
+        "jsCode": "let rows;\nif (Array.isArray($json)) {\n  rows = $json;\n} else if (Array.isArray($json?.body)) {\n  rows = $json.body;\n} else if ($json?.body && typeof $json.body === 'object') {\n  rows = [$json.body];\n} else if ($json && typeof $json === 'object') {\n  rows = [$json];\n} else {\n  rows = [];\n}\nfunction dedupePool(arr) {\n  const seen = new Set();\n  const seenUrl = new Set();\n  const out = [];\n  for (const r of arr) {\n    if (!r || r.id == null) continue;\n    const id = r.id.toString().toLowerCase();\n    const u = (r.source_url || '').split('?')[0].trim().toLowerCase();\n    if (seen.has(id)) continue;\n    if (u && seenUrl.has(u)) continue;\n    seen.add(id);\n    if (u) seenUrl.add(u);\n    out.push(r);\n  }\n  return out;\n}\nconst fb = dedupePool(rows);\nconst ctx  = $('Check pool').item.json;\nconst primary = dedupePool(Array.isArray(ctx.pool) ? ctx.pool : []);\nconst merged = dedupePool([...primary, ...fb]);\nconst pool = merged.slice(0, 20);\nreturn [{ json: { ...ctx, pool, pool_fallback: false } }];"
       },
       "id": "shape_pool_fb",
       "name": "Shape pool (fallback)",
@@ -419,7 +422,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx  = $json;\nconst pool = ctx.pool || [];\nif (pool.length < 3) {\n  return [{ json: { _error: { status: 500, body: { error: 'pool_too_small', code: 'internal_error', count: pool.length } } } }];\n}\n\nconst SYSTEM = `You are a spatial-aware reference-image selector for an interior design AI pipeline.\n\nYou receive:\n1. A CRITERIA block from a design director, including 3D spatial structure observations of the user\\'s room.\n2. A pool of candidate reference images, each shown as a card.\n\nCard format:\n[id=<uuid>] <enhanced caption or fallback caption>\n  spatial: shape=<room_shape> depth=<depth_cues> ceil=<ceiling_height> win=<window_wall> light=<light_direction> sym=<symmetry>\n  style:[<tags>] colors:[<hex>] room:<room_type>\n\nYour task: Pick exactly 3 reference IDs whose COMBINED coverage best satisfies the criteria.\n\nPICKING RULES (in priority order):\nReference 1 \u2014 SPATIAL MATCH: must have the closest 3D geometry to the user\\'s room.\n  Look for: same ceiling_height, same window_wall position, similar depth_cues, similar room_shape.\nReference 2 \u2014 STYLE MATCH: must best represent the target style, materials, and colour palette.\nReference 3 \u2014 AMBIENCE MATCH: must best represent the target lighting quality and mood.\n\nConstraints: complementary picks only (not redundant). Never invent IDs. Never repeat IDs.\n\nOutput \u2014 STRICT. Exactly three lines, nothing else:\nReference 1: <uuid> \u2014 <one sentence: which spatial feature matched>\nReference 2: <uuid> \u2014 <one sentence: which style/material matched>\nReference 3: <uuid> \u2014 <one sentence: which lighting/ambience matched>`;\n\nconst cards = pool.map(r => {\n  const style   = Array.isArray(r.style_tags) ? r.style_tags.join(',') : '';\n  const colors  = Array.isArray(r.dominant_colors) ? r.dominant_colors.join(',') : '';\n  const cap     = (r.caption_enhanced || r.caption || '').replace(/\\s+/g, ' ').trim().slice(0, 200);\n\n  let spatialLine = '';\n  const s = r.spatial_sig || r.spatial_signature;\n  if (s && typeof s === 'object') {\n    spatialLine = `\\n  spatial: shape=${s.room_shape||'?'} depth=${s.depth_cues||'?'} ceil=${s.ceiling_height||'?'} win=${s.window_wall||'?'} light=${s.light_direction||'?'} sym=${s.symmetry||'?'}`;\n  }\n\n  return `[id=${r.id}] ${cap}${spatialLine}\\n  style:[${style}] colors:[${colors}] room:${r.room_type||'?'}`;\n}).join('\\n\\n');\n\nconst user = `===CRITERIA===\\n${ctx.criteria}\\n===END===\\n\\n===CANDIDATES===\\n${cards}\\n===END===`;\n\nconst openrouter_body = {\n  model: 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user',   content: user }\n  ],\n  temperature: 0.2,\n  max_tokens: 512\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
+        "jsCode": "const ctx  = $json;\nfunction dedupePool(arr) {\n  const seen = new Set();\n  const seenUrl = new Set();\n  const out = [];\n  for (const r of arr) {\n    if (!r || r.id == null) continue;\n    const id = r.id.toString().toLowerCase();\n    const u = (r.source_url || '').split('?')[0].trim().toLowerCase();\n    if (seen.has(id)) continue;\n    if (u && seenUrl.has(u)) continue;\n    seen.add(id);\n    if (u) seenUrl.add(u);\n    out.push(r);\n  }\n  return out;\n}\nconst pool = dedupePool(ctx.pool || []);\nif (pool.length === 0) {\n  return [{ json: { _error: { status: 500, body: { error: 'pool_empty', code: 'internal_error', count: 0 } } } }];\n}\nif (pool.length < 3) {\n  return [{ json: { _error: { status: 422, body: { error: 'insufficient_distinct_pool', code: 'pool_too_small', distinct: pool.length } } } }];\n}\n\nconst SYSTEM = `You are a spatial-aware reference-image selector for an interior design AI pipeline.\n\nYou receive:\n1. A CRITERIA block from a design director, including 3D spatial structure observations of the user's room.\n2. A pool of candidate reference images, each shown as a card.\n\nCard format:\n[id=<uuid>] <enhanced caption or fallback caption>\n  spatial: shape=<room_shape> depth=<depth_cues> ceil=<ceiling_height> win=<window_wall> light=<light_direction> sym=<symmetry>\n  style:[<tags>] colors:[<hex>] room:<room_type>\n\nYour task: Pick exactly 3 reference IDs whose COMBINED coverage best satisfies the criteria.\n\nPICKING RULES (in priority order):\nReference 1 — SPATIAL MATCH: must have the closest 3D geometry to the user\\'s room.\n  Look for: same ceiling_height, same window_wall position, similar depth_cues, similar room_shape.\nReference 2 — STYLE MATCH: must best represent the target style, materials, and colour palette.\nReference 3 — AMBIENCE MATCH: must best represent the target lighting quality and mood.\n\nConstraints: complementary picks only (not redundant). Never invent IDs. Never repeat IDs.\n\nOutput — STRICT. Exactly three lines, nothing else:\nReference 1: <uuid> — <one sentence: which spatial feature matched>\nReference 2: <uuid> — <one sentence: which style/material matched>\nReference 3: <uuid> — <one sentence: which lighting/ambience matched>`;\n\nconst cards = pool.map(r => {\n  const style   = Array.isArray(r.style_tags) ? r.style_tags.join(',') : '';\n  const colors  = Array.isArray(r.dominant_colors) ? r.dominant_colors.join(',') : '';\n  const cap     = (r.caption_enhanced || r.caption || '').replace(/\\s+/g, ' ').trim().slice(0, 200);\n\n  let spatialLine = '';\n  const s = r.spatial_sig || r.spatial_signature;\n  if (s && typeof s === 'object') {\n    spatialLine = `\\n  spatial: shape=${s.room_shape||'?'} depth=${s.depth_cues||'?'} ceil=${s.ceiling_height||'?'} win=${s.window_wall||'?'} light=${s.light_direction||'?'} sym=${s.symmetry||'?'}`;\n  }\n\n  return `[id=${r.id}] ${cap}${spatialLine}\\n  style:[${style}] colors:[${colors}] room:${r.room_type||'?'}`;\n}).join('\\n\\n');\n\nconst user = `===CRITERIA===\\n${ctx.criteria}\\n===END===\\n\\n===CANDIDATES===\\n${cards}\\n===END===`;\n\nconst openrouter_body = {\n  model: 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user',   content: user }\n  ],\n  temperature: 0.2,\n  max_tokens: 512\n};\n\nreturn [{ json: { ...ctx, pool, openrouter_body } }];"
       },
       "id": "build_agent2",
       "name": "Build Agent 2 request",
@@ -442,11 +445,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ Boolean($json._error) }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -482,12 +485,13 @@
       "parameters": {
         "method": "POST",
         "url": "={{ 'https://openrouter.ai/api/v1' + '/chat/completions' }}",
+        "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer __REDACTED_OPENROUTER_API_KEY__"
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -521,7 +525,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx  = $('Build Agent 2 request').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nconst uuidRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;\nconst matches = (content.match(uuidRe) || []).map(s => s.toLowerCase());\n\nconst poolIds = new Set((ctx.pool || []).map(r => r.id.toString().toLowerCase()));\nconst seen = new Set();\nconst picks = [];\nfor (const m of matches) {\n  if (!poolIds.has(m)) continue;\n  if (seen.has(m)) continue;\n  seen.add(m);\n  picks.push(m);\n  if (picks.length === 3) break;\n}\n\nif (picks.length < 3) {\n  const sorted = [...(ctx.pool || [])].sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));\n  for (const r of sorted) {\n    const id = r.id.toString().toLowerCase();\n    if (seen.has(id)) continue;\n    seen.add(id);\n    picks.push(id);\n    if (picks.length === 3) break;\n  }\n}\n\nif (picks.length < 3) {\n  return [{ json: { _error: { status: 500, body: { error: 'retriever_picks_too_few', code: 'internal_error' } } } }];\n}\n\nreturn [{ json: { ...ctx, picked_reference_ids: picks } }];"
+        "jsCode": "const ctx  = $('Build Agent 2 request').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nconst uuidRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;\nconst matches = (content.match(uuidRe) || []).map(s => s.toLowerCase());\n\nconst poolRows = ctx.pool || [];\nconst poolIds = new Set(poolRows.map(r => r.id.toString().toLowerCase()));\nconst seen = new Set();\nconst picks = [];\n\nfor (const m of matches) {\n  if (!poolIds.has(m)) continue;\n  if (seen.has(m)) continue;\n  seen.add(m);\n  picks.push(m);\n  if (picks.length === 3) break;\n}\n\nif (picks.length < 3) {\n  const sorted = [...poolRows].sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));\n  for (const r of sorted) {\n    const id = r.id.toString().toLowerCase();\n    if (seen.has(id)) continue;\n    seen.add(id);\n    picks.push(id);\n    if (picks.length === 3) break;\n  }\n}\n\nif (picks.length < 3) {\n  return [{ json: { _error: { status: 422, body: { error: 'insufficient_distinct_picks', code: 'retriever_short', pick_count: picks.length, pool_distinct: poolRows.length } } } }];\n}\n\nreturn [{ json: { ...ctx, picked_reference_ids: picks } }];"
       },
       "id": "parse_agent2",
       "name": "Parse Agent 2",
@@ -544,11 +548,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ Boolean($json._error) }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -609,11 +613,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer {{ $json.bearer_token }}"
             }
           ]
         },
@@ -632,7 +636,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx  = $('Parse Agent 2').item.json;\nconst refs = Array.isArray($json) ? $json : ($json.body || []);\nconst byId = {};\nrefs.forEach(r => { byId[r.id.toString().toLowerCase()] = r.source_url; });\n\nconst urls = [ctx.upload_url];\nfor (const id of ctx.picked_reference_ids) {\n  if (byId[id]) urls.push(byId[id]);\n}\nif (urls.length !== 4) {\n  return [{ json: { _error: { status: 500, body: { error: 'picked_reference_url_missing', code: 'internal_error' } } } }];\n}\nreturn urls.map((url, i) => ({ json: { ...ctx, idx: i, fetch_url: url } }));"
+        "jsCode": "const ctx  = $('Parse Agent 2').item.json;\nlet refs;\nif (Array.isArray($json)) {\n  refs = $json;\n} else if (Array.isArray($json?.body)) {\n  refs = $json.body;\n} else if ($json?.body && typeof $json.body === 'object' && $json.body.id != null) {\n  refs = [$json.body];\n} else if ($json && typeof $json === 'object' && $json.id != null) {\n  refs = [$json];\n} else {\n  refs = [];\n}\nconst byId = {};\nrefs.forEach(r => { byId[r.id.toString().toLowerCase()] = r.source_url; });\n\nconst pickIds = [];\nconst seenId = new Set();\nfor (const raw of ctx.picked_reference_ids || []) {\n  const id = raw.toString().toLowerCase();\n  if (seenId.has(id)) continue;\n  seenId.add(id);\n  pickIds.push(id);\n}\nif (pickIds.length !== 3) {\n  return [{ json: { _error: { status: 422, body: { error: 'picked_ids_not_three_unique', code: 'internal_error', distinct_pick_count: pickIds.length } } } }];\n}\nconst refUrls = pickIds.map(id => byId[id]).filter(Boolean);\nif (refUrls.length !== 3) {\n  return [{ json: { _error: { status: 500, body: { error: 'picked_reference_url_missing', code: 'internal_error' } } } }];\n}\nconst norm = (u) => (u || '').split('?')[0].trim().toLowerCase();\nconst seenUrl = new Set();\nfor (const u of refUrls) {\n  const n = norm(u);\n  if (seenUrl.has(n)) {\n    return [{ json: { _error: { status: 422, body: { error: 'duplicate_reference_source_url', code: 'internal_error' } } } }];\n  }\n  seenUrl.add(n);\n}\nconst urls = [ctx.upload_url, ...refUrls];\nreturn urls.map((url, i) => ({ json: { ...ctx, picked_reference_ids: pickIds, idx: i, fetch_url: url } }));"
       },
       "id": "order_urls",
       "name": "Order fetch list",
@@ -667,7 +671,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nitems.sort((a, b) => a.json.idx - b.json.idx);\nconst parts = items.map(it => ({\n  inline_data: {\n    mime_type: it.binary.image.mimeType || 'image/png',\n    data:      it.binary.image.data\n  }\n}));\nreturn [{ json: { ...items[0].json, image_parts: parts } }];"
+        "jsCode": "const items = $input.all();\nitems.sort((a, b) => a.json.idx - b.json.idx);\nconst parts = items.map(it => {\n  const bin = it.binary.image;\n  return {\n    type: 'image_url',\n    image_url: { url: `data:${bin.mimeType || 'image/png'};base64,${bin.data}` }\n  };\n});\nreturn [{ json: { ...items[0].json, image_parts: parts } }];"
       },
       "id": "collect",
       "name": "Collect image parts",
@@ -686,11 +690,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
             }
           ]
         },
@@ -709,7 +713,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows  = Array.isArray($json) ? $json : ($json.body || []);\nconst model = (rows[0] && rows[0].value) || 'gemini-3.1-flash-image-preview';\nconst ctx   = $('Collect image parts').item.json;\n\nconst gemini_body = {\n  contents: [{\n    role: 'user',\n    parts: [ { text: ctx.agent_prompt }, ...ctx.image_parts ]\n  }],\n  generationConfig: { responseModalities: ['IMAGE'] }\n};\n\nreturn [{ json: { ...ctx, model, gemini_body } }];"
+        "jsCode": "let rows;\nif (Array.isArray($json)) {\n  rows = $json;\n} else if (Array.isArray($json?.body)) {\n  rows = $json.body;\n} else if ($json?.body && typeof $json.body === 'object') {\n  rows = [$json.body];\n} else if ($json && typeof $json === 'object' && ($json.value != null || $json.key != null)) {\n  rows = [$json];\n} else {\n  rows = [];\n}\nconst model = (rows[0] && rows[0].value) || 'google/gemini-3.1-flash-image-preview';\nconst ctx   = $('Collect image parts').item.json;\n\nconst openrouter_body = {\n  model,\n  messages: [{\n    role: 'user',\n    content: [{ type: 'text', text: ctx.agent_prompt }, ...(ctx.image_parts || [])]\n  }]\n};\n\nreturn [{ json: { ...ctx, model, openrouter_body } }];"
       },
       "id": "build_gemini",
       "name": "Build Gemini request",
@@ -723,13 +727,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{$json.model}}:generateContent",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-goog-api-key",
-              "value": "__REDACTED_GEMINI_API_KEY__"
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -739,7 +743,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+        "jsonBody": "={{ JSON.stringify($json.openrouter_body) }}",
         "options": {
           "timeout": 120000
         }
@@ -755,7 +759,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx  = $('Build Gemini request').item.json;\nconst resp = $json;\nconst parts = (resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];\nconst imgPart = parts.find(p => p.inlineData || p.inline_data);\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst inline = imgPart.inlineData || imgPart.inline_data;\nconst b64    = inline.data;\nconst mime   = inline.mimeType || inline.mime_type || 'image/png';\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:              ctx.user_id,\n    session_id:           ctx.session_id,\n    parent_generation_id: null,\n    kind:                 'orchestrated',\n    input_image_path:     `user-uploads/${ctx.user_id}/${ctx.upload_id}`,\n    room_type:            ctx.inferred_room || null,\n    style_tag:            ctx.style_tag || null,\n    reference_image_ids:  ctx.picked_reference_ids,\n    prompt:               ctx.agent_prompt,\n    criteria:             ctx.criteria,\n    model_config:         'A',\n    model_id:             ctx.model,\n    latency_ms,\n    cost_usd:             0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
+        "jsCode": "const ctx  = $('Build Gemini request').item.json;\nconst resp = $json;\n// OpenRouter returns choices[0].message.content as array of content parts\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || [];\nconst parts   = Array.isArray(content) ? content : [];\nconst imgPart = parts.find(p => p.type === 'image_url');\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst dataUrl = imgPart.image_url && imgPart.image_url.url;\nconst match   = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);\nif (!match) {\n  return [{ json: { _error: { status: 502, body: { error: 'invalid_image_data_url', code: 'upstream_error' } } } }];\n}\nconst mime = match[1];\nconst b64  = match[2];\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:              ctx.user_id,\n    session_id:           ctx.session_id,\n    parent_generation_id: null,\n    kind:                 'orchestrated',\n    input_image_path:     `user-uploads/${ctx.user_id}/${ctx.upload_id}`,\n    room_type:            ctx.inferred_room || null,\n    style_tag:            ctx.style_tag || null,\n    reference_image_ids:  ctx.picked_reference_ids,\n    prompt:               ctx.agent_prompt,\n    criteria:             ctx.criteria,\n    model_config:         'A',\n    model_id:             ctx.model,\n    latency_ms,\n    cost_usd:             0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
       },
       "id": "extract_png",
       "name": "Extract output PNG",
@@ -778,11 +782,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ Boolean($json._error) }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -870,6 +874,55 @@
         8160,
         1020
       ]
+    },
+    {
+      "id": "if_empty_pool",
+      "name": "Empty pool?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3200,
+        540
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "empty-pool",
+              "leftValue": "={{ $json.pool_empty }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "respond_no_refs",
+      "name": "Respond no refs",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3440,
+        420
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"error\": \"no_reference_images\", \"code\": \"empty_catalog\", \"message\": \"Upload reference images first before generating designs.\" }",
+        "options": {
+          "responseCode": 200
+        }
+      }
     }
   ],
   "connections": {
@@ -1030,7 +1083,7 @@
       "main": [
         [
           {
-            "node": "Need fallback?",
+            "node": "Empty pool?",
             "type": "main",
             "index": 0
           }
@@ -1279,6 +1332,24 @@
         [
           {
             "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empty pool?": {
+      "main": [
+        [
+          {
+            "node": "Respond no refs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Need fallback?",
             "type": "main",
             "index": 0
           }

@@ -21,10 +21,9 @@ ON CONFLICT (key) DO UPDATE
     SET value = EXCLUDED.value,
         updated_at = now();
 
--- Seed the active embedding model + its OpenRouter endpoint.
+-- OpenRouter base URL (chat / orchestration; not used for image embeddings)
 INSERT INTO app_config (key, value)
 VALUES
-    ('embedding_model',   '"nvidia/llama-nemotron-embed-vl-1b-v2:free"'::jsonb),
     ('openrouter_base',   '"https://openrouter.ai/api/v1"'::jsonb),
     ('orchestrator_model','"google/gemma-4-31b-it:free"'::jsonb),
     ('max_edit_chain',    '6'::jsonb)

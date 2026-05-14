@@ -1,11 +1,11 @@
 """
 Seed verification test suite.
-Validates that the database is properly seeded with reference images, embeddings,
-and metadata. Runs assertions and prints a formatted report.
+Validates that the database is properly seeded with reference images and metadata.
+Runs assertions and prints a formatted report.
 
 Usage:
     python database/tests/verify_seed.py
-    
+
 Exits 0 on all tests pass, 1 on any failure.
 """
 
@@ -84,16 +84,22 @@ def run_tests():
     ))
     
     # ──────────────────────────────────────────────
-    # Test 4: Embedding count (1:1 with images)
+    # Test 4: Text retrieval RPC present (FTS candidate pool)
     # ──────────────────────────────────────────────
-    cur.execute("SELECT COUNT(*) FROM reference_embeddings;")
-    total_embeddings = cur.fetchone()[0]
+    cur.execute("""
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.routines
+            WHERE routine_schema = 'public'
+              AND routine_name = 'retrieve_candidates_text'
+        );
+    """)
+    has_fts_rpc = cur.fetchone()[0]
     results.append(TestResult(
-        "Embedding count",
-        total_embeddings == total_images,
-        f"{total_embeddings} embeddings vs {total_images} images",
-        f"= {total_images} (1:1 with images)",
-        str(total_embeddings),
+        "retrieve_candidates_text RPC",
+        bool(has_fts_rpc),
+        "Full-text candidate pool RPC (see n8n migration 012 / supabase 010)",
+        "true",
+        str(has_fts_rpc),
     ))
     
     # ──────────────────────────────────────────────
@@ -166,43 +172,28 @@ def run_tests():
     ))
     
     # ──────────────────────────────────────────────
-    # Test 9: Vector search smoke test (only if embeddings exist)
+    # Test 9: FTS retrieval returns rows when catalog is populated
     # ──────────────────────────────────────────────
-    if total_embeddings > 0:
-        # Pick a random image's embedding and find top-5 similar
-        cur.execute("""
-            SELECT re.reference_image_id, ri.room_type, re.embedding
-            FROM reference_embeddings re
-            JOIN reference_images ri ON re.reference_image_id = ri.id
-            LIMIT 1;
-        """)
-        row = cur.fetchone()
-        if row:
-            query_id, query_room, query_emb = row
-            cur.execute("""
-                SELECT ri.room_type, 1 - (re.embedding <=> %s::vector) as similarity
-                FROM reference_embeddings re
-                JOIN reference_images ri ON re.reference_image_id = ri.id
-                WHERE re.reference_image_id != %s
-                ORDER BY re.embedding <=> %s::vector
-                LIMIT 5;
-            """, (str(query_emb), query_id, str(query_emb)))
-            top5 = cur.fetchall()
-            same_room = sum(1 for r in top5 if r[0] == query_room)
-            results.append(TestResult(
-                "Vector search smoke test",
-                same_room >= 2,
-                f"Query room: {query_room}. Top-5 rooms: {[r[0] for r in top5]}. Same room: {same_room}/5",
-                ">= 2/5 same room_type",
-                f"{same_room}/5",
-            ))
+    if has_fts_rpc and total_images > 0:
+        cur.execute(
+            "SELECT COUNT(*) FROM retrieve_candidates_text(%s, NULL, NULL, 5) AS t;",
+            ("interior",),
+        )
+        fts_rows = cur.fetchone()[0]
+        results.append(TestResult(
+            "FTS retrieve_candidates_text smoke",
+            fts_rows >= 1,
+            f"retrieve_candidates_text('interior', ...) returned {fts_rows} row(s)",
+            ">= 1 row",
+            str(fts_rows),
+        ))
     else:
         results.append(TestResult(
-            "Vector search smoke test",
+            "FTS retrieve_candidates_text smoke",
             False,
-            "No embeddings in database - run CLIP embedding pipeline first",
-            "> 0 embeddings",
-            "0 embeddings",
+            "Skipped: RPC missing or empty catalog",
+            "RPC + images",
+            "skipped",
         ))
     
     cur.close()

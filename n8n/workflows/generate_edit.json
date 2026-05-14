@@ -158,11 +158,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
             }
           ]
         },
@@ -246,11 +246,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -359,7 +359,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx = $('Check cap').item.json;\nconst bin = $input.item.binary.image;\nconst template = `You are editing an interior design photograph.\n\nTASK: Apply ONLY the specific change requested below. Do not modify any other\nelement of the image. Preserve all geometry, lighting, and unaffected objects\nexactly.\n\nREQUESTED CHANGE: {instruction}\n`;\nconst prompt = template.replace('{instruction}', ctx.instruction);\nconst gemini_body = {\n  contents: [{\n    role: 'user',\n    parts: [\n      { text: prompt },\n      { inline_data: { mime_type: bin.mimeType || 'image/png', data: bin.data } }\n    ]\n  }],\n  generationConfig: { responseModalities: ['IMAGE'] }\n};\nreturn [{ json: { ...ctx, prompt, gemini_body } }];"
+        "jsCode": "const ctx = $('Check cap').item.json;\nconst bin = $input.item.binary.image;\nconst template = `You are editing an interior design photograph.\n\nTASK: Apply ONLY the specific change requested below. Do not modify any other\nelement of the image. Preserve all geometry, lighting, and unaffected objects\nexactly.\n\nREQUESTED CHANGE: {instruction}\n`;\nconst prompt = template.replace('{instruction}', ctx.instruction);\n\nconst openrouter_body = {\n  model: ctx.model || 'google/gemini-3.1-flash-image-preview',\n  messages: [{\n    role: 'user',\n    content: [\n      { type: 'text', text: prompt },\n      { type: 'image_url', image_url: { url: `data:${bin.mimeType || 'image/png'};base64,${bin.data}` } }\n    ]\n  }]\n};\nreturn [{ json: { ...ctx, prompt, openrouter_body } }];"
       },
       "id": "build_gemini",
       "name": "Build Gemini request",
@@ -379,11 +379,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
             }
           ]
         },
@@ -416,13 +416,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{$json.model}}:generateContent",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-goog-api-key",
-              "value": "={{__REDACTED_GEMINI_API_KEY__}}"
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -432,7 +432,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+        "jsonBody": "={{ JSON.stringify($json.openrouter_body) }}",
         "options": {
           "timeout": 120000,
           "retry": {
@@ -452,7 +452,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx  = $('Attach model').item.json;\nconst resp = $json;\nconst parts = (resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];\nconst imgPart = parts.find(p => p.inlineData || p.inline_data);\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst inline = imgPart.inlineData || imgPart.inline_data;\nconst b64    = inline.data;\nconst mime   = inline.mimeType || inline.mime_type || 'image/png';\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind:                'edit',\n    input_image_path:    ctx.parent.output_image_path,\n    room_type:           ctx.parent.room_type,\n    style_tag:           ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
+        "jsCode": "const ctx  = $('Attach model').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || [];\nconst parts   = Array.isArray(content) ? content : [];\nconst imgPart = parts.find(p => p.type === 'image_url');\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst dataUrl = imgPart.image_url && imgPart.image_url.url;\nconst match   = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);\nif (!match) {\n  return [{ json: { _error: { status: 502, body: { error: 'invalid_image_data_url', code: 'upstream_error' } } } }];\n}\nconst mime = match[1];\nconst b64  = match[2];\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind:                'edit',\n    input_image_path:    ctx.parent.output_image_path,\n    room_type:           ctx.parent.room_type,\n    style_tag:           ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
       },
       "id": "extract",
       "name": "Extract output PNG",

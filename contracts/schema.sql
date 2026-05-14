@@ -1,113 +1,282 @@
 -- =============================================================
 -- Interior Design Assistant — Full Database Schema (DDL)
--- Generated from Phase 1 migrations
+-- Mirrors supabase/migrations/100_reset_and_rebuild.sql
+-- Run ONLY after DROP SCHEMA public CASCADE; CREATE SCHEMA public; + auth.users cleared.
+-- No caption_fts. No retrieve_candidates_text RPC.
 -- =============================================================
 
--- Extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS vector;
+create extension if not exists "uuid-ossp";
 
--- =============================================================
--- Table: users
--- Mock auth users for MVP
--- =============================================================
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT UNIQUE NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    is_demo BOOLEAN DEFAULT true
+-- ---------------------------------------------------------------------------
+-- Tables
+-- ---------------------------------------------------------------------------
+
+create table public.users (
+  id          uuid        primary key references auth.users(id) on delete cascade,
+  email       text        not null,
+  created_at  timestamptz not null default now()
 );
 
--- =============================================================
--- Table: reference_images
--- Seed interior design images with metadata and tags
--- =============================================================
-CREATE TABLE IF NOT EXISTS reference_images (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    source TEXT NOT NULL,                       -- 'local', 'synthetic'
-    source_id TEXT,                              -- filename stem e.g. '1', '2'
-    source_url TEXT NOT NULL,                    -- Supabase Storage public URL
-    license TEXT NOT NULL,                       -- 'owned'
-    storage_path TEXT NOT NULL,                  -- path in Supabase Storage bucket
-    caption TEXT,                                -- pre-written caption from .txt file
-    room_type TEXT NOT NULL,                     -- 'bedroom', 'kitchen', 'living room', etc.
-    style_tags TEXT[] NOT NULL,                  -- ['scandinavian', 'minimalist', ...]
-    dominant_colors TEXT[],                      -- ['#e8d4b8', ...] — optional
-    detected_objects TEXT[],                     -- ['bed', 'lamp', ...] — optional
-    quality_score FLOAT,                         -- auto-tag confidence 0–1
-    created_at TIMESTAMPTZ DEFAULT now(),
-    CONSTRAINT uq_source_source_id UNIQUE (source, source_id)
+create table public.reference_images (
+  id                uuid        primary key default uuid_generate_v4(),
+  owner_id          uuid        not null references auth.users(id) on delete cascade,
+  owner_email       text,
+  source            text        not null,
+  source_id         text        not null,
+  source_url        text        not null,
+  license           text,
+  storage_path      text        not null,
+  caption           text,
+  spatial_signature jsonb,
+  room_type         text        not null,
+  style_tags        text[]      not null,
+  dominant_colors   text[],
+  detected_objects  text[],
+  quality_score     numeric,
+  created_at        timestamptz not null default now(),
+  unique (owner_id, source, source_id),
+  check (room_type in ('bedroom','kids room','dining room','kitchen','mandir','living room')),
+  check (
+    cardinality(style_tags) = 1
+    and style_tags[1] in ('scandinavian','japandi','midcentury','traditional','industrial','boho')
+  )
 );
 
--- =============================================================
--- Table: reference_embeddings
--- CLIP ViT-B/32 image embeddings (512-dim vectors)
--- =============================================================
-CREATE TABLE IF NOT EXISTS reference_embeddings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    reference_image_id UUID NOT NULL REFERENCES reference_images(id) ON DELETE CASCADE,
-    embedding_type TEXT NOT NULL,                -- 'clip-vit-b32'
-    embedding vector(512),                       -- pgvector type
-    created_at TIMESTAMPTZ DEFAULT now()
+create table public.generations (
+  id                  uuid        primary key default uuid_generate_v4(),
+  user_id             uuid        not null references auth.users(id) on delete cascade,
+  session_id          text,
+  parent_id           uuid        references public.generations(id) on delete set null,
+  prompt              text,
+  style_tag           text        check (style_tag is null or style_tag in ('scandinavian','japandi','midcentury','traditional','industrial','boho')),
+  room_type           text        check (room_type is null or room_type in ('bedroom','kids room','dining room','kitchen','mandir','living room')),
+  output_storage_path text,
+  output_url          text,
+  picked_refs         jsonb,
+  created_at          timestamptz not null default now()
 );
 
--- =============================================================
--- Table: generations
--- AI-generated design outputs (Phase 2+)
--- =============================================================
-CREATE TABLE IF NOT EXISTS generations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id),
-    session_id TEXT,
-    parent_generation_id UUID REFERENCES generations(id),
-    kind TEXT NOT NULL,                          -- 'draft', 'commit', 'edit'
-    input_image_path TEXT,
-    room_type TEXT,
-    style_tag TEXT,
-    reference_image_ids UUID[],
-    prompt TEXT,
-    model_config TEXT NOT NULL,                  -- 'A' or 'B'
-    model_id TEXT,
-    output_image_path TEXT,
-    latency_ms INTEGER,
-    cost_usd NUMERIC(10, 6),
-    status TEXT,                                 -- 'success', 'failed', 'retried'
-    error_message TEXT,
-    created_at TIMESTAMPTZ DEFAULT now()
+create table public.events (
+  id          uuid        primary key default uuid_generate_v4(),
+  user_id     uuid        references auth.users(id) on delete set null,
+  event_type  text        not null,
+  payload     jsonb,
+  created_at  timestamptz not null default now()
 );
 
--- =============================================================
--- Table: events
--- Analytics event log
--- =============================================================
-CREATE TABLE IF NOT EXISTS events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id),
-    session_id TEXT,
-    event_type TEXT NOT NULL,
-    payload JSONB,
-    created_at TIMESTAMPTZ DEFAULT now()
+create table public.app_config (
+  key         text        primary key,
+  value       text        not null,
+  created_at  timestamptz not null default now()
 );
 
--- =============================================================
+-- ---------------------------------------------------------------------------
 -- Indexes
--- =============================================================
+-- ---------------------------------------------------------------------------
+create index idx_ref_owner         on public.reference_images (owner_id);
+create index idx_ref_room          on public.reference_images (owner_id, room_type);
+create index idx_ref_style         on public.reference_images using gin (style_tags);
+create index idx_ref_spatial       on public.reference_images using gin (spatial_signature);
+create index idx_gen_user_time     on public.generations (user_id, created_at desc);
+create index idx_gen_session       on public.generations (session_id) where session_id is not null;
+create index idx_events_user       on public.events (user_id, created_at desc);
 
--- Reference images
-CREATE INDEX IF NOT EXISTS idx_ref_room_type ON reference_images (room_type);
-CREATE INDEX IF NOT EXISTS idx_ref_style_tags ON reference_images USING GIN (style_tags);
-CREATE INDEX IF NOT EXISTS idx_ref_quality ON reference_images (quality_score);
+-- ---------------------------------------------------------------------------
+-- Triggers
+-- ---------------------------------------------------------------------------
 
--- Reference embeddings — HNSW for fast cosine similarity search
-CREATE INDEX IF NOT EXISTS idx_ref_embeddings_hnsw
-    ON reference_embeddings USING hnsw (embedding vector_cosine_ops);
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (id, email)
+  values (new.id, new.email)
+  on conflict (id) do update set email = excluded.email;
+  return new;
+end;
+$$;
 
--- Generations
-CREATE INDEX IF NOT EXISTS idx_gen_user_session
-    ON generations (user_id, session_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_gen_parent
-    ON generations (parent_generation_id);
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
 
--- Events
-CREATE INDEX IF NOT EXISTS idx_events_user_time
-    ON events (user_id, created_at DESC);
+create or replace function public.reference_images_sync_owner_email()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.owner_id is null then
+    new.owner_email := null;
+  else
+    select au.email into new.owner_email
+    from auth.users au
+    where au.id = new.owner_id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists tr_reference_images_sync_owner_email on public.reference_images;
+create trigger tr_reference_images_sync_owner_email
+  before insert or update of owner_id on public.reference_images
+  for each row execute function public.reference_images_sync_owner_email();
+
+-- ---------------------------------------------------------------------------
+-- Row-Level Security
+-- ---------------------------------------------------------------------------
+
+alter table public.users             enable row level security;
+alter table public.reference_images  enable row level security;
+alter table public.generations       enable row level security;
+alter table public.events            enable row level security;
+alter table public.app_config        enable row level security;
+
+-- users: read own row only
+create policy "users_select_own" on public.users
+  for select using (auth.uid() = id);
+
+-- reference_images: strict per-user, no NULL escape hatch
+create policy "ref_select_own" on public.reference_images
+  for select using (owner_id = auth.uid());
+
+create policy "ref_insert_own" on public.reference_images
+  for insert to authenticated
+  with check (owner_id = auth.uid());
+
+create policy "ref_update_own" on public.reference_images
+  for update to authenticated
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+create policy "ref_delete_own" on public.reference_images
+  for delete to authenticated
+  using (owner_id = auth.uid());
+
+-- generations: full CRUD on own rows
+create policy "gen_select_own" on public.generations
+  for select using (auth.uid() = user_id);
+
+create policy "gen_insert_own" on public.generations
+  for insert with check (auth.uid() = user_id);
+
+create policy "gen_update_own" on public.generations
+  for update using (auth.uid() = user_id);
+
+create policy "gen_delete_own" on public.generations
+  for delete using (auth.uid() = user_id);
+
+-- events: client inserts only; service role reads for analytics
+create policy "events_insert_own" on public.events
+  for insert with check (auth.uid() = user_id);
+
+-- app_config: public read
+create policy "app_config_public_read" on public.app_config
+  for select using (true);
+
+-- ---------------------------------------------------------------------------
+-- Storage bucket policies
+-- reference-images: studio/{user_id}/{style}/{room}/{uuid}.{ext}
+-- user-uploads:     {user_id}/{upload_id}
+-- user-outputs:     outputs/{user_id}/{uuid}.png
+-- ---------------------------------------------------------------------------
+
+insert into storage.buckets (id, name, public)
+values ('reference-images', 'reference-images', false)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('user-uploads', 'user-uploads', false)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('user-outputs', 'user-outputs', false)
+on conflict (id) do nothing;
+
+drop policy if exists "ref_images_objects_select" on storage.objects;
+create policy "ref_images_objects_select"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'reference-images'
+    and split_part(name, '/', 2) = auth.uid()::text
+  );
+
+drop policy if exists "ref_images_objects_insert" on storage.objects;
+create policy "ref_images_objects_insert"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'reference-images'
+    and split_part(name, '/', 1) = 'studio'
+    and split_part(name, '/', 2) = auth.uid()::text
+  );
+
+drop policy if exists "ref_images_objects_update" on storage.objects;
+create policy "ref_images_objects_update"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'reference-images'
+    and split_part(name, '/', 2) = auth.uid()::text
+  );
+
+drop policy if exists "ref_images_objects_delete" on storage.objects;
+create policy "ref_images_objects_delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'reference-images'
+    and split_part(name, '/', 2) = auth.uid()::text
+  );
+
+drop policy if exists "user_uploads_objects_insert" on storage.objects;
+create policy "user_uploads_objects_insert"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'user-uploads'
+    and split_part(name, '/', 1) = auth.uid()::text
+  );
+
+drop policy if exists "user_uploads_objects_select" on storage.objects;
+create policy "user_uploads_objects_select"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'user-uploads'
+    and split_part(name, '/', 1) = auth.uid()::text
+  );
+
+drop policy if exists "user_uploads_objects_delete" on storage.objects;
+create policy "user_uploads_objects_delete"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'user-uploads'
+    and split_part(name, '/', 1) = auth.uid()::text
+  );
+
+drop policy if exists "user_outputs_objects_insert" on storage.objects;
+create policy "user_outputs_objects_insert"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'user-outputs'
+    and split_part(name, '/', 1) = auth.uid()::text
+  );
+
+drop policy if exists "user_outputs_objects_select" on storage.objects;
+create policy "user_outputs_objects_select"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'user-outputs'
+    and split_part(name, '/', 1) = auth.uid()::text
+  );
+
+-- ---------------------------------------------------------------------------
+-- App config seed
+-- ---------------------------------------------------------------------------
+insert into public.app_config (key, value)
+values
+  ('caption_model',       'qwen/qwen3-vl-8b-instruct'),
+  ('orchestrator_model',  'google/gemini-2.5-flash'),
+  ('image_model',         'google/gemini-3.1-flash-image-preview')
+on conflict (key) do update set value = excluded.value;

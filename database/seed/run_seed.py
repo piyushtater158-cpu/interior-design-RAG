@@ -1,11 +1,10 @@
 """
 Main seed pipeline orchestrator.
 Reads local images + captions, tags via Gemini, uploads to Supabase Storage,
-optionally embeds via CLIP, and inserts everything into the database.
+and inserts everything into the database.
 
 Usage:
-    python database/seed/run_seed.py                    # Full pipeline (no embeddings)
-    python database/seed/run_seed.py --with-embeddings  # Include CLIP embeddings
+    python database/seed/run_seed.py                    # Full pipeline
     python database/seed/run_seed.py --skip-tag         # Skip Gemini tagging (use cache)
     python database/seed/run_seed.py --skip-upload      # Skip Supabase Storage upload
     python database/seed/run_seed.py --tag-only          # Only run tagging step
@@ -69,14 +68,13 @@ def discover_images():
     return entries
 
 
-def generate_seed_report(entries, tags, upload_results, embeddings, stats, elapsed):
+def generate_seed_report(entries, tags, upload_results, stats, elapsed):
     """Generate the seed report markdown file.
-    
+
     Args:
         entries: image entries list
         tags: dict of tag results
         upload_results: dict of upload results
-        embeddings: dict of embeddings (or None)
         stats: insertion stats dict
         elapsed: total elapsed seconds
     """
@@ -158,14 +156,6 @@ def generate_seed_report(entries, tags, upload_results, embeddings, stats, elaps
 | Min | {min(quality_scores) if quality_scores else 0:.3f} |
 | Max | {max(quality_scores) if quality_scores else 0:.3f} |
 
-## Embedding Statistics
-
-| Metric | Value |
-|---|---|
-| Embeddings generated | {len(embeddings) if embeddings else 0} |
-| Embedding dimension | 512 (CLIP ViT-B/32) |
-| 1:1 with images | {'Yes' if embeddings and len(embeddings) == len(entries) else 'No'} |
-
 ## Upload Statistics
 
 | Metric | Value |
@@ -179,7 +169,6 @@ def generate_seed_report(entries, tags, upload_results, embeddings, stats, elaps
 |---|---|
 | Images inserted | {stats.get('images_inserted', 0)} |
 | Images skipped | {stats.get('images_skipped', 0)} |
-| Embeddings inserted | {stats.get('embeddings_inserted', 0)} |
 
 ## Cost Summary
 
@@ -187,7 +176,6 @@ def generate_seed_report(entries, tags, upload_results, embeddings, stats, elaps
 |---|---|
 | Gemini 2.5 Flash tagging (free tier) | $0.00 |
 | Supabase Storage (free tier) | $0.00 |
-| CLIP embeddings (local/VPS) | $0.00 |
 | **Total** | **$0.00** |
 """
     
@@ -202,13 +190,25 @@ def main():
     parser = argparse.ArgumentParser(description="Run the seed pipeline")
     parser.add_argument("--skip-tag", action="store_true", help="Skip Gemini tagging (use cached)")
     parser.add_argument("--skip-upload", action="store_true", help="Skip Supabase Storage upload")
-    parser.add_argument("--with-embeddings", action="store_true", help="Include CLIP embeddings (requires sentence-transformers)")
     parser.add_argument("--tag-only", action="store_true", help="Only run tagging step")
     parser.add_argument("--no-insert", action="store_true", help="Skip database insertion")
     args = parser.parse_args()
     
+    # Fail fast if no owner is configured — inserter will refuse to run without this,
+    # but better to surface it before any tagging or upload work happens.
+    owner_id = os.environ.get("SEED_OWNER_USER_ID", "").strip()
+    if not owner_id and not args.tag_only:
+        print(
+            "\nERROR: SEED_OWNER_USER_ID env var is required.\n"
+            "Set it to the UUID of the auth.users row that should own the seeded reference images.\n"
+            "Example:\n"
+            "  $env:SEED_OWNER_USER_ID='xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'  # PowerShell\n"
+            "  export SEED_OWNER_USER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  # bash\n"
+        )
+        sys.exit(1)
+
     start_time = time.time()
-    
+
     print("\n" + "=" * 60)
     print("  SEED PIPELINE")
     print("=" * 60)
@@ -216,7 +216,7 @@ def main():
     # ──────────────────────────────────────────────
     # Step 1: Discover local images
     # ──────────────────────────────────────────────
-    print("\n[1/5] Discovering local images...")
+    print("\n[1/4] Discovering local images...")
     entries = discover_images()
     print(f"  Found {len(entries)} images across {len(STYLE_FOLDERS)} style folders.")
     
@@ -238,7 +238,7 @@ def main():
     # ──────────────────────────────────────────────
     os.makedirs(CACHE_DIR, exist_ok=True)
     if args.skip_tag:
-        print("\n[2/5] Loading tags from cache (--skip-tag)...")
+        print("\n[2/4] Loading tags from cache (--skip-tag)...")
         tags = {}
         tags_cache_dir = os.path.join(CACHE_DIR, "tags")
         for entry in entries:
@@ -247,7 +247,7 @@ def main():
                 with open(cache_file, "r") as f:
                     tags[entry["id"]] = json.load(f)
     else:
-        print("\n[2/5] Tagging images via Gemini 2.5 Flash...")
+        print("\n[2/4] Tagging images via Gemini 2.5 Flash...")
         tags = tag_all_images(entries, use_cache=True)
 
     tagged_count = sum(1 for t in tags.values() if t.get("room_type") != "unknown")
@@ -264,11 +264,11 @@ def main():
     # ──────────────────────────────────────────────
     upload_results = {}
     if not args.skip_upload:
-        print("\n[3/5] Uploading images to Supabase Storage...")
+        print("\n[3/4] Uploading images to Supabase Storage...")
         upload_results = upload_all_images(entries, bucket_name=STORAGE_BUCKET)
         print(f"  Uploaded: {len(upload_results)}/{len(entries)}")
     else:
-        print("\n[3/5] Skipping upload (--skip-upload)")
+        print("\n[3/4] Skipping upload (--skip-upload)")
         # Try loading from cache
         upload_cache = os.path.join(CACHE_DIR, "upload_results.json")
         if os.path.exists(upload_cache):
@@ -283,45 +283,17 @@ def main():
             json.dump(upload_results, f, indent=2)
     
     # ──────────────────────────────────────────────
-    # Step 4: Generate CLIP embeddings (optional)
-    # ──────────────────────────────────────────────
-    embeddings = None
-    if args.with_embeddings:
-        print("\n[4/5] Generating CLIP embeddings...")
-        from database.seed.processors.embedder import embed_all_images, init_cache_dir
-        init_cache_dir(PROJECT_ROOT)
-        embeddings = embed_all_images(entries, use_cache=True)
-        print(f"  Embeddings: {len(embeddings)}/{len(entries)}")
-    else:
-        print("\n[4/5] Skipping embeddings (use --with-embeddings or run on VPS)")
-        # Try loading cached embeddings
-        emb_cache = os.path.join(PROJECT_ROOT, "database", "seed", "cache", "embeddings")
-        index_file = os.path.join(emb_cache, "embeddings_index.json")
-        npz_file = os.path.join(emb_cache, "embeddings.npz")
-        if os.path.exists(index_file) and os.path.exists(npz_file):
-            import numpy as np
-            print("  Loading cached embeddings from VPS output...")
-            data = np.load(npz_file)
-            with open(index_file, "r") as f:
-                index = json.load(f)
-            embeddings = {}
-            for img_id, idx in index.items():
-                embeddings[img_id] = data[f"emb_{idx}"]
-            print(f"  Loaded {len(embeddings)} cached embeddings.")
-    
-    # ──────────────────────────────────────────────
-    # Step 5: Insert into database
+    # Step 4: Insert into database
     # ──────────────────────────────────────────────
     stats = {}
     if not args.no_insert:
-        print("\n[5/5] Inserting into database...")
-        stats = insert_all(entries, tags, upload_results, embeddings)
+        print("\n[4/4] Inserting into database...")
+        stats = insert_all(entries, tags, upload_results)
         print(f"\n  Insertion complete:")
         print(f"    Images inserted: {stats['images_inserted']}")
         print(f"    Images skipped: {stats['images_skipped']}")
-        print(f"    Embeddings inserted: {stats['embeddings_inserted']}")
     else:
-        print("\n[5/5] Skipping insertion (--no-insert)")
+        print("\n[4/4] Skipping insertion (--no-insert)")
     
     # ──────────────────────────────────────────────
     # Generate seed report
@@ -329,7 +301,7 @@ def main():
     elapsed = time.time() - start_time
     print("\n" + "-" * 40)
     print("  Generating seed report...")
-    generate_seed_report(entries, tags, upload_results, embeddings, stats, elapsed)
+    generate_seed_report(entries, tags, upload_results, stats, elapsed)
     
     print(f"\n{'=' * 60}")
     print(f"  SEED PIPELINE COMPLETE")

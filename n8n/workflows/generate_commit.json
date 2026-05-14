@@ -158,11 +158,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
             }
           ]
         },
@@ -246,11 +246,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
             }
           ]
         },
@@ -327,11 +327,11 @@
           "parameters": [
             {
               "name": "apikey",
-              "value": "=__REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
             },
             {
               "name": "Authorization",
-              "value": "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__"
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
             }
           ]
         },
@@ -350,7 +350,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows  = Array.isArray($json) ? $json : ($json.body || []);\nconst model = (rows[0] && rows[0].value) || 'gemini-3.1-flash-image-preview';\nconst ctx   = $('Collect image parts').item.json;\n\nconst template = `You are an interior design rendering engine.\n\nTASK: Generate a photorealistic image of the SAME room shown in the first input\nimage, redesigned in the style of the reference images provided.\n\nHARD CONSTRAINTS:\n- Preserve the input room's geometry exactly: wall positions, window positions\n  and sizes, door positions, ceiling height.\n- Preserve lighting direction from the input photo.\n- Use furniture, materials, colors, and styling cues from the reference images.\n- Output must be photorealistic, no illustrations or cartoons.\n- Do not add text, watermarks, logos, or signatures.\n- Do not add people.\n\nSTYLE: {style_tag}\nROOM TYPE: {room_type}\n\nOUTPUT QUALITY: Maximum resolution and detail. This is the final deliverable.\n`;\n\nconst prompt = template\n  .replace('{style_tag}', ctx.parent.style_tag || '')\n  .replace('{room_type}', ctx.parent.room_type || '');\n\nconst gemini_body = {\n  contents: [{\n    role: 'user',\n    parts: [ { text: prompt }, ...ctx.image_parts ]\n  }],\n  generationConfig: { responseModalities: ['IMAGE'] }\n};\n\nreturn [{ json: { ...ctx, model, prompt, gemini_body } }];"
+        "jsCode": "const rows  = Array.isArray($json) ? $json : ($json.body || []);\nconst model = (rows[0] && rows[0].value) || 'google/gemini-3.1-flash-image-preview';\nconst ctx   = $('Collect image parts').item.json;\n\nconst template = `You are an interior design rendering engine.\n\nTASK: Generate a photorealistic image of the SAME room shown in the first input\nimage, redesigned in the style of the reference images provided.\n\nHARD CONSTRAINTS:\n- Preserve the input room's geometry exactly: wall positions, window positions\n  and sizes, door positions, ceiling height.\n- Preserve lighting direction from the input photo.\n- Use furniture, materials, colors, and styling cues from the reference images.\n- Output must be photorealistic, no illustrations or cartoons.\n- Do not add text, watermarks, logos, or signatures.\n- Do not add people.\n\nSTYLE: {style_tag}\nROOM TYPE: {room_type}\n\nOUTPUT QUALITY: Maximum resolution and detail. This is the final deliverable.\n`;\n\nconst prompt = template\n  .replace('{style_tag}', ctx.parent.style_tag || '')\n  .replace('{room_type}', ctx.parent.room_type || '');\n\nconst openrouter_body = {\n  model,\n  messages: [{\n    role: 'user',\n    content: [{ type: 'text', text: prompt }, ...(ctx.image_parts || [])]\n  }]\n};\n\nreturn [{ json: { ...ctx, model, prompt, openrouter_body } }];"
       },
       "id": "build_gemini",
       "name": "Build Gemini request",
@@ -364,13 +364,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{$json.model}}:generateContent",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-goog-api-key",
-              "value": "={{__REDACTED_GEMINI_API_KEY__}}"
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -380,7 +380,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.gemini_body) }}",
+        "jsonBody": "={{ JSON.stringify($json.openrouter_body) }}",
         "options": {
           "timeout": 120000,
           "retry": {
@@ -400,7 +400,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx  = $('Build Gemini request').item.json;\nconst resp = $json;\nconst parts = (resp.candidates && resp.candidates[0] && resp.candidates[0].content && resp.candidates[0].content.parts) || [];\nconst imgPart = parts.find(p => p.inlineData || p.inline_data);\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst inline = imgPart.inlineData || imgPart.inline_data;\nconst b64    = inline.data;\nconst mime   = inline.mimeType || inline.mime_type || 'image/png';\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind:                'commit',\n    input_image_path:    ctx.parent.input_image_path,\n    room_type:           ctx.parent.room_type,\n    style_tag:           ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
+        "jsCode": "const ctx  = $('Build Gemini request').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || [];\nconst parts   = Array.isArray(content) ? content : [];\nconst imgPart = parts.find(p => p.type === 'image_url');\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst dataUrl = imgPart.image_url && imgPart.image_url.url;\nconst match   = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);\nif (!match) {\n  return [{ json: { _error: { status: 502, body: { error: 'invalid_image_data_url', code: 'upstream_error' } } } }];\n}\nconst mime = match[1];\nconst b64  = match[2];\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind:                'commit',\n    input_image_path:    ctx.parent.input_image_path,\n    room_type:           ctx.parent.room_type,\n    style_tag:           ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
       },
       "id": "extract_png",
       "name": "Extract output PNG",

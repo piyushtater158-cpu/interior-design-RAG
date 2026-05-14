@@ -2,7 +2,22 @@
 
 ## Overview
 
-Postgres 17 with pgvector extension, hosted on Supabase. Five tables supporting an AI-powered interior design assistant.
+Postgres on **Supabase** (no `pgvector`, no FTS). Tables: `users`, `reference_images`, `generations`, `events`, `app_config`.
+
+Auth: **Google OAuth via Supabase Auth** (`auth.users` is Supabase-managed). Every `public.*` table is RLS-enabled with strict `owner_id = auth.uid()` — no NULL escape hatch.
+
+Reference retrieval is an **inline PostgREST query** inside `generate_orchestrated` (no `retrieve_candidates_text` RPC, no `caption_fts` column). Query pattern:
+
+```
+GET /rest/v1/reference_images
+  ?owner_id=eq.<uid>
+  &room_type=eq.<room>
+  &style_tags=cs.{<style>}
+  &select=id,source_url,caption,spatial_signature
+  &order=created_at.desc&limit=20
+```
+
+Canonical DDL: `contracts/schema.sql` (mirrors `supabase/migrations/100_reset_and_rebuild.sql`).
 
 ---
 
@@ -10,138 +25,133 @@ Postgres 17 with pgvector extension, hosted on Supabase. Five tables supporting 
 
 ### `users`
 
-Mock auth table for MVP. All users are demo users.
+Mirror of `auth.users`, populated by an `AFTER INSERT` trigger on `auth.users`.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | UUID | PK, auto-generated | Unique user ID |
-| `email` | TEXT | UNIQUE, NOT NULL | User email |
-| `created_at` | TIMESTAMPTZ | DEFAULT now() | Account creation time |
-| `is_demo` | BOOLEAN | DEFAULT true | All true for MVP |
+| `id` | UUID | PK, FK → auth.users (cascade) | Supabase Auth user ID |
+| `email` | TEXT | NOT NULL | Synced from Google identity |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | Account creation time |
 
-**Example row:**
-```
-id:         a1b2c3d4-e5f6-7890-abcd-ef1234567890
-email:      demo@interiordesign.ai
-created_at: 2026-04-18T00:00:00+05:30
-is_demo:    true
-```
+RLS: `SELECT` where `auth.uid() = id`.
 
 ---
 
 ### `reference_images`
 
-Seed interior design images with metadata, captions, and auto-generated tags.
+Per-user reference catalog. Every row is owned by exactly one `auth.users` row.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | UUID | PK, auto-generated | Image row ID |
-| `source` | TEXT | NOT NULL | Origin: `'local'` or `'synthetic'` |
-| `source_id` | TEXT | UNIQUE with source | Filename stem (e.g. `'1'`, `'42'`) |
-| `source_url` | TEXT | NOT NULL | Supabase Storage public URL |
-| `license` | TEXT | NOT NULL | Always `'owned'` for this dataset |
-| `storage_path` | TEXT | NOT NULL | Path in Supabase Storage bucket |
-| `caption` | TEXT | nullable | Pre-written image description |
-| `room_type` | TEXT | NOT NULL | `'bedroom'`, `'kitchen'`, `'living room'`, `'study room'`, `'kids room'`, `'mandir'`, `'hallway'`, `'dining room'` |
-| `style_tags` | TEXT[] | NOT NULL | Array of style names: `['industrial', 'japandi', ...]` |
-| `dominant_colors` | TEXT[] | nullable | Hex color codes: `['#e8d4b8', ...]` |
-| `detected_objects` | TEXT[] | nullable | Detected items: `['bed', 'lamp', ...]` |
-| `quality_score` | FLOAT | nullable | Auto-tag confidence 0.0–1.0 |
-| `created_at` | TIMESTAMPTZ | DEFAULT now() | Insertion timestamp |
+| `id` | UUID | PK, DEFAULT uuid_generate_v4() | Row ID |
+| `owner_id` | UUID | NOT NULL, FK → auth.users (cascade) | Row owner — RLS key |
+| `owner_email` | TEXT | nullable | Synced by trigger from auth.users |
+| `source` | TEXT | NOT NULL | `'studio'` (user uploads) or `'local'` (seed) |
+| `source_id` | TEXT | NOT NULL | UUID assigned at upload time |
+| `source_url` | TEXT | NOT NULL | Public or signed URL |
+| `license` | TEXT | nullable | e.g. `'owned'` |
+| `storage_path` | TEXT | NOT NULL | Path inside `reference-images` bucket |
+| `caption` | TEXT | nullable | Prose caption from `qwen/qwen3-vl-8b-instruct` |
+| `spatial_signature` | JSONB | nullable | Structured 3D layout extraction (see below) |
+| `room_type` | TEXT | NOT NULL, CHECK | One of the 6 valid room slugs |
+| `style_tags` | TEXT[] | NOT NULL, CHECK | Singleton array — exactly 1 of 6 valid styles |
+| `dominant_colors` | TEXT[] | nullable | Hex palette (tagger output) |
+| `detected_objects` | TEXT[] | nullable | Object labels (tagger output) |
+| `quality_score` | NUMERIC | nullable | 0–1 confidence score |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | Insert time |
 
-**Unique constraint:** `(source, source_id)` — prevents duplicate inserts.
+**Unique:** `(owner_id, source, source_id)`.
 
-**Example row:**
-```
-id:               b2c3d4e5-f6a7-8901-bcde-f12345678901
-source:           local
-source_id:        42
-source_url:       https://xxx.supabase.co/storage/v1/object/public/reference-images/minimalist/42.png
-license:          owned
-storage_path:     minimalist/42.png
-caption:          Minimalist style bedroom design with wooden table and green plants
-room_type:        bedroom
-style_tags:       {minimalist}
-dominant_colors:  {#f5f0eb,#8b7355,#2d5a27}
-detected_objects: {bed,table,plant,lamp}
-quality_score:    0.92
-```
+**CHECK constraints:**
 
----
-
-### `reference_embeddings`
-
-CLIP ViT-B/32 image embeddings for vector similarity search.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | UUID | PK, auto-generated | Embedding row ID |
-| `reference_image_id` | UUID | FK → reference_images(id), CASCADE | Parent image |
-| `embedding_type` | TEXT | NOT NULL | Model identifier: `'clip-vit-b32'` |
-| `embedding` | vector(512) | pgvector | 512-dimensional CLIP embedding |
-| `created_at` | TIMESTAMPTZ | DEFAULT now() | Insertion timestamp |
-
-**Example row:**
-```
-id:                 c3d4e5f6-a7b8-9012-cdef-123456789012
-reference_image_id: b2c3d4e5-f6a7-8901-bcde-f12345678901
-embedding_type:     clip-vit-b32
-embedding:          [0.0234, -0.1456, 0.0892, ...] (512 floats)
-```
-
-**Vector search example:**
 ```sql
-SELECT ri.room_type, ri.caption, 
-       1 - (re.embedding <=> '[0.02,...]'::vector) AS similarity
-FROM reference_embeddings re
-JOIN reference_images ri ON re.reference_image_id = ri.id
-ORDER BY re.embedding <=> '[0.02,...]'::vector
-LIMIT 5;
+check (room_type in ('bedroom','kids room','dining room','kitchen','mandir','living room'))
+check (cardinality(style_tags) = 1
+       and style_tags[1] in ('scandinavian','japandi','midcentury','traditional','industrial','boho'))
 ```
+
+**RLS:** SELECT/INSERT/UPDATE/DELETE all require `owner_id = auth.uid()`. No service-role bypass for user-facing reads.
+
+**`spatial_signature` shape** (written by `caption_generate` workflow):
+
+```jsonc
+{
+  "declared_style": "scandinavian",       // verbatim copy of style_tag input
+  "declared_room_type": "bedroom",        // verbatim copy of room_type input
+  "style_signals_observed": ["..."],      // visible elements justifying the style
+  "room_shape": "rectangular",
+  "perceived_proportions": { "width_to_depth": "wider" },
+  "ceiling": { "height": "standard", "treatment": null },
+  "walls_visible": ["left", "rear"],
+  "openings": [{ "wall": "rear", "type": "window", "approx_count": 1 }],
+  "natural_light": { "direction": "front-left", "intensity": "medium" },
+  "flooring": { "material": "hardwood", "coverage": "full" },
+  "furniture": [{ "type": "bed", "wall_relation": "rear wall" }],
+  "fixed_features": []
+}
+```
+
+`declared_style` and `declared_room_type` are hard-validated at write time against the workflow's input tags — mismatches return 502 `tag_mismatch` and no DB row is inserted.
 
 ---
 
 ### `generations`
 
-AI-generated design outputs. Populated in Phase 2 (backend).
+AI-generated design outputs.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | UUID | PK | Generation ID |
-| `user_id` | UUID | FK → users(id) | Who requested it |
-| `session_id` | TEXT | nullable | Client session grouping |
-| `parent_generation_id` | UUID | FK → generations(id) | Edit chain parent |
-| `kind` | TEXT | NOT NULL | `'draft'`, `'commit'`, `'edit'` |
-| `input_image_path` | TEXT | nullable | User-uploaded room photo |
-| `room_type` | TEXT | nullable | Target room type |
-| `style_tag` | TEXT | nullable | Target style |
-| `reference_image_ids` | UUID[] | nullable | Referenced seed images |
-| `prompt` | TEXT | nullable | Full prompt sent to model |
-| `model_config` | TEXT | NOT NULL | `'A'` or `'B'` |
-| `model_id` | TEXT | nullable | Model identifier |
-| `output_image_path` | TEXT | nullable | Generated image path |
-| `latency_ms` | INTEGER | nullable | Generation time |
-| `cost_usd` | NUMERIC(10,6) | nullable | API cost |
-| `status` | TEXT | nullable | `'success'`, `'failed'`, `'retried'` |
-| `error_message` | TEXT | nullable | Error details if failed |
-| `created_at` | TIMESTAMPTZ | DEFAULT now() | Generation timestamp |
+| `id` | UUID | PK, DEFAULT uuid_generate_v4() | Generation ID |
+| `user_id` | UUID | NOT NULL, FK → auth.users (cascade) | Owner |
+| `session_id` | TEXT | nullable | Client session ID |
+| `parent_id` | UUID | FK → generations(id) ON DELETE SET NULL | Edit chain parent |
+| `prompt` | TEXT | nullable | Model prompt text |
+| `style_tag` | TEXT | CHECK (∈ 6 or NULL) | Target style |
+| `room_type` | TEXT | CHECK (∈ 6 or NULL) | Target room |
+| `output_storage_path` | TEXT | nullable | Output in `user-outputs` bucket |
+| `output_url` | TEXT | nullable | Public/signed URL of output |
+| `picked_refs` | JSONB | nullable | Array of 3 reference_image ids selected by orchestrator |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | Created |
+
+RLS: SELECT/INSERT/UPDATE/DELETE all require `auth.uid() = user_id`.
 
 ---
 
 ### `events`
 
-Analytics event log for tracking user interactions.
+Audit / analytics log.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
-| `id` | UUID | PK | Event ID |
-| `user_id` | UUID | FK → users(id) | Associated user |
-| `session_id` | TEXT | nullable | Client session |
-| `event_type` | TEXT | NOT NULL | Event category |
-| `payload` | JSONB | nullable | Flexible event data |
-| `created_at` | TIMESTAMPTZ | DEFAULT now() | Event timestamp |
+| `id` | UUID | PK, DEFAULT uuid_generate_v4() | Event ID |
+| `user_id` | UUID | FK → auth.users ON DELETE SET NULL | Optional owner |
+| `event_type` | TEXT | NOT NULL | Category string |
+| `payload` | JSONB | nullable | Arbitrary event data |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | Event time |
 
-**Event types:** `'session_start'`, `'upload'`, `'retrieve'`, `'draft_ok'`, `'edit_ok'`, `'commit_ok'`, `'download'`, `'error'`
+RLS: INSERT requires `auth.uid() = user_id`. No SELECT policy for clients — analytics reads use service role only.
+
+---
+
+### `app_config`
+
+Key/value store for model IDs and feature flags.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `key` | TEXT | PK | Config key |
+| `value` | TEXT | NOT NULL | Config value |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | Set time |
+
+RLS: SELECT public (any role). INSERT/UPDATE: service role only (no client policy).
+
+Seeded values:
+
+| Key | Value |
+|---|---|
+| `caption_model` | `qwen/qwen3-vl-8b-instruct` |
+| `orchestrator_model` | `google/gemini-2.5-flash` |
+| `image_model` | `google/gemini-3.1-flash-image-preview` |
 
 ---
 
@@ -149,10 +159,44 @@ Analytics event log for tracking user interactions.
 
 | Name | Table | Type | Columns | Purpose |
 |---|---|---|---|---|
-| `idx_ref_room_type` | reference_images | B-tree | `room_type` | Filter by room |
-| `idx_ref_style_tags` | reference_images | GIN | `style_tags` | Array containment queries |
-| `idx_ref_quality` | reference_images | B-tree | `quality_score` | Quality filtering |
-| `idx_ref_embeddings_hnsw` | reference_embeddings | HNSW | `embedding` (cosine) | Vector similarity search |
-| `idx_gen_user_session` | generations | B-tree | `(user_id, session_id, created_at DESC)` | User session lookup |
-| `idx_gen_parent` | generations | B-tree | `parent_generation_id` | Edit chain traversal |
-| `idx_events_user_time` | events | B-tree | `(user_id, created_at DESC)` | User event history |
+| `idx_ref_owner` | reference_images | B-tree | `owner_id` | Owner lookup |
+| `idx_ref_room` | reference_images | B-tree | `(owner_id, room_type)` | Per-user room filter |
+| `idx_ref_style` | reference_images | GIN | `style_tags` | Array containment |
+| `idx_ref_spatial` | reference_images | GIN | `spatial_signature` | JSON containment |
+| `idx_gen_user_time` | generations | B-tree | `(user_id, created_at DESC)` | Session history |
+| `idx_gen_session` | generations | B-tree | `session_id` (partial: NOT NULL) | Session lookup |
+| `idx_events_user` | events | B-tree | `(user_id, created_at DESC)` | User timeline |
+
+No FTS index. No `caption_fts` column. No `retrieve_candidates_text` RPC.
+
+---
+
+## Storage Buckets
+
+All buckets are **private** (not public). Signed URLs or service-role access required.
+
+| Bucket | Path pattern | Purpose |
+|---|---|---|
+| `reference-images` | `studio/{user_id}/{style}/{room}/{uuid}.{ext}` | User-uploaded reference images |
+| `user-uploads` | `{user_id}/{upload_id}` | Room photos uploaded for generation |
+| `user-outputs` | `outputs/{user_id}/{uuid}.png` | AI-generated design outputs |
+
+Storage RLS scopes by `split_part(name, '/', 2) = auth.uid()::text` for `reference-images` and by `split_part(name, '/', 1) = auth.uid()::text` for the other two.
+
+---
+
+## Triggers
+
+| Trigger | Table | When | Function | Effect |
+|---|---|---|---|---|
+| `on_auth_user_created` | `auth.users` | AFTER INSERT | `handle_new_user()` | Mirrors row into `public.users` (upsert) |
+| `tr_reference_images_sync_owner_email` | `public.reference_images` | BEFORE INSERT OR UPDATE OF owner_id | `reference_images_sync_owner_email()` | Syncs `owner_email` from `auth.users` |
+
+---
+
+## Auth
+
+- Provider: **Google OAuth** via Supabase Auth (`signInWithOAuth({ provider: 'google' })`).
+- Session token: Supabase JWT issued after Google consent. Stored in `localStorage` via Supabase client.
+- n8n verification: every webhook calls `wf_supabase_verify` sub-workflow which hits Supabase `/auth/v1/user` with the bearer token. No hand-rolled JWT decode in n8n.
+- RLS: downstream DB reads use the **user's session bearer + supabase anon key** so `auth.uid()` resolves inside RLS policies. Service role key is only used for storage uploads (server-side, non-user-facing operations).
