@@ -38,7 +38,7 @@
         }
       },
       "id": "verify",
-      "name": "Verify JWT",
+      "name": "Extract user from token",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
       "position": [
@@ -214,14 +214,14 @@
       "main": [
         [
           {
-            "node": "Verify JWT",
+            "node": "Extract user from token",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify JWT": {
+    "Extract user from token": {
       "main": [
         [
           {

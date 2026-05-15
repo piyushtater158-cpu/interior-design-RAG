@@ -31,7 +31,7 @@
         }
       },
       "id": "verify",
-      "name": "Verify JWT",
+      "name": "Extract user from token",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
       "position": [
@@ -254,7 +254,7 @@
         "options": {}
       },
       "id": "if_a1_err",
-      "name": "Agent 1 ok?",
+      "name": "Agent 1 success?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -458,7 +458,7 @@
         "options": {}
       },
       "id": "if_a2_build_err",
-      "name": "Agent 2 build ok?",
+      "name": "Agent 2 build success?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -561,7 +561,7 @@
         "options": {}
       },
       "id": "if_a2_err",
-      "name": "Agent 2 ok?",
+      "name": "Agent 2 success?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -749,7 +749,7 @@
         }
       },
       "id": "gemini_call",
-      "name": "Agent 3 (Gemini)",
+      "name": "Generate image (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -930,14 +930,14 @@
       "main": [
         [
           {
-            "node": "Verify JWT",
+            "node": "Extract user from token",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify JWT": {
+    "Extract user from token": {
       "main": [
         [
           {
@@ -1032,14 +1032,14 @@
       "main": [
         [
           {
-            "node": "Agent 1 ok?",
+            "node": "Agent 1 success?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Agent 1 ok?": {
+    "Agent 1 success?": {
       "main": [
         [
           {
@@ -1134,14 +1134,14 @@
       "main": [
         [
           {
-            "node": "Agent 2 build ok?",
+            "node": "Agent 2 build success?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Agent 2 build ok?": {
+    "Agent 2 build success?": {
       "main": [
         [
           {
@@ -1174,14 +1174,14 @@
       "main": [
         [
           {
-            "node": "Agent 2 ok?",
+            "node": "Agent 2 success?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Agent 2 ok?": {
+    "Agent 2 success?": {
       "main": [
         [
           {
@@ -1269,14 +1269,14 @@
       "main": [
         [
           {
-            "node": "Agent 3 (Gemini)",
+            "node": "Generate image (Gemini)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Agent 3 (Gemini)": {
+    "Generate image (Gemini)": {
       "main": [
         [
           {
