@@ -70,7 +70,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse ===CAPTION=== and ===SPATIAL=== blocks from LLM response.\nconst ctx     = $('Build enhancement request').item.json;\nconst content = ($json.choices && $json.choices[0] && $json.choices[0].message && $json.choices[0].message.content) || '';\n\nif (!content) {\n  return [{ json: { ...ctx, _error: 'empty_response' } }];\n}\n\nfunction extractBlock(text, tag) {\n  const startRe = new RegExp(`={3,}\\\\s*${tag}\\\\s*={3,}`, 'i');\n  const endRe   = /={3,}\\s*END\\s*={3,}/i;\n  const s = text.search(startRe);\n  if (s < 0) return null;\n  const after = text.slice(s).replace(startRe, '');\n  const e = after.search(endRe);\n  return e < 0 ? after.trim() : after.slice(0, e).trim();\n}\n\nconst caption_enhanced = extractBlock(content, 'CAPTION');\nconst spatialRaw       = extractBlock(content, 'SPATIAL');\n\nif (!caption_enhanced) {\n  return [{ json: { ...ctx, _error: 'missing_caption_block', raw: content.slice(0, 300) } }];\n}\n\nlet spatial_signature = null;\nif (spatialRaw) {\n  try {\n    spatial_signature = JSON.parse(spatialRaw);\n  } catch (_) {\n    // Best-effort: store null if JSON is malformed\n  }\n}\n\nreturn [{ json: { ...ctx, caption_enhanced, spatial_signature, _error: null } }];"
+        "jsCode": "// Parse ===CAPTION=== and ===SPATIAL=== blocks from LLM response.\nconst ctx     = $('Build enhancement request').item.json;\nconst content = ($json.choices && $json.choices[0] && $json.choices[0].message && $json.choices[0].message.content) || '';\n\nif (!content) {\n  return [{ json: { ...ctx, _error: 'empty_response' } }];\n}\n\nfunction extractBlock(text, tag) {\n  const startRe = new RegExp(`={3,}\\\\s*${tag}\\\\s*={3,}`, 'i');\n  const endRe   = /={3,}\\s*END\\s*={3,}/i;\n  const s = text.search(startRe);\n  if (s < 0) return null;\n  const after = text.slice(s).replace(startRe, '');\n  const e = after.search(endRe);\n  return e < 0 ? after.trim() : after.slice(0, e).trim();\n}\n\nconst caption_enhanced = extractBlock(content, 'CAPTION');\nconst spatialRaw       = extractBlock(content, 'SPATIAL');\n\nif (!caption_enhanced) {\n  return [{ json: { ...ctx, _error: 'missing_caption_block', raw: content.slice(0, 300) } }];\n}\n\nlet spatial_signature = null;\nif (spatialRaw) {\n  try {\n    spatial_signature = JSON.parse(spatialRaw);\n  } catch (_) {}\n}\n\n// Keyword-extract mood tags from the enhanced caption\nconst MOOD_VOCAB = ['cozy','minimal','dramatic','airy','warm','cool',\n                   'dark','bright','eclectic','serene','bold','rustic',\n                   'luxurious','playful'];\nconst lc = caption_enhanced.toLowerCase();\nconst mood_tags = MOOD_VOCAB.filter(m => lc.includes(m));\n\nreturn [{ json: { ...ctx, caption_enhanced, spatial_signature, mood_tags, _error: null } }];"
       },
       "id": "parse",
       "name": "Parse enhancement",
@@ -124,7 +124,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ caption_enhanced: $json.caption_enhanced, spatial_signature: $json.spatial_signature, caption_enhanced_at: new Date().toISOString() }) }}",
+        "jsonBody": "={{ JSON.stringify({ caption_enhanced: $json.caption_enhanced, spatial_signature: $json.spatial_signature, mood_tags: $json.mood_tags || [], caption_enhanced_at: new Date().toISOString() }) }}",
         "options": { "timeout": 15000 }
       },
       "id": "update_db",

@@ -301,7 +301,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent($json.user_id) + '&order=quality_score.desc.nullslast&limit=20' + ($json.inferred_room ? '&room_type=eq.' + encodeURIComponent($json.inferred_room) : '') + ($json.style_tag ? '&style_tags=cs.%7B' + encodeURIComponent($json.style_tag) + '%7D' : '') }}",
+        "url": "={{ 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,caption_enhanced,spatial_signature,mood_tags,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent($json.user_id) + '&order=quality_score.desc.nullslast&limit=20' + ($json.inferred_room ? '&room_type=eq.' + encodeURIComponent($json.inferred_room) : '') + ($json.style_tag ? '&style_tags=cs.%7B' + encodeURIComponent($json.style_tag) + '%7D' : '') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -380,7 +380,7 @@
     },
     {
       "parameters": {
-        "url": "={{ (() => {\n  const c = $json;\n  const base = 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent(c.user_id) + '&order=quality_score.desc.nullslast&limit=20';\n  const st = (c.style_tag || '').toString().trim();\n  const rm = (c.inferred_room || c.room_hint || '').toString().trim();\n  const styleTop = st ? ('&style_tags=cs.%7B' + encodeURIComponent(st) + '%7D') : '';\n  const roomTop  = rm ? ('&room_type=eq.' + encodeURIComponent(rm)) : '';\n  return base + roomTop + styleTop;\n})() }}",
+        "url": "={{ (() => {\n  const c = $json;\n  const base = 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,caption_enhanced,spatial_signature,mood_tags,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent(c.user_id) + '&order=quality_score.desc.nullslast&limit=20';\n  const st = (c.style_tag || '').toString().trim();\n  const rm = (c.inferred_room || c.room_hint || '').toString().trim();\n  const styleTop = st ? ('&style_tags=cs.%7B' + encodeURIComponent(st) + '%7D') : '';\n  const roomTop  = rm ? ('&room_type=eq.' + encodeURIComponent(rm)) : '';\n  return base + roomTop + styleTop;\n})() }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

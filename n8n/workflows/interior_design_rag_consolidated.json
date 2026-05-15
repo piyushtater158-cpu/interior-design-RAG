@@ -8,7 +8,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "f69ecf28",
+      "id": "e62fa244",
       "name": "health::GET /health",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -24,7 +24,7 @@
         "responseBody": "={{ JSON.stringify({ status: 'ok', backend: 'n8n-interior-design-assistant' }) }}",
         "options": {}
       },
-      "id": "cc2fa762",
+      "id": "a2a1c13e",
       "name": "health::Respond OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -40,7 +40,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "9bd4b27e",
+      "id": "84ee621a",
       "name": "auth-me::GET /auth/me",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -51,7 +51,7 @@
       "webhookId": "auth-me"
     },
     {
-      "id": "2b09411c",
+      "id": "e8c5eb49",
       "name": "auth-me::Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -64,7 +64,7 @@
       }
     },
     {
-      "id": "0e152a71",
+      "id": "0597aabe",
       "name": "auth-me::Verify JWT (HTTP)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -99,7 +99,7 @@
       }
     },
     {
-      "id": "13db6967",
+      "id": "46bd5081",
       "name": "auth-me::Verify JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -132,7 +132,7 @@
           "combinator": "and"
         }
       },
-      "id": "6e04e5a1",
+      "id": "463852e5",
       "name": "auth-me::Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -148,7 +148,7 @@
         "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
         "options": {}
       },
-      "id": "0f4352e2",
+      "id": "496e5ecf",
       "name": "auth-me::Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -182,7 +182,7 @@
           "timeout": 10000
         }
       },
-      "id": "4b6f7a53",
+      "id": "459a67b0",
       "name": "auth-me::Fetch user",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -195,7 +195,7 @@
       "parameters": {
         "jsCode": "const d = $json;\nlet row;\nif (Array.isArray(d)) row = d[0];\nelse if (d && d.id) row = d;\nelse if (Array.isArray(d.body)) row = d.body[0];\nelse if (d && d.body && d.body.id) row = d.body;\nif (!row) {\n  return [{ json: { _status: 404, _body: { error: 'user_not_found', code: 'not_found' } } }];\n}\nreturn [{ json: { _status: 200, _body: { user_id: row.id, email: row.email } } }];"
       },
-      "id": "4f8d8bf7",
+      "id": "ff4d5870",
       "name": "auth-me::Shape response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -211,7 +211,7 @@
         "responseBody": "={{ JSON.stringify($json._body) }}",
         "options": {}
       },
-      "id": "30186f12",
+      "id": "5160cc3d",
       "name": "auth-me::Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -230,7 +230,7 @@
           "rawBody": false
         }
       },
-      "id": "fdc7bb75",
+      "id": "9ac59174",
       "name": "upload::POST /uploads/room-photo",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -241,7 +241,7 @@
       "webhookId": "uploads-room-photo"
     },
     {
-      "id": "c307cf95",
+      "id": "181765cd",
       "name": "upload::Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -254,7 +254,7 @@
       }
     },
     {
-      "id": "83961dc8",
+      "id": "058b61d2",
       "name": "upload::Verify JWT (HTTP)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -289,7 +289,7 @@
       }
     },
     {
-      "id": "d1070300",
+      "id": "5a77e626",
       "name": "upload::Verify JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -321,7 +321,7 @@
           "combinator": "and"
         }
       },
-      "id": "8ddb8fa0",
+      "id": "5d3ece3f",
       "name": "upload::Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -337,7 +337,7 @@
         "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
         "options": {}
       },
-      "id": "ecc5b9bd",
+      "id": "328d4c4e",
       "name": "upload::Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -350,7 +350,7 @@
       "parameters": {
         "jsCode": "// Input: verify step returned { ok, user_id, email }.\n// The original webhook payload sits on the Webhook node; its binary is named 'file'.\nconst user_id = $json.user_id;\n\nconst binary = $('upload::POST /uploads/room-photo').item.binary || {};\n// n8n webhook v2 stores multipart files as field0, field1... so check both 'file' and 'file0'\nconst file = binary.file || binary.file0 || Object.values(binary)[0] || null;\nif (!file) {\n  return [{ json: { _error: { status: 400, body: { error: 'missing_file', code: 'invalid_file' } } } }];\n}\n\nconst mime = (file.mimeType || '').toLowerCase();\nconst allowed = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png' };\nconst ext = allowed[mime];\nif (!ext) {\n  return [{ json: { _error: { status: 400, body: { error: 'unsupported_media_type', code: 'invalid_file_type' } } } }];\n}\n\nconst sizeBytes = Buffer.byteLength(file.data, 'base64');\nif (sizeBytes > 10 * 1024 * 1024) {\n  return [{ json: { _error: { status: 413, body: { error: 'file_too_large', code: 'file_too_large' } } } }];\n}\n\n// pure-JS UUID (no require('crypto') â€” blocked by n8n task-runner sandbox)\nconst upload_id = Array.from({length: 32}, () => (Math.random() * 16 | 0).toString(16)).join('');\nconst path = `${user_id}/${upload_id}`;\n\nreturn [{\n  json: { user_id, upload_id, ext, mime, path, storage_path: `user-uploads/${path}` },\n  binary: { file }\n}];"
       },
-      "id": "12139c8e",
+      "id": "299235b2",
       "name": "upload::Validate + name",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -379,7 +379,7 @@
           "combinator": "and"
         }
       },
-      "id": "36e35577",
+      "id": "55bc60a0",
       "name": "upload::Validation error?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -395,7 +395,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "d1216328",
+      "id": "9df2148f",
       "name": "upload::Respond validation err",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -436,7 +436,7 @@
           "timeout": 60000
         }
       },
-      "id": "6061620a",
+      "id": "89ea22b7",
       "name": "upload::Upload to storage",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -449,7 +449,7 @@
       "parameters": {
         "jsCode": "// Build the public URL for the uploaded object.\nconst row         = $('upload::Validate + name').item.json;\nconst user_id     = row.user_id;\nconst upload_id   = row.upload_id;\nconst path        = row.path;\nconst preview_url = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/user-uploads/${path}`;\nreturn [{ json: { user_id, upload_id, preview_url, storage_path: `user-uploads/${path}`, mime: row.mime } }];"
       },
-      "id": "b9a1716a",
+      "id": "d9ea1c18",
       "name": "upload::Build preview_url",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -479,7 +479,7 @@
           "waitForSubWorkflow": false
         }
       },
-      "id": "c6d03e57",
+      "id": "9ff240f7",
       "name": "upload::Log event",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -495,7 +495,7 @@
         "responseBody": "={{ JSON.stringify({ upload_id: $json.upload_id, preview_url: $json.preview_url }) }}",
         "options": {}
       },
-      "id": "7b039c9d",
+      "id": "4c933f19",
       "name": "upload::Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -505,7 +505,7 @@
       ]
     },
     {
-      "id": "0618ecc4",
+      "id": "09ac4939",
       "name": "ref-bulk::POST /uploads/reference/bulk",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -522,7 +522,7 @@
       "webhookId": "uploads-reference-bulk"
     },
     {
-      "id": "f2d9d283",
+      "id": "39359e4a",
       "name": "ref-bulk::Verify JWT (HTTP)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -557,7 +557,7 @@
       }
     },
     {
-      "id": "1402183e",
+      "id": "7553f13c",
       "name": "ref-bulk::Verify JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -570,7 +570,7 @@
       }
     },
     {
-      "id": "55b593cf",
+      "id": "48cdef16",
       "name": "ref-bulk::Auth ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -601,7 +601,7 @@
       }
     },
     {
-      "id": "24790c46",
+      "id": "970d0583",
       "name": "ref-bulk::Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -618,7 +618,7 @@
       }
     },
     {
-      "id": "623f46c1",
+      "id": "6b42c46d",
       "name": "ref-bulk::Validate & split files",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -631,7 +631,7 @@
       }
     },
     {
-      "id": "2ca387de",
+      "id": "cc688b9b",
       "name": "ref-bulk::Body valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -662,7 +662,7 @@
       }
     },
     {
-      "id": "1a321bc9",
+      "id": "8537fc06",
       "name": "ref-bulk::Respond 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -679,7 +679,7 @@
       }
     },
     {
-      "id": "95aaebee",
+      "id": "32a7097f",
       "name": "ref-bulk::Process each file",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -691,7 +691,7 @@
         "workflowId": {
           "__rl": true,
           "mode": "list",
-          "value": "uploads_reference",
+          "value": "Rld1UXU0W81sZIiH",
           "cachedResultName": "uploads_reference"
         },
         "options": {
@@ -700,7 +700,7 @@
       }
     },
     {
-      "id": "46442de1",
+      "id": "ec803d24",
       "name": "ref-bulk::Aggregate results",
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
@@ -715,7 +715,7 @@
       }
     },
     {
-      "id": "8971c08c",
+      "id": "267e2f7e",
       "name": "ref-bulk::Respond 207",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -738,7 +738,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "4f67e3b7",
+      "id": "de6c31b0",
       "name": "edit::POST /generate/edit",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -749,7 +749,7 @@
       "webhookId": "generate-edit"
     },
     {
-      "id": "c15554e8",
+      "id": "92c4a502",
       "name": "edit::Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -762,7 +762,7 @@
       }
     },
     {
-      "id": "1f1f73e9",
+      "id": "16090900",
       "name": "edit::Verify JWT (HTTP)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -797,7 +797,7 @@
       }
     },
     {
-      "id": "7973f65a",
+      "id": "45e4c5a5",
       "name": "edit::Verify JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -829,7 +829,7 @@
           "combinator": "and"
         }
       },
-      "id": "2b4e8a2b",
+      "id": "16acb34b",
       "name": "edit::Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -845,7 +845,7 @@
         "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
         "options": {}
       },
-      "id": "4b402a1d",
+      "id": "3cf1adbc",
       "name": "edit::Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -858,7 +858,7 @@
       "parameters": {
         "jsCode": "const _raw = $('edit::POST /generate/edit').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id = $json.user_id;\n\nconst generation_id = (body.generation_id || '').toString().trim();\nconst instruction   = (body.instruction   || '').toString().trim();\nconst session_id    = body.session_id ? body.session_id.toString() : null;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(generation_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_generation_id', code: 'invalid_request' } } } }];\n}\nif (!instruction) {\n  return [{ json: { _error: { status: 400, body: { error: 'missing_instruction', code: 'invalid_request' } } } }];\n}\n\nreturn [{ json: { user_id, generation_id, instruction, session_id, started_at_ms: Date.now() } }];"
       },
-      "id": "9b07a693",
+      "id": "0cdeb679",
       "name": "edit::Validate body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -887,7 +887,7 @@
           "combinator": "and"
         }
       },
-      "id": "20d9ce60",
+      "id": "c0cd3433",
       "name": "edit::Body valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -903,7 +903,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "589bc56a",
+      "id": "e9a5edb6",
       "name": "edit::Respond 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -933,7 +933,7 @@
           "timeout": 10000
         }
       },
-      "id": "cc2be8dc",
+      "id": "84465f5d",
       "name": "edit::Fetch parent generation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -946,7 +946,7 @@
       "parameters": {
         "jsCode": "const rows   = Array.isArray($json) ? $json : ($json.body || []);\nconst parent = rows[0];\nconst ctx    = $('edit::Validate body').item.json;\nif (!parent) {\n  return [{ json: { _error: { status: 404, body: { error: 'parent_not_found', code: 'not_found' } } } }];\n}\nif (!parent.output_image_path) {\n  return [{ json: { _error: { status: 400, body: { error: 'parent_output_missing', code: 'invalid_state' } } } }];\n}\n\nreturn [{ json: {\n  ...ctx,\n  parent,\n  parent_output_url: `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${parent.output_image_path}`\n} }];"
       },
-      "id": "54fc94f1",
+      "id": "2d0ff7d4",
       "name": "edit::Shape parent",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -975,7 +975,7 @@
           "combinator": "and"
         }
       },
-      "id": "ffacb4a1",
+      "id": "5260c16e",
       "name": "edit::Parent ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -991,7 +991,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "8054ba60",
+      "id": "bd875533",
       "name": "edit::Respond parent err",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -1028,7 +1028,7 @@
           "timeout": 10000
         }
       },
-      "id": "82aec187",
+      "id": "094b75af",
       "name": "edit::Chain depth RPC",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1041,7 +1041,7 @@
       "parameters": {
         "jsCode": "const depth = typeof $json === 'number' ? $json : parseInt($json, 10) || 0;\nconst ctx   = $('edit::Shape parent').item.json;\n// Parent itself consumes depth N ancestors; this new edit adds 1 more.\n// Cap at 6 total edits below a root.\nif (depth + 1 > 6) {\n  return [{ json: { _error: { status: 400, body: { error: 'edit_chain_cap_exceeded', code: 'edit_cap_exceeded' } } } }];\n}\nreturn [{ json: { ...ctx, chain_depth: depth } }];"
       },
-      "id": "edf9d314",
+      "id": "6f4fc53b",
       "name": "edit::Check cap",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1070,7 +1070,7 @@
           "combinator": "and"
         }
       },
-      "id": "54c3e31e",
+      "id": "9873de4f",
       "name": "edit::Under cap?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -1086,7 +1086,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "15f8e3e6",
+      "id": "fca4ce9c",
       "name": "edit::Respond cap exceeded",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -1111,7 +1111,7 @@
           "timeout": 30000
         }
       },
-      "id": "90c12a35",
+      "id": "169ad86c",
       "name": "edit::Fetch parent PNG",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1124,7 +1124,7 @@
       "parameters": {
         "jsCode": "const ctx = $('edit::Check cap').item.json;\nconst bin = $input.item.binary.image;\nconst template = `You are editing an interior design photograph.\n\nTASK: Apply ONLY the specific change requested below. Do not modify any other\nelement of the image. Preserve all geometry, lighting, and unaffected objects\nexactly.\n\nREQUESTED CHANGE: {instruction}\n`;\nconst prompt = template.replace('{instruction}', ctx.instruction);\n\nconst openrouter_body = {\n  model: ctx.model || 'google/gemini-3.1-flash-image-preview',\n  messages: [{\n    role: 'user',\n    content: [\n      { type: 'text', text: prompt },\n      { type: 'image_url', image_url: { url: `data:${bin.mimeType || 'image/png'};base64,${bin.data}` } }\n    ]\n  }]\n};\nreturn [{ json: { ...ctx, prompt, openrouter_body } }];"
       },
-      "id": "8a42f3ba",
+      "id": "4173d17f",
       "name": "edit::Build Gemini request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1154,7 +1154,7 @@
           "timeout": 10000
         }
       },
-      "id": "f04db7d0",
+      "id": "55184c21",
       "name": "edit::Fetch image_model",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1167,7 +1167,7 @@
       "parameters": {
         "jsCode": "const rows  = Array.isArray($json) ? $json : ($json.body || []);\nconst model = (rows[0] && rows[0].value) || 'gemini-3.1-flash-image-preview';\nconst ctx   = $('edit::Build Gemini request').item.json;\nreturn [{ json: { ...ctx, model } }];"
       },
-      "id": "3911bc9f",
+      "id": "406d8d68",
       "name": "edit::Attach model",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1204,7 +1204,7 @@
           }
         }
       },
-      "id": "ace921b7",
+      "id": "3aa9dd69",
       "name": "edit::Call Gemini",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1217,7 +1217,7 @@
       "parameters": {
         "jsCode": "const ctx  = $('edit::Attach model').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || [];\nconst parts   = Array.isArray(content) ? content : [];\nconst imgPart = parts.find(p => p.type === 'image_url');\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst dataUrl = imgPart.image_url && imgPart.image_url.url;\nconst match   = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);\nif (!match) {\n  return [{ json: { _error: { status: 502, body: { error: 'invalid_image_data_url', code: 'upstream_error' } } } }];\n}\nconst mime = match[1];\nconst b64  = match[2];\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind:                'edit',\n    input_image_path:    ctx.parent.output_image_path,\n    room_type:           ctx.parent.room_type,\n    style_tag:           ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
       },
-      "id": "9f5734aa",
+      "id": "9c660d08",
       "name": "edit::Extract output PNG",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1246,7 +1246,7 @@
           "combinator": "and"
         }
       },
-      "id": "335c3e66",
+      "id": "f20ca332",
       "name": "edit::Extract ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -1262,7 +1262,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "61ffbfab",
+      "id": "3183c4b9",
       "name": "edit::Respond 502",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -1288,7 +1288,7 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "382deb24",
+      "id": "d9c92c35",
       "name": "edit::Save generation",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -1319,7 +1319,7 @@
           "waitForSubWorkflow": false
         }
       },
-      "id": "1ea49d3f",
+      "id": "4f99dcb0",
       "name": "edit::Log event",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -1335,7 +1335,7 @@
         "responseBody": "={{ JSON.stringify({\n  generation_id: $json.generation_id,\n  output_url:    $json.output_url,\n  latency_ms:    $json.latency_ms,\n  cost_usd:      $json.cost_usd,\n  model_id:      $json.model_id,\n  backend_id:    'gemini'\n}) }}",
         "options": {}
       },
-      "id": "c70894ef",
+      "id": "b5b39203",
       "name": "edit::Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -1351,7 +1351,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "2aa2363f",
+      "id": "23de2f35",
       "name": "commit::POST /generate/commit",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -1362,7 +1362,7 @@
       "webhookId": "generate-commit"
     },
     {
-      "id": "48ab1747",
+      "id": "db115e38",
       "name": "commit::Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1375,7 +1375,7 @@
       }
     },
     {
-      "id": "c7382d01",
+      "id": "d0efe410",
       "name": "commit::Verify JWT (HTTP)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1410,7 +1410,7 @@
       }
     },
     {
-      "id": "92b10034",
+      "id": "f515f565",
       "name": "commit::Verify JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1442,7 +1442,7 @@
           "combinator": "and"
         }
       },
-      "id": "a19021f2",
+      "id": "4aa74e36",
       "name": "commit::Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -1458,7 +1458,7 @@
         "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
         "options": {}
       },
-      "id": "6036284a",
+      "id": "b5d29edc",
       "name": "commit::Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -1471,7 +1471,7 @@
       "parameters": {
         "jsCode": "const _raw = $('commit::POST /generate/commit').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id = $json.user_id;\n\nconst parent_generation_id = (body.parent_generation_id || body.generation_id || '').toString().trim();\nconst session_id = body.session_id ? body.session_id.toString() : null;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(parent_generation_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_parent_generation_id', code: 'invalid_request' } } } }];\n}\n\nreturn [{ json: { user_id, parent_generation_id, session_id, started_at_ms: Date.now() } }];"
       },
-      "id": "a2243760",
+      "id": "7973faf9",
       "name": "commit::Validate body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1500,7 +1500,7 @@
           "combinator": "and"
         }
       },
-      "id": "01f34b0d",
+      "id": "ab931d06",
       "name": "commit::Body valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -1516,7 +1516,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "3a718be5",
+      "id": "b5aca77c",
       "name": "commit::Respond 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -1546,7 +1546,7 @@
           "timeout": 10000
         }
       },
-      "id": "439ecc2b",
+      "id": "7ce268c1",
       "name": "commit::Fetch parent generation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1559,7 +1559,7 @@
       "parameters": {
         "jsCode": "const rows   = Array.isArray($json) ? $json : ($json.body || []);\nconst parent = rows[0];\nconst ctx    = $('commit::Validate body').item.json;\nif (!parent) {\n  return [{ json: { _error: { status: 404, body: { error: 'parent_not_found', code: 'not_found' } } } }];\n}\nif (!parent.output_image_path || !parent.input_image_path) {\n  return [{ json: { _error: { status: 400, body: { error: 'parent_incomplete', code: 'invalid_state' } } } }];\n}\n// Walk up the chain to the root to recover the original upload. Commit should\n// render from the original room photo, not from an intermediate edit output.\n// parent.input_image_path on an edit points at the previous generation's output;\n// on a draft it points at user-uploads/<uid>/<upload_id>. For commit we want\n// to combine: the ORIGINAL upload + the latest parent output + reference images.\nreturn [{ json: {\n  ...ctx,\n  parent,\n  parent_input_url:  `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${parent.input_image_path}`,\n  parent_output_url: `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${parent.output_image_path}`\n} }];"
       },
-      "id": "d0d3b81a",
+      "id": "663584c0",
       "name": "commit::Shape parent",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1588,7 +1588,7 @@
           "combinator": "and"
         }
       },
-      "id": "064af573",
+      "id": "193d51c2",
       "name": "commit::Parent ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -1604,7 +1604,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "e60bd9d9",
+      "id": "4bdaaa20",
       "name": "commit::Respond parent err",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -1634,7 +1634,7 @@
           "timeout": 15000
         }
       },
-      "id": "4a2b33b3",
+      "id": "657e8e26",
       "name": "commit::Fetch reference URLs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1647,7 +1647,7 @@
       "parameters": {
         "jsCode": "// Build ordered fetch list: parent input (original room), then parent output,\n// then each reference image in the order stored on the parent row.\nconst ctx   = $('commit::Shape parent').item.json;\nconst refs  = Array.isArray($json) ? $json : ($json.body || []);\nconst byId  = {};\nrefs.forEach(r => { byId[r.id] = r.source_url; });\n\nconst urls = [ctx.parent_input_url, ctx.parent_output_url];\nfor (const id of (ctx.parent.reference_image_ids || [])) {\n  if (byId[id]) urls.push(byId[id]);\n}\nreturn urls.map((url, i) => ({ json: { ...ctx, idx: i, fetch_url: url } }));"
       },
-      "id": "c6f4154e",
+      "id": "4dded1b0",
       "name": "commit::Order fetch list",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1672,7 +1672,7 @@
           "timeout": 30000
         }
       },
-      "id": "8ee93f77",
+      "id": "a72974e2",
       "name": "commit::Fetch image bytes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1685,7 +1685,7 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nitems.sort((a, b) => a.json.idx - b.json.idx);\nconst parts = items.map(it => ({\n  inline_data: {\n    mime_type: it.binary.image.mimeType || 'image/png',\n    data:      it.binary.image.data\n  }\n}));\nreturn [{ json: { ...items[0].json, image_parts: parts } }];"
       },
-      "id": "7f54b9b1",
+      "id": "4da507c7",
       "name": "commit::Collect image parts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1715,7 +1715,7 @@
           "timeout": 10000
         }
       },
-      "id": "ec60c2bf",
+      "id": "3e1f5d5a",
       "name": "commit::Fetch image_model",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1728,7 +1728,7 @@
       "parameters": {
         "jsCode": "const rows  = Array.isArray($json) ? $json : ($json.body || []);\nconst model = (rows[0] && rows[0].value) || 'google/gemini-3.1-flash-image-preview';\nconst ctx   = $('commit::Collect image parts').item.json;\n\nconst template = `You are an interior design rendering engine.\n\nTASK: Generate a photorealistic image of the SAME room shown in the first input\nimage, redesigned in the style of the reference images provided.\n\nHARD CONSTRAINTS:\n- Preserve the input room's geometry exactly: wall positions, window positions\n  and sizes, door positions, ceiling height.\n- Preserve lighting direction from the input photo.\n- Use furniture, materials, colors, and styling cues from the reference images.\n- Output must be photorealistic, no illustrations or cartoons.\n- Do not add text, watermarks, logos, or signatures.\n- Do not add people.\n\nSTYLE: {style_tag}\nROOM TYPE: {room_type}\n\nOUTPUT QUALITY: Maximum resolution and detail. This is the final deliverable.\n`;\n\nconst prompt = template\n  .replace('{style_tag}', ctx.parent.style_tag || '')\n  .replace('{room_type}', ctx.parent.room_type || '');\n\nconst openrouter_body = {\n  model,\n  messages: [{\n    role: 'user',\n    content: [{ type: 'text', text: prompt }, ...(ctx.image_parts || [])]\n  }]\n};\n\nreturn [{ json: { ...ctx, model, prompt, openrouter_body } }];"
       },
-      "id": "c4056941",
+      "id": "f8c4bfd8",
       "name": "commit::Build Gemini request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1765,7 +1765,7 @@
           }
         }
       },
-      "id": "29e5b077",
+      "id": "02b5755d",
       "name": "commit::Call Gemini",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1778,7 +1778,7 @@
       "parameters": {
         "jsCode": "const ctx  = $('commit::Build Gemini request').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || [];\nconst parts   = Array.isArray(content) ? content : [];\nconst imgPart = parts.find(p => p.type === 'image_url');\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst dataUrl = imgPart.image_url && imgPart.image_url.url;\nconst match   = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);\nif (!match) {\n  return [{ json: { _error: { status: 502, body: { error: 'invalid_image_data_url', code: 'upstream_error' } } } }];\n}\nconst mime = match[1];\nconst b64  = match[2];\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind:                'commit',\n    input_image_path:    ctx.parent.input_image_path,\n    room_type:           ctx.parent.room_type,\n    style_tag:           ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
       },
-      "id": "eadd3b08",
+      "id": "163c2d42",
       "name": "commit::Extract output PNG",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1807,7 +1807,7 @@
           "combinator": "and"
         }
       },
-      "id": "0438f2a6",
+      "id": "ce21cd99",
       "name": "commit::Gen error?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -1823,7 +1823,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "c51d2681",
+      "id": "ae84bbed",
       "name": "commit::Respond 502",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -1849,7 +1849,7 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "e3fc2a1b",
+      "id": "8b63ee7d",
       "name": "commit::Save generation",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -1880,7 +1880,7 @@
           "waitForSubWorkflow": false
         }
       },
-      "id": "21635cd0",
+      "id": "1ccff1f3",
       "name": "commit::Log event",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -1896,7 +1896,7 @@
         "responseBody": "={{ JSON.stringify({\n  generation_id: $json.generation_id,\n  output_url:    $json.output_url,\n  latency_ms:    $json.latency_ms,\n  cost_usd:      $json.cost_usd,\n  model_id:      $json.model_id,\n  backend_id:    'gemini'\n}) }}",
         "options": {}
       },
-      "id": "459ef3c8",
+      "id": "c4b6c6fa",
       "name": "commit::Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -1912,7 +1912,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "5f20125d",
+      "id": "fb5fba9b",
       "name": "orch::POST /generate/orchestrated",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -1923,7 +1923,7 @@
       "webhookId": "generate-orchestrated"
     },
     {
-      "id": "7c83e2b0",
+      "id": "25989df7",
       "name": "orch::Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1936,7 +1936,7 @@
       }
     },
     {
-      "id": "2461e7b7",
+      "id": "e466ce07",
       "name": "orch::Verify JWT (HTTP)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1971,7 +1971,7 @@
       }
     },
     {
-      "id": "9966fafc",
+      "id": "370fe530",
       "name": "orch::Verify JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2007,7 +2007,7 @@
         },
         "options": {}
       },
-      "id": "c7d8afa2",
+      "id": "5af7fcf6",
       "name": "orch::Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -2022,7 +2022,7 @@
         "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
         "options": {}
       },
-      "id": "d8050fe4",
+      "id": "7a74a55a",
       "name": "orch::Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -2035,7 +2035,7 @@
       "parameters": {
         "jsCode": "const _raw = $('orch::POST /generate/orchestrated').item.json.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst user_id    = $json.user_id;\n// Capture bearer token for downstream RLS-scoped DB reads\nconst bearer_token = ($('orch::POST /generate/orchestrated').item.json.headers?.authorization ||\n                      $('orch::POST /generate/orchestrated').item.json.headers?.Authorization || '')\n                       .replace(/^Bearer\\s+/i, '');\nconst upload_id  = (body.upload_id  || '').toString().trim();\nconst brief      = (body.brief      || '').toString().trim();\nconst session_id = body.session_id  ? body.session_id.toString() : null;\nconst room_type_raw = body.room_type   ? body.room_type.toString().trim() : null;\nconst UI_ROOM_TO_DB = { bedroom: 'bedroom', kids: 'kids room', dining: 'dining room', kitchen: 'kitchen', mandir: 'mandir', living: 'living room' };\nconst room_hint  = room_type_raw && UI_ROOM_TO_DB[room_type_raw] ? UI_ROOM_TO_DB[room_type_raw] : room_type_raw;\nconst style_tag  = body.style_tag   ? body.style_tag.toString().trim() : null;\n\nconst missing = [];\nif (!upload_id) missing.push('upload_id');\nif (!brief)     missing.push('brief');\nif (missing.length) {\n  return [{ json: { _error: { status: 400, body: { error: `missing_fields: ${missing.join(',')}`, code: 'invalid_request' } } } }];\n}\n\nconst storage_path = `user-uploads/${user_id}/${upload_id}`;\nconst upload_url   = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${storage_path}`;\nreturn [{ json: { user_id, bearer_token, upload_id, brief, session_id, room_hint, style_tag, upload_url, started_at_ms: Date.now() } }];"
       },
-      "id": "1ef245c3",
+      "id": "3c26e300",
       "name": "orch::Validate body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2068,7 +2068,7 @@
         },
         "options": {}
       },
-      "id": "3e403ccb",
+      "id": "9bebb751",
       "name": "orch::Body valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -2083,7 +2083,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "645b921e",
+      "id": "a46a3d01",
       "name": "orch::Respond 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -2096,7 +2096,7 @@
       "parameters": {
         "jsCode": "const ctx = $input.item.json;\nconst arrayBuf = await this.helpers.httpRequest({\n  method: 'GET',\n  url: ctx.upload_url,\n  encoding: 'arraybuffer',\n});\nconst b64 = Buffer.from(arrayBuf).toString('base64');\nconst mime = 'image/jpeg';\nreturn [{ json: { ...ctx, upload_b64: b64, upload_mime: mime } }];"
       },
-      "id": "f53a8d27",
+      "id": "cb9984f2",
       "name": "orch::Fetch & encode upload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2109,7 +2109,7 @@
       "parameters": {
         "jsCode": "const ctx  = $input.item.json;\nconst b64  = ctx.upload_b64;\nconst mime = ctx.upload_mime || 'image/jpeg';\nconst dataUri = `data:${mime};base64,${b64}`;\n\nconst styleContext = ctx.style_tag\n  ? `The user has selected style: \"${ctx.style_tag}\". Use this as the primary style direction.`\n  : 'No style was pre-selected. Infer the best style from the user brief and room photo.';\n\nconst SYSTEM = `You are an interior-design reference retrieval and prompt-orchestration agent for Nano Banana 2.\n\nYour mission: given a user\\'s design brief, a style selection (if provided), and a photograph of the actual room, you must:\n1. Interpret every usable specification in the brief.\n2. Critically reason about the room\\'s 3D spatial structure as visible in the photograph — wall positions visible, perceived depth, ceiling height, window placement and size, natural light direction, focal wall.\n3. Write retrieval criteria that the NEXT AGENT will use to pick exactly 3 reference images from the database.\n4. Write one curated Nano Banana 2 generation prompt.\n\n${styleContext}\n\nOutput format — STRICT. No preamble. No code fences. Exactly two delimited blocks:\n\n===CRITERIA===\nRoom type:\n<state the room type explicitly>\n\n3D spatial structure (grounded in photo):\n<Precise observations: number of walls visible, room depth, ceiling height (low/standard/high/vaulted), window wall position (left/right/back/front/multiple), natural light direction and intensity, floor coverage visible>\n\nStyle intent:\n<Target aesthetic, material palette, colour story — use selected style if provided>\n\nDaylight & ambience:\n<Lighting mood, warmth, time-of-day feel desired in the output>\n\nFunctional requirements:\n<Furniture types, zones, layout priorities>\n\nComplementarity guidance:\nReference 1 must match the 3D spatial geometry: similar room proportions, ceiling height, and window placement.\nReference 2 must match the style, materials, and colour palette.\nReference 3 must match the lighting quality and ambience.\n===END===\n\n===PROMPT===\n<One polished Nano Banana 2 creative brief in natural sentences. Must: (a) instruct to preserve the exact room geometry shown in the first input image — walls, windows, ceiling; (b) apply style \\'${ctx.style_tag || 'as derived from brief'}\\'; (c) describe the desired furnishing, materials, palette, and lighting. No keyword soup. No people, no text, no logos.>\n===END===`;\n\nconst openrouter_body = {\n  model: 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user', content: [\n      { type: 'text', text: `User brief:\\n${ctx.brief}\\n\\n${ctx.style_tag ? `Selected style: ${ctx.style_tag}\\n\\n` : ''}Room type hint: ${ctx.room_hint || '(infer from photo)'}\\n\\nRoom photograph attached. Ground ALL 3D spatial reasoning in this image — do not assume, only observe.` },\n      { type: 'image_url', image_url: { url: dataUri } }\n    ]}\n  ],\n  temperature: 0.4,\n  max_tokens: 2048\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
       },
-      "id": "6dbb7ce8",
+      "id": "b81526b1",
       "name": "orch::Build Agent 1 request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2151,7 +2151,7 @@
           "timeout": 90000
         }
       },
-      "id": "5f4d549a",
+      "id": "0e898b46",
       "name": "orch::Agent 1 (Orchestrator)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2164,7 +2164,7 @@
       "parameters": {
         "jsCode": "const ctx     = $('orch::Build Agent 1 request').item.json;\nconst resp    = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nif (!content) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_empty_response', code: 'upstream_error' } } } }];\n}\n\nfunction extractBlock(text, startTag) {\n  const startRe = new RegExp(`={3,}\\\\s*${startTag}\\\\s*={3,}`, 'i');\n  const endRe   = /={3,}\\s*END\\s*={3,}/i;\n  const s = text.search(startRe);\n  if (s < 0) return null;\n  const after = text.slice(s).replace(startRe, '');\n  const e = after.search(endRe);\n  if (e < 0) return after.trim();\n  return after.slice(0, e).trim();\n}\n\nconst criteria = extractBlock(content, 'CRITERIA');\nconst prompt   = extractBlock(content, 'PROMPT');\nif (!criteria || !prompt) {\n  return [{ json: { _error: { status: 502, body: { error: 'agent1_bad_format', code: 'upstream_error', raw: content.slice(0, 500) } } } }];\n}\n\nconst roomWordsRaw = ['bedroom','living room','kitchen','dining room','bathroom','office','study room','kids room','nursery','hallway','entryway','mandir'];\nconst roomWords = [...roomWordsRaw].sort((a, b) => b.length - a.length);\nconst lc = (criteria + ' ' + (ctx.brief || '') + ' ' + (ctx.room_hint || '')).toLowerCase();\nlet inferred_room = ctx.room_hint || null;\nif (!inferred_room) {\n  for (const w of roomWords) { if (lc.includes(w)) { inferred_room = w; break; } }\n}\n\nconst ftsTerms = [ctx.brief, ctx.style_tag, inferred_room].filter(Boolean).join(' ');\n\nreturn [{ json: { ...ctx, criteria, agent_prompt: prompt, inferred_room, fts_search_text: ftsTerms } }];"
       },
-      "id": "b3b5a138",
+      "id": "3cbf002c",
       "name": "orch::Parse Agent 1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2197,7 +2197,7 @@
         },
         "options": {}
       },
-      "id": "16059be3",
+      "id": "1ccc73d5",
       "name": "orch::Agent 1 ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -2212,7 +2212,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "f7c2412c",
+      "id": "94ac0cf4",
       "name": "orch::Respond Agent 1 err",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -2233,7 +2233,7 @@
           "waitForSubWorkflow": false
         }
       },
-      "id": "2b7ef5bc",
+      "id": "6594b2b5",
       "name": "orch::Log Agent 1",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -2245,7 +2245,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{ 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent($json.user_id) + '&order=quality_score.desc.nullslast&limit=20' + ($json.inferred_room ? '&room_type=eq.' + encodeURIComponent($json.inferred_room) : '') + ($json.style_tag ? '&style_tags=cs.%7B' + encodeURIComponent($json.style_tag) + '%7D' : '') }}",
+        "url": "={{ 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,caption_enhanced,spatial_signature,mood_tags,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent($json.user_id) + '&order=quality_score.desc.nullslast&limit=20' + ($json.inferred_room ? '&room_type=eq.' + encodeURIComponent($json.inferred_room) : '') + ($json.style_tag ? '&style_tags=cs.%7B' + encodeURIComponent($json.style_tag) + '%7D' : '') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -2267,7 +2267,7 @@
           "timeout": 15000
         }
       },
-      "id": "de4d1af5",
+      "id": "c7a4ed8f",
       "name": "orch::Fetch candidate pool",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2280,7 +2280,7 @@
       "parameters": {
         "jsCode": "let rows;\nif (Array.isArray($json)) {\n  rows = $json;\n} else if (Array.isArray($json?.body)) {\n  rows = $json.body;\n} else if ($json?.body && typeof $json.body === 'object') {\n  rows = [$json.body];\n} else if ($json && typeof $json === 'object') {\n  rows = [$json];\n} else {\n  rows = [];\n}\nfunction dedupePool(arr) {\n  const seen = new Set();\n  const seenUrl = new Set();\n  const out = [];\n  for (const r of arr) {\n    if (!r || r.id == null) continue;\n    const id = r.id.toString().toLowerCase();\n    const u = (r.source_url || '').split('?')[0].trim().toLowerCase();\n    if (seen.has(id)) continue;\n    if (u && seenUrl.has(u)) continue;\n    seen.add(id);\n    if (u) seenUrl.add(u);\n    out.push(r);\n  }\n  return out;\n}\nconst pool = dedupePool(rows);\nconst ctx  = $('orch::Parse Agent 1').item.json;\nconst pool_empty    = pool.length === 0;\nconst pool_fallback = pool.length > 0 && pool.length < 3;\nreturn [{ json: { ...ctx, pool, pool_empty, pool_fallback } }];"
       },
-      "id": "71ae2967",
+      "id": "03710592",
       "name": "orch::Check pool",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2313,7 +2313,7 @@
         },
         "options": {}
       },
-      "id": "87952e51",
+      "id": "c262623a",
       "name": "orch::Need fallback?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -2324,7 +2324,7 @@
     },
     {
       "parameters": {
-        "url": "={{ (() => {\n  const c = $json;\n  const base = 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent(c.user_id) + '&order=quality_score.desc.nullslast&limit=20';\n  const st = (c.style_tag || '').toString().trim();\n  const rm = (c.inferred_room || c.room_hint || '').toString().trim();\n  const styleTop = st ? ('&style_tags=cs.%7B' + encodeURIComponent(st) + '%7D') : '';\n  const roomTop  = rm ? ('&room_type=eq.' + encodeURIComponent(rm)) : '';\n  return base + roomTop + styleTop;\n})() }}",
+        "url": "={{ (() => {\n  const c = $json;\n  const base = 'https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?select=id,source_url,caption,caption_enhanced,spatial_signature,mood_tags,room_type,style_tags,dominant_colors,detected_objects,quality_score&owner_id=eq.' + encodeURIComponent(c.user_id) + '&order=quality_score.desc.nullslast&limit=20';\n  const st = (c.style_tag || '').toString().trim();\n  const rm = (c.inferred_room || c.room_hint || '').toString().trim();\n  const styleTop = st ? ('&style_tags=cs.%7B' + encodeURIComponent(st) + '%7D') : '';\n  const roomTop  = rm ? ('&room_type=eq.' + encodeURIComponent(rm)) : '';\n  return base + roomTop + styleTop;\n})() }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -2342,7 +2342,7 @@
           "timeout": 15000
         }
       },
-      "id": "becc276e",
+      "id": "cc6a7457",
       "name": "orch::Fetch candidate pool (all)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2355,7 +2355,7 @@
       "parameters": {
         "jsCode": "let rows;\nif (Array.isArray($json)) {\n  rows = $json;\n} else if (Array.isArray($json?.body)) {\n  rows = $json.body;\n} else if ($json?.body && typeof $json.body === 'object') {\n  rows = [$json.body];\n} else if ($json && typeof $json === 'object') {\n  rows = [$json];\n} else {\n  rows = [];\n}\nfunction dedupePool(arr) {\n  const seen = new Set();\n  const seenUrl = new Set();\n  const out = [];\n  for (const r of arr) {\n    if (!r || r.id == null) continue;\n    const id = r.id.toString().toLowerCase();\n    const u = (r.source_url || '').split('?')[0].trim().toLowerCase();\n    if (seen.has(id)) continue;\n    if (u && seenUrl.has(u)) continue;\n    seen.add(id);\n    if (u) seenUrl.add(u);\n    out.push(r);\n  }\n  return out;\n}\nconst fb = dedupePool(rows);\nconst ctx  = $('orch::Check pool').item.json;\nconst primary = dedupePool(Array.isArray(ctx.pool) ? ctx.pool : []);\nconst merged = dedupePool([...primary, ...fb]);\nconst pool = merged.slice(0, 20);\nreturn [{ json: { ...ctx, pool, pool_fallback: false } }];"
       },
-      "id": "2668b095",
+      "id": "bbce9940",
       "name": "orch::Shape pool (fallback)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2368,7 +2368,7 @@
       "parameters": {
         "jsCode": "const ctx  = $json;\nfunction dedupePool(arr) {\n  const seen = new Set();\n  const seenUrl = new Set();\n  const out = [];\n  for (const r of arr) {\n    if (!r || r.id == null) continue;\n    const id = r.id.toString().toLowerCase();\n    const u = (r.source_url || '').split('?')[0].trim().toLowerCase();\n    if (seen.has(id)) continue;\n    if (u && seenUrl.has(u)) continue;\n    seen.add(id);\n    if (u) seenUrl.add(u);\n    out.push(r);\n  }\n  return out;\n}\nconst pool = dedupePool(ctx.pool || []);\nif (pool.length === 0) {\n  return [{ json: { _error: { status: 500, body: { error: 'pool_empty', code: 'internal_error', count: 0 } } } }];\n}\nif (pool.length < 3) {\n  return [{ json: { _error: { status: 422, body: { error: 'insufficient_distinct_pool', code: 'pool_too_small', distinct: pool.length } } } }];\n}\n\nconst SYSTEM = `You are a spatial-aware reference-image selector for an interior design AI pipeline.\n\nYou receive:\n1. A CRITERIA block from a design director, including 3D spatial structure observations of the user's room.\n2. A pool of candidate reference images, each shown as a card.\n\nCard format:\n[id=<uuid>] <enhanced caption or fallback caption>\n  spatial: shape=<room_shape> depth=<depth_cues> ceil=<ceiling_height> win=<window_wall> light=<light_direction> sym=<symmetry>\n  style:[<tags>] colors:[<hex>] room:<room_type>\n\nYour task: Pick exactly 3 reference IDs whose COMBINED coverage best satisfies the criteria.\n\nPICKING RULES (in priority order):\nReference 1 — SPATIAL MATCH: must have the closest 3D geometry to the user\\'s room.\n  Look for: same ceiling_height, same window_wall position, similar depth_cues, similar room_shape.\nReference 2 — STYLE MATCH: must best represent the target style, materials, and colour palette.\nReference 3 — AMBIENCE MATCH: must best represent the target lighting quality and mood.\n\nConstraints: complementary picks only (not redundant). Never invent IDs. Never repeat IDs.\n\nOutput — STRICT. Exactly three lines, nothing else:\nReference 1: <uuid> — <one sentence: which spatial feature matched>\nReference 2: <uuid> — <one sentence: which style/material matched>\nReference 3: <uuid> — <one sentence: which lighting/ambience matched>`;\n\nconst cards = pool.map(r => {\n  const style   = Array.isArray(r.style_tags) ? r.style_tags.join(',') : '';\n  const colors  = Array.isArray(r.dominant_colors) ? r.dominant_colors.join(',') : '';\n  const cap     = (r.caption_enhanced || r.caption || '').replace(/\\s+/g, ' ').trim().slice(0, 200);\n\n  let spatialLine = '';\n  const s = r.spatial_sig || r.spatial_signature;\n  if (s && typeof s === 'object') {\n    spatialLine = `\\n  spatial: shape=${s.room_shape||'?'} depth=${s.depth_cues||'?'} ceil=${s.ceiling_height||'?'} win=${s.window_wall||'?'} light=${s.light_direction||'?'} sym=${s.symmetry||'?'}`;\n  }\n\n  return `[id=${r.id}] ${cap}${spatialLine}\\n  style:[${style}] colors:[${colors}] room:${r.room_type||'?'}`;\n}).join('\\n\\n');\n\nconst user = `===CRITERIA===\\n${ctx.criteria}\\n===END===\\n\\n===CANDIDATES===\\n${cards}\\n===END===`;\n\nconst openrouter_body = {\n  model: 'google/gemini-2.5-flash',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    { role: 'user',   content: user }\n  ],\n  temperature: 0.2,\n  max_tokens: 512\n};\n\nreturn [{ json: { ...ctx, pool, openrouter_body } }];"
       },
-      "id": "4577b033",
+      "id": "89ae491f",
       "name": "orch::Build Agent 2 request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2401,7 +2401,7 @@
         },
         "options": {}
       },
-      "id": "7869b966",
+      "id": "bee615e4",
       "name": "orch::Agent 2 build ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -2416,7 +2416,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "b8a2cf16",
+      "id": "2e3a9c99",
       "name": "orch::Respond pool err",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -2458,7 +2458,7 @@
           "timeout": 60000
         }
       },
-      "id": "d5c65d2e",
+      "id": "4c331ca3",
       "name": "orch::Agent 2 (Retriever)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2471,7 +2471,7 @@
       "parameters": {
         "jsCode": "const ctx  = $('orch::Build Agent 2 request').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || '';\nconst uuidRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;\nconst matches = (content.match(uuidRe) || []).map(s => s.toLowerCase());\n\nconst poolRows = ctx.pool || [];\nconst poolIds = new Set(poolRows.map(r => r.id.toString().toLowerCase()));\nconst seen = new Set();\nconst picks = [];\n\nfor (const m of matches) {\n  if (!poolIds.has(m)) continue;\n  if (seen.has(m)) continue;\n  seen.add(m);\n  picks.push(m);\n  if (picks.length === 3) break;\n}\n\nif (picks.length < 3) {\n  const sorted = [...poolRows].sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));\n  for (const r of sorted) {\n    const id = r.id.toString().toLowerCase();\n    if (seen.has(id)) continue;\n    seen.add(id);\n    picks.push(id);\n    if (picks.length === 3) break;\n  }\n}\n\nif (picks.length < 3) {\n  return [{ json: { _error: { status: 422, body: { error: 'insufficient_distinct_picks', code: 'retriever_short', pick_count: picks.length, pool_distinct: poolRows.length } } } }];\n}\n\nreturn [{ json: { ...ctx, picked_reference_ids: picks } }];"
       },
-      "id": "dd3c87d4",
+      "id": "f5065c1d",
       "name": "orch::Parse Agent 2",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2504,7 +2504,7 @@
         },
         "options": {}
       },
-      "id": "093ee74f",
+      "id": "60d56c04",
       "name": "orch::Agent 2 ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -2519,7 +2519,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "fff6487d",
+      "id": "e388b401",
       "name": "orch::Respond Agent 2 err",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -2540,7 +2540,7 @@
           "waitForSubWorkflow": false
         }
       },
-      "id": "88df52c1",
+      "id": "769a711a",
       "name": "orch::Log Agent 2",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -2569,7 +2569,7 @@
           "timeout": 15000
         }
       },
-      "id": "69561c12",
+      "id": "cae1c8e2",
       "name": "orch::Fetch picked URLs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2582,7 +2582,7 @@
       "parameters": {
         "jsCode": "const ctx  = $('orch::Parse Agent 2').item.json;\nlet refs;\nif (Array.isArray($json)) {\n  refs = $json;\n} else if (Array.isArray($json?.body)) {\n  refs = $json.body;\n} else if ($json?.body && typeof $json.body === 'object' && $json.body.id != null) {\n  refs = [$json.body];\n} else if ($json && typeof $json === 'object' && $json.id != null) {\n  refs = [$json];\n} else {\n  refs = [];\n}\nconst byId = {};\nrefs.forEach(r => { byId[r.id.toString().toLowerCase()] = r.source_url; });\n\nconst pickIds = [];\nconst seenId = new Set();\nfor (const raw of ctx.picked_reference_ids || []) {\n  const id = raw.toString().toLowerCase();\n  if (seenId.has(id)) continue;\n  seenId.add(id);\n  pickIds.push(id);\n}\nif (pickIds.length !== 3) {\n  return [{ json: { _error: { status: 422, body: { error: 'picked_ids_not_three_unique', code: 'internal_error', distinct_pick_count: pickIds.length } } } }];\n}\nconst refUrls = pickIds.map(id => byId[id]).filter(Boolean);\nif (refUrls.length !== 3) {\n  return [{ json: { _error: { status: 500, body: { error: 'picked_reference_url_missing', code: 'internal_error' } } } }];\n}\nconst norm = (u) => (u || '').split('?')[0].trim().toLowerCase();\nconst seenUrl = new Set();\nfor (const u of refUrls) {\n  const n = norm(u);\n  if (seenUrl.has(n)) {\n    return [{ json: { _error: { status: 422, body: { error: 'duplicate_reference_source_url', code: 'internal_error' } } } }];\n  }\n  seenUrl.add(n);\n}\nconst urls = [ctx.upload_url, ...refUrls];\nreturn urls.map((url, i) => ({ json: { ...ctx, picked_reference_ids: pickIds, idx: i, fetch_url: url } }));"
       },
-      "id": "ac00ac9d",
+      "id": "82d4c335",
       "name": "orch::Order fetch list",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2604,7 +2604,7 @@
           "timeout": 30000
         }
       },
-      "id": "7363f338",
+      "id": "f85867d3",
       "name": "orch::Fetch image bytes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2617,7 +2617,7 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nitems.sort((a, b) => a.json.idx - b.json.idx);\nconst parts = items.map(it => {\n  const bin = it.binary.image;\n  return {\n    type: 'image_url',\n    image_url: { url: `data:${bin.mimeType || 'image/png'};base64,${bin.data}` }\n  };\n});\nreturn [{ json: { ...items[0].json, image_parts: parts } }];"
       },
-      "id": "b0793ea0",
+      "id": "84e2eb8f",
       "name": "orch::Collect image parts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2646,7 +2646,7 @@
           "timeout": 10000
         }
       },
-      "id": "bf19766e",
+      "id": "f527b7e6",
       "name": "orch::Fetch image_model",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2659,7 +2659,7 @@
       "parameters": {
         "jsCode": "let rows;\nif (Array.isArray($json)) {\n  rows = $json;\n} else if (Array.isArray($json?.body)) {\n  rows = $json.body;\n} else if ($json?.body && typeof $json.body === 'object') {\n  rows = [$json.body];\n} else if ($json && typeof $json === 'object' && ($json.value != null || $json.key != null)) {\n  rows = [$json];\n} else {\n  rows = [];\n}\nconst model = (rows[0] && rows[0].value) || 'google/gemini-3.1-flash-image-preview';\nconst ctx   = $('orch::Collect image parts').item.json;\n\nconst openrouter_body = {\n  model,\n  messages: [{\n    role: 'user',\n    content: [{ type: 'text', text: ctx.agent_prompt }, ...(ctx.image_parts || [])]\n  }]\n};\n\nreturn [{ json: { ...ctx, model, openrouter_body } }];"
       },
-      "id": "99f67ff0",
+      "id": "cc0f0be6",
       "name": "orch::Build Gemini request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2692,7 +2692,7 @@
           "timeout": 120000
         }
       },
-      "id": "45d17696",
+      "id": "0d5b9933",
       "name": "orch::Agent 3 (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2705,7 +2705,7 @@
       "parameters": {
         "jsCode": "const ctx  = $('orch::Build Gemini request').item.json;\nconst resp = $json;\n// OpenRouter returns choices[0].message.content as array of content parts\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || [];\nconst parts   = Array.isArray(content) ? content : [];\nconst imgPart = parts.find(p => p.type === 'image_url');\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst dataUrl = imgPart.image_url && imgPart.image_url.url;\nconst match   = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);\nif (!match) {\n  return [{ json: { _error: { status: 502, body: { error: 'invalid_image_data_url', code: 'upstream_error' } } } }];\n}\nconst mime = match[1];\nconst b64  = match[2];\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:              ctx.user_id,\n    session_id:           ctx.session_id,\n    parent_generation_id: null,\n    kind:                 'orchestrated',\n    input_image_path:     `user-uploads/${ctx.user_id}/${ctx.upload_id}`,\n    room_type:            ctx.inferred_room || null,\n    style_tag:            ctx.style_tag || null,\n    reference_image_ids:  ctx.picked_reference_ids,\n    prompt:               ctx.agent_prompt,\n    criteria:             ctx.criteria,\n    model_config:         'A',\n    model_id:             ctx.model,\n    latency_ms,\n    cost_usd:             0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
       },
-      "id": "ecd76f6c",
+      "id": "5d83673b",
       "name": "orch::Extract output PNG",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2738,7 +2738,7 @@
         },
         "options": {}
       },
-      "id": "989cfdbc",
+      "id": "d5ad3183",
       "name": "orch::Gen error?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -2753,7 +2753,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "b1a8429f",
+      "id": "d2d4605d",
       "name": "orch::Respond 502",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -2774,7 +2774,7 @@
           "waitForSubWorkflow": true
         }
       },
-      "id": "b3f9fb82",
+      "id": "9d292a5d",
       "name": "orch::Save generation",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -2795,7 +2795,7 @@
           "waitForSubWorkflow": false
         }
       },
-      "id": "b4199155",
+      "id": "21505a02",
       "name": "orch::Log orchestrated_ok",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -2810,7 +2810,7 @@
         "responseBody": "={{ JSON.stringify({\n  generation_id:       $json.generation_id,\n  output_url:          $json.output_url,\n  latency_ms:          $json.latency_ms,\n  cost_usd:            $json.cost_usd,\n  model_id:            $json.model_id,\n  backend_id:          'gemini',\n  reference_image_ids: $('orch::Parse Agent 2').item.json.picked_reference_ids,\n  criteria:            $('orch::Parse Agent 1').item.json.criteria\n}) }}",
         "options": {}
       },
-      "id": "e3837864",
+      "id": "9782a4c3",
       "name": "orch::Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -2820,7 +2820,7 @@
       ]
     },
     {
-      "id": "1a53043f",
+      "id": "fca024fb",
       "name": "orch::Empty pool?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -2852,7 +2852,7 @@
       }
     },
     {
-      "id": "fa8938cc",
+      "id": "e1cfab55",
       "name": "orch::Respond no refs",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -2875,7 +2875,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "bb1bbac4",
+      "id": "2e1b5f1a",
       "name": "gen-sess::GET /generations/session/:session_id",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -2886,7 +2886,7 @@
       "webhookId": "generations-session"
     },
     {
-      "id": "c5122d02",
+      "id": "cf1408ab",
       "name": "gen-sess::Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2899,7 +2899,7 @@
       }
     },
     {
-      "id": "6f21c8d2",
+      "id": "61187e38",
       "name": "gen-sess::Verify JWT (HTTP)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2934,7 +2934,7 @@
       }
     },
     {
-      "id": "b711ad5a",
+      "id": "d6af18b4",
       "name": "gen-sess::Verify JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2966,7 +2966,7 @@
           "combinator": "and"
         }
       },
-      "id": "509cf15e",
+      "id": "7f39a6d4",
       "name": "gen-sess::Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -2982,7 +2982,7 @@
         "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
         "options": {}
       },
-      "id": "d644b0d8",
+      "id": "172bc853",
       "name": "gen-sess::Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -2995,7 +2995,7 @@
       "parameters": {
         "jsCode": "const params = $('gen-sess::GET /generations/session/:session_id').item.json.params || {};\nconst session_id = (params.session_id || '').toString().trim();\nconst user_id    = $json.user_id;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(session_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_session_id', code: 'invalid_request' } } } }];\n}\nreturn [{ json: { user_id, session_id } }];"
       },
-      "id": "14b4a9df",
+      "id": "0b3205cb",
       "name": "gen-sess::Validate params",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3024,7 +3024,7 @@
           "combinator": "and"
         }
       },
-      "id": "b076036e",
+      "id": "63c19af3",
       "name": "gen-sess::Params valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -3040,7 +3040,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "84aadcf6",
+      "id": "d0a269a1",
       "name": "gen-sess::Respond 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -3070,7 +3070,7 @@
           "timeout": 10000
         }
       },
-      "id": "1accc61b",
+      "id": "bce55d0a",
       "name": "gen-sess::Fetch session generations",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -3083,7 +3083,7 @@
       "parameters": {
         "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst base = 'https://uzghfpxboktnbcbbthns.supabase.co';\nconst items = rows.map(r => ({\n  generation_id:        r.id,\n  kind:                 r.kind,\n  output_url:           r.output_image_path ? `${base}/storage/v1/object/public/${r.output_image_path}` : null,\n  parent_generation_id: r.parent_generation_id,\n  model_id:             r.model_id,\n  room_type:            r.room_type,\n  style_tag:            r.style_tag,\n  created_at:           r.created_at\n}));\nreturn [{ json: { generations: items } }];"
       },
-      "id": "a6ae6b8f",
+      "id": "32e82a72",
       "name": "gen-sess::Shape response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3099,7 +3099,7 @@
         "responseBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
-      "id": "dac769df",
+      "id": "80fa202e",
       "name": "gen-sess::Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -3115,7 +3115,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "5380c365",
+      "id": "50a457f0",
       "name": "gen-exp::POST /generations/:generation_id/export",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -3126,7 +3126,7 @@
       "webhookId": "generations-export"
     },
     {
-      "id": "daeb8a63",
+      "id": "489bd9d8",
       "name": "gen-exp::Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3139,7 +3139,7 @@
       }
     },
     {
-      "id": "d8f18bfb",
+      "id": "6e578655",
       "name": "gen-exp::Verify JWT (HTTP)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -3174,7 +3174,7 @@
       }
     },
     {
-      "id": "b3dba505",
+      "id": "382ce1ed",
       "name": "gen-exp::Verify JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3206,7 +3206,7 @@
           "combinator": "and"
         }
       },
-      "id": "b17419d5",
+      "id": "7784ab39",
       "name": "gen-exp::Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -3222,7 +3222,7 @@
         "responseBody": "={{ JSON.stringify({ error: $json.error, code: $json.code }) }}",
         "options": {}
       },
-      "id": "552c5799",
+      "id": "ff88fc9c",
       "name": "gen-exp::Respond 401",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -3235,7 +3235,7 @@
       "parameters": {
         "jsCode": "const params = $('gen-exp::POST /generations/:generation_id/export').item.json.params || {};\nconst generation_id = (params.generation_id || '').toString().trim();\nconst user_id = $json.user_id;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(generation_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_generation_id', code: 'invalid_request' } } } }];\n}\nreturn [{ json: { user_id, generation_id } }];"
       },
-      "id": "36026a0c",
+      "id": "ef0ae020",
       "name": "gen-exp::Validate params",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3264,7 +3264,7 @@
           "combinator": "and"
         }
       },
-      "id": "d28586b5",
+      "id": "3fb1826b",
       "name": "gen-exp::Params valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -3280,7 +3280,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "9df8309a",
+      "id": "6f697cc4",
       "name": "gen-exp::Respond 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -3310,7 +3310,7 @@
           "timeout": 10000
         }
       },
-      "id": "3c2621ff",
+      "id": "0ed1a865",
       "name": "gen-exp::Fetch generation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -3323,7 +3323,7 @@
       "parameters": {
         "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst row  = rows[0];\nconst ctx  = $('gen-exp::Validate params').item.json;\nif (!row || !row.output_image_path) {\n  return [{ json: { _error: { status: 404, body: { error: 'generation_not_found', code: 'not_found' } } } }];\n}\nconst download_url = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${row.output_image_path}`;\nreturn [{ json: { ...ctx, download_url } }];"
       },
-      "id": "e81883e1",
+      "id": "a0866789",
       "name": "gen-exp::Build download URL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3352,7 +3352,7 @@
           "combinator": "and"
         }
       },
-      "id": "72c55dfb",
+      "id": "24d1c776",
       "name": "gen-exp::Row exists?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -3368,7 +3368,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "6a666576",
+      "id": "628ece4f",
       "name": "gen-exp::Respond 404",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -3398,7 +3398,7 @@
           "waitForSubWorkflow": false
         }
       },
-      "id": "018f1419",
+      "id": "4ca87990",
       "name": "gen-exp::Log event",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.1,
@@ -3414,7 +3414,7 @@
         "responseBody": "={{ JSON.stringify({ download_url: $json.download_url }) }}",
         "options": {}
       },
-      "id": "7c7d94e8",
+      "id": "c43e577e",
       "name": "gen-exp::Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -3430,7 +3430,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "80f17877",
+      "id": "c7722be2",
       "name": "admin::GET /admin/metrics",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -3441,7 +3441,7 @@
       "webhookId": "admin-metrics"
     },
     {
-      "id": "228f14f7",
+      "id": "e4de88f5",
       "name": "admin::Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3457,7 +3457,7 @@
       "parameters": {
         "jsCode": "const headers = $json.headers || {};\nconst provided = (headers['x-admin-token'] || headers['X-Admin-Token'] || '').toString();\nconst expected = '' + (process.env.ADMIN_TOKEN || '__REDACTED_ADMIN_TOKEN__' || '') + '';\nif (provided !== expected) {\n  return [{ json: { _error: { status: 401, body: { error: 'invalid_admin_token', code: 'unauthorized' } } } }];\n}\nreturn [{ json: { ok: true } }];"
       },
-      "id": "05b1dbd1",
+      "id": "1375216b",
       "name": "admin::Check admin token",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3486,7 +3486,7 @@
           "combinator": "and"
         }
       },
-      "id": "16932abf",
+      "id": "004497fb",
       "name": "admin::Token valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -3502,7 +3502,7 @@
         "responseBody": "={{ JSON.stringify($json._error.body) }}",
         "options": {}
       },
-      "id": "cb690c00",
+      "id": "2466c2b9",
       "name": "admin::Respond error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -3539,7 +3539,7 @@
           "timeout": 15000
         }
       },
-      "id": "aa22ad85",
+      "id": "f986b89f",
       "name": "admin::RPC admin_metrics",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -3552,7 +3552,7 @@
       "parameters": {
         "jsCode": "// admin_metrics RPC returns a single JSONB. PostgREST may wrap it as an array.\nconst resp = $json;\nlet payload = resp;\nif (Array.isArray(resp)) payload = resp[0];\nif (resp && resp.body) payload = Array.isArray(resp.body) ? resp.body[0] : resp.body;\nreturn [{ json: payload || {} }];"
       },
-      "id": "f2a5445c",
+      "id": "1593929b",
       "name": "admin::Shape response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3568,7 +3568,7 @@
         "responseBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
-      "id": "287598f2",
+      "id": "433b50f9",
       "name": "admin::Respond 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
