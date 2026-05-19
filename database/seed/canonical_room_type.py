@@ -91,15 +91,15 @@ def _from_caption_room_objects(caption: str, room: str, objects: list[str] | Non
 
 def _from_room_string_only(room: str) -> str:
     rl = " ".join((room or "").lower().split())
-    if rl in ("bedroom",):
+    if rl == "bedroom":
         return "bedroom"
     if rl in ("kids room", "kids_room", "nursery"):
         return "kids room"
     if rl in ("dining room", "dining"):
         return "dining room"
-    if rl in ("kitchen",):
+    if rl == "kitchen":
         return "kitchen"
-    if rl in ("mandir",):
+    if rl == "mandir":
         return "mandir"
     if rl in (
         "living room",

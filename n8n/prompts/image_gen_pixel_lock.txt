@@ -1,0 +1,4 @@
+PIXEL DIMENSION LOCK (mandatory — non-negotiable):
+- The output image must be exactly {width}×{height} pixels — identical width, height, and aspect ratio to the input photograph attached to this request.
+- Do not crop, pad, letterbox, zoom, reframe, or change the pixel canvas size.
+- Forbidden: model-default square output, resolution change, or any output whose width or height differs from the input by even one pixel.

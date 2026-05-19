@@ -20,6 +20,19 @@
     },
     {
       "parameters": {
+        "jsCode": "return [{\n  json: {\n    ...$json,\n    _cfg: {\n      supabase_url:    'https://uzghfpxboktnbcbbthns.supabase.co',\n      supabase_key:    process.env.SUPABASE_SERVICE_KEY,\n      supabase_anon_key:    process.env.SUPABASE_ANON_KEY,\n      openrouter_key:    process.env.OPENROUTER_API_KEY,\n      openrouter_base:    'https://openrouter.ai/api/v1',\n      orch_model:      'google/gemini-2.5-flash'\n    }\n  },\n  binary: $input.first().binary || {}\n}];"
+      },
+      "id": "3a0e762e-eab0-4b5b-90a5-416609137263",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "source": "database",
         "workflowId": {
           "__rl": true,
@@ -153,22 +166,11 @@
       "parameters": {
         "method": "GET",
         "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.{{$json.parent_generation_id}}&user_id=eq.{{$json.user_id}}&select=*",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 10000
-        }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
       },
       "id": "fetch_parent",
       "name": "Fetch parent generation",
@@ -177,7 +179,13 @@
       "position": [
         1440,
         540
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "7rZNgbzFZJtpVqub",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
@@ -241,22 +249,11 @@
       "parameters": {
         "method": "GET",
         "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id=in.({{ ($json.parent.reference_image_ids || []).join(',') }})&select=id,source_url",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 15000
-        }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
       },
       "id": "fetch_refs",
       "name": "Fetch reference URLs",
@@ -265,7 +262,13 @@
       "position": [
         2160,
         660
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "7rZNgbzFZJtpVqub",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
@@ -322,22 +325,11 @@
       "parameters": {
         "method": "GET",
         "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.image_model&select=value",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 10000
-        }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
       },
       "id": "fetch_model",
       "name": "Fetch image_model",
@@ -346,7 +338,13 @@
       "position": [
         3120,
         660
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "7rZNgbzFZJtpVqub",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
@@ -369,10 +367,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
             }
@@ -387,7 +381,9 @@
             "tryTimes": 3,
             "waitBetweenTries": 2000
           }
-        }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi"
       },
       "id": "gemini_call",
       "name": "Call Gemini",
@@ -396,7 +392,13 @@
       "position": [
         3600,
         660
-      ]
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "Gt5ifbeeT5CxcfZZ",
+          "name": "OpenRouter account"
+        }
+      }
     },
     {
       "parameters": {
@@ -528,20 +530,67 @@
         4800,
         780
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
+      },
+      "id": "e6f2dcad-93f0-493a-a5f7-0a4e9a2ba6b6",
+      "name": "Check email allowed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "not_invited",
+              "leftValue": "={{ $json._error || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "997d4216-480b-4848-aa14-34931a937e86",
+      "name": "Email allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "92d285e5-82b2-4d09-94c0-28b418047541",
+      "name": "Respond 403",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        160
+      ]
     }
   ],
   "connections": {
-    "POST /generate/commit": {
-      "main": [
-        [
-          {
-            "node": "Extract user from token",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Extract user from token": {
       "main": [
         [
@@ -557,7 +606,7 @@
       "main": [
         [
           {
-            "node": "Validate body",
+            "node": "Check email allowed",
             "type": "main",
             "index": 0
           }
@@ -756,6 +805,57 @@
           },
           {
             "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /generate/commit": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract user from token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check email allowed": {
+      "main": [
+        [
+          {
+            "node": "Email allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email allowed?": {
+      "main": [
+        [
+          {
+            "node": "Respond 403",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate body",
             "type": "main",
             "index": 0
           }

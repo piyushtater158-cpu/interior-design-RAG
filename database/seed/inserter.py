@@ -11,9 +11,9 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from database.db import get_connection
 from database.seed.canonical_room_type import pick_canonical_room_type
 from database.seed.canonical_style_tags import pick_canonical_style_tags_singleton
+from database.seed import supabase_rest
 
 
 def get_seed_owner_id() -> str:
@@ -27,51 +27,24 @@ def get_seed_owner_id() -> str:
     return owner_id
 
 
-def insert_reference_image(conn, image_data: dict) -> str:
-    """Insert a single reference image row owned by SEED_OWNER_USER_ID.
-
-    image_data keys required:
-        owner_id, source, source_id, source_url, license, storage_path,
-        room_type, style_tags
-    optional:
-        caption, spatial_signature, dominant_colors, detected_objects, quality_score
-
-    Returns: UUID of the inserted/updated row.
-    """
-    with conn.cursor() as cur:
-        cur.execute("""
-            INSERT INTO reference_images
-                (owner_id, source, source_id, source_url, license, storage_path,
-                 caption, spatial_signature, room_type, style_tags,
-                 dominant_colors, detected_objects, quality_score)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (owner_id, source, source_id) DO UPDATE SET
-                source_url        = EXCLUDED.source_url,
-                storage_path      = EXCLUDED.storage_path,
-                caption           = EXCLUDED.caption,
-                spatial_signature = EXCLUDED.spatial_signature,
-                room_type         = EXCLUDED.room_type,
-                style_tags        = EXCLUDED.style_tags,
-                dominant_colors   = EXCLUDED.dominant_colors,
-                detected_objects  = EXCLUDED.detected_objects,
-                quality_score     = EXCLUDED.quality_score
-            RETURNING id;
-        """, (
-            image_data["owner_id"],
-            image_data["source"],
-            image_data["source_id"],
-            image_data["source_url"],
-            image_data["license"],
-            image_data["storage_path"],
-            image_data.get("caption"),
-            image_data.get("spatial_signature"),
-            image_data["room_type"],
-            image_data["style_tags"],
-            image_data.get("dominant_colors", []),
-            image_data.get("detected_objects", []),
-            image_data.get("quality_score"),
-        ))
-        return cur.fetchone()[0]
+def insert_reference_image(image_data: dict) -> str:
+    """Upsert a single reference_images row via PostgREST."""
+    row = {
+        "owner_id": image_data["owner_id"],
+        "source": image_data["source"],
+        "source_id": image_data["source_id"],
+        "source_url": image_data["source_url"],
+        "license": image_data["license"],
+        "storage_path": image_data["storage_path"],
+        "caption": image_data.get("caption"),
+        "spatial_signature": image_data.get("spatial_signature"),
+        "room_type": image_data["room_type"],
+        "style_tags": image_data["style_tags"],
+        "dominant_colors": image_data.get("dominant_colors", []),
+        "detected_objects": image_data.get("detected_objects", []),
+        "quality_score": image_data.get("quality_score"),
+    }
+    return supabase_rest.upsert_reference_image(row)
 
 
 def insert_all(image_entries, tags, upload_results):
@@ -87,8 +60,6 @@ def insert_all(image_entries, tags, upload_results):
     """
     owner_id = get_seed_owner_id()
     print(f"  Seed owner: {owner_id}")
-
-    conn = get_connection(autocommit=True)
 
     stats = {"images_inserted": 0, "images_skipped": 0}
     total = len(image_entries)
@@ -131,12 +102,11 @@ def insert_all(image_entries, tags, upload_results):
 
         print(f"  [{i+1}/{total}] {img_id} ({image_data['room_type']})...", end="", flush=True)
         try:
-            row_id = insert_reference_image(conn, image_data)
+            row_id = insert_reference_image(image_data)
             stats["images_inserted"] += 1
             print(f" -> {row_id}")
         except Exception as e:
             print(f" FAILED: {e}")
             stats["images_skipped"] += 1
 
-    conn.close()
     return stats

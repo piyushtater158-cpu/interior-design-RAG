@@ -26,3 +26,9 @@ SELECT room_type, count(*) AS n
 FROM public.reference_images
 GROUP BY 1
 ORDER BY n DESC;
+
+-- RLS (migration 016): expect one SELECT policy for authenticated, owner-scoped writes.
+SELECT policyname, cmd, roles::text, qual, with_check
+FROM pg_policies
+WHERE schemaname = 'public' AND tablename = 'reference_images'
+ORDER BY policyname;

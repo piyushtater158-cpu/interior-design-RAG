@@ -46,7 +46,10 @@ def _load_env() -> dict:
                 return v
         return default
 
-    orch = get("OPENROUTER_ORCHESTRATOR_MODEL", default="google/gemini-2.5-flash")
+    orch = get(
+        "OPENROUTER_ORCHESTRATOR_MODEL",
+        default="nvidia/nemotron-nano-12b-v2-vl:free",
+    )
     return {
         "SUPABASE_URL":                  get("SUPABASE_URL"),
         "SUPABASE_SERVICE_KEY":          get("SUPABASE_SERVICE_KEY"),

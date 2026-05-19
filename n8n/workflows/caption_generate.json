@@ -154,7 +154,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx = $input.item.json;\nconst arrayBuf = await this.helpers.httpRequest({\n  method: 'GET',\n  url: ctx.image_url,\n  encoding: 'arraybuffer',\n});\nconst b64 = Buffer.from(arrayBuf).toString('base64');\nreturn [{ json: { ...ctx, image_b64: b64, image_mime: 'image/jpeg' } }];"
+        "jsCode": "const ctx = $input.item.json;\nconst imageUrl = (ctx.image_url || '').toString().trim();\nif (!imageUrl) {\n  return [{ json: { _error: { status: 400, body: { error: 'missing_image_url', code: 'invalid_request' } } } }];\n}\n// SSRF guard: only allow images from known Supabase storage\nconst _allowedHost = process.env.SUPABASE_STORAGE_HOST || 'uzghfpxboktnbcbbthns.supabase.co';\ntry {\n  const _u = new URL(imageUrl);\n  if (_u.hostname !== _allowedHost) {\n    return [{ json: { _error: { status: 400, body: { error: 'disallowed_image_host', code: 'invalid_request' } } } }];\n  }\n} catch (_e) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_image_url', code: 'invalid_request' } } } }];\n}\nfunction httpBodyToBuffer(raw) {\n  if (raw == null) return Buffer.alloc(0);\n  if (Buffer.isBuffer(raw)) return raw;\n  if (typeof raw === 'string') {\n    const t = raw.trim();\n    if (t.charCodeAt(0) === 0x7b) {\n      try {\n        return httpBodyToBuffer(JSON.parse(t));\n      } catch (_) {}\n    }\n    return Buffer.from(raw, 'binary');\n  }\n  if (raw instanceof ArrayBuffer) return Buffer.from(raw);\n  if (raw && raw.type === 'Buffer' && Array.isArray(raw.data)) return Buffer.from(raw.data);\n  if (ArrayBuffer.isView(raw)) return Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength);\n  return Buffer.from(raw);\n}\nlet raw;\ntry {\n  raw = await this.helpers.httpRequest({\n    method: 'GET',\n    url: imageUrl,\n    encoding: 'arraybuffer',\n    ignoreHttpStatusErrors: true,\n  });\n} catch (e) {\n  return [{ json: { _error: { status: 502, body: { error: 'image_fetch_failed', code: 'upstream_error', detail: e.message } } } }];\n}\nlet buf = httpBodyToBuffer(raw);\nif (buf.length > 2 && buf[0] === 0x7b && buf[1] === 0x22) {\n  try {\n    const parsed = JSON.parse(buf.toString('utf8'));\n    if (parsed && parsed.type === 'Buffer' && Array.isArray(parsed.data)) {\n      buf = Buffer.from(parsed.data);\n    }\n  } catch (_) {}\n}\nif (!buf || buf.length < 100) {\n  return [{ json: { _error: { status: 502, body: { error: 'image_fetch_empty', code: 'upstream_error' } } } }];\n}\nlet mime = ctx.image_mime || 'image/jpeg';\nif (buf[0] === 0xff && buf[1] === 0xd8) mime = 'image/jpeg';\nelse if (buf[0] === 0x89 && buf[1] === 0x50) mime = 'image/png';\nelse if (buf[0] === 0x47 && buf[1] === 0x49) mime = 'image/gif';\nelse if (buf[0] === 0x52 && buf[1] === 0x49 && buf[8] === 0x57) mime = 'image/webp';\nconst b64 = buf.toString('base64');\nreturn [{ json: { ...ctx, image_b64: b64, image_mime: mime, skip_download: false } }];"
       },
       "id": "fetch_image",
       "name": "Fetch & encode image",
@@ -167,7 +167,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx      = $input.item.json;\nconst dataUri  = `data:${ctx.image_mime};base64,${ctx.image_b64}`;\nconst style    = ctx.style_tag;\nconst room     = ctx.room_type;\n\nconst SYSTEM = `You are a precision interior-design captioner. Your captions are used as semantic retrieval documents.\n\nYou will receive:\n- A photograph of an interior design scene\n- Declared room type: ${room}\n- Declared design style: ${style}\n\nIMPORTANT: You MUST use both the declared room type and declared style in your output. Do not ignore them.\n\nWrite a single flowing caption of 6-10 sentences. Every sentence must pull its weight. Cover ALL of the following - weave them together naturally, do not use bullet points. The declared style (${style}) and room type (${room}) MUST be named at least once in the prose caption.\n\n1. SPATIAL GEOMETRY: room shape, proportions, walls visible, ceiling height/treatment, window/door openings (which wall, size, count), natural light direction and intensity, flooring material, spatial connections.\n2. FURNITURE & FIXTURES: every piece, placement relative to walls, orientation, scale, built-ins.\n3. OBJECTS & ACCESSORIES: decorative objects, plants, artwork, soft furnishings, lifestyle props, lighting fixtures.\n4. MATERIALS & TEXTURES: every surface finish by name (e.g. white-washed oak, honed Carrara marble, brushed brass, limewash plaster, boucle, raw linen).\n5. COLOUR PALETTE: dominant background tones, accent colours, highlight colours, warm/cool balance.\n6. ARTIFICIAL LIGHTING: fixture types, positions, colour temperature, whether ambient/task/accent.\n7. STYLE EXPRESSION (${style}): specific vocabulary, materials, cultural/period references that signal this style.\n8. MOOD & ATMOSPHERE: emotional register, perceived time of day, lived-in vs staged.\n\nOutput BOTH blocks in this exact order, no preamble:\n\n===CAPTION===\n<prose caption - MUST name '${style}' and '${room}' at least once each>\n===END===\n===SPATIAL===\n{\n  \\\"declared_style\\\": \\\"${style}\\\",\n  \\\"declared_room_type\\\": \\\"${room}\\\",\n  \\\"style_signals_observed\\\": [\\\"<visible element supporting the declared style>\\\"],\n  \\\"room_shape\\\": \\\"rectangular|square|L-shaped|irregular\\\",\n  \\\"perceived_proportions\\\": {\\\"width_to_depth\\\": \\\"wider|deeper|equal\\\"},\n  \\\"ceiling\\\": {\\\"height\\\": \\\"low|standard|high|vaulted\\\", \\\"treatment\\\": \\\"<string or null>\\\"},\n  \\\"walls_visible\\\": [\\\"left\\\", \\\"rear\\\"],\n  \\\"openings\\\": [{\\\"wall\\\": \\\"rear\\\", \\\"type\\\": \\\"window\\\", \\\"approx_count\\\": 1}],\n  \\\"natural_light\\\": {\\\"direction\\\": \\\"front-left\\\", \\\"intensity\\\": \\\"medium\\\"},\n  \\\"flooring\\\": {\\\"material\\\": \\\"<string>\\\", \\\"coverage\\\": \\\"<string>\\\"},\n  \\\"furniture\\\": [{\\\"type\\\": \\\"<string>\\\", \\\"wall_relation\\\": \\\"<string>\\\"}],\n  \\\"fixed_features\\\": []\n}\n===END_SPATIAL===\n\nRules for the SPATIAL block:\n- 'declared_style' MUST be exactly '${style}' — copy it verbatim.\n- 'declared_room_type' MUST be exactly '${room}' — copy it verbatim.\n- 'style_signals_observed': only list elements visible in the image that justify the style. Empty array if none — do NOT fabricate.\n- All other fields must be based on what is literally visible.\\`;\n\nconst openrouter_body = {\n  model: 'qwen/qwen3-vl-8b-instruct',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    {\n      role: 'user',\n      content: [\n        { type: 'text', text: `Declared room type: ${room}\\nDeclared design style: ${style}\\n\\nAnalyse this interior design image and produce both the CAPTION and SPATIAL blocks.` },\n        { type: 'image_url', image_url: { url: dataUri } }\n      ]\n    }\n  ],\n  temperature: 0.3,\n  max_tokens: 1800\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
+        "jsCode": "const ctx      = $input.item.json;\nif (ctx._error) return [{ json: ctx._error }];\nconst style    = ctx.style_tag;\nconst room     = ctx.room_type;\nconst mime = ctx.image_mime || 'image/jpeg';\nconst b64 = (ctx.image_b64 || '').toString();\nif (!b64) {\n  return [{ json: { _error: { status: 502, body: { error: 'missing_image_b64', code: 'upstream_error' } } } }];\n}\nconst imageForLlm = `data:${mime};base64,${b64}`;\n\nconst SYSTEM = `You are a precision interior-design captioner. Your captions are used as semantic retrieval documents.\n\nYou will receive:\n- A photograph of an interior design scene\n- Declared room type: ${room}\n- Declared design style: ${style}\n\nIMPORTANT: You MUST use both the declared room type and declared style in your output. Do not ignore them.\n\nWrite a single flowing caption of 6-10 sentences. Every sentence must pull its weight. Cover ALL of the following - weave them together naturally, do not use bullet points. The declared style (${style}) and room type (${room}) MUST be named at least once in the prose caption.\n\n1. SPATIAL GEOMETRY: room shape, proportions, walls visible, ceiling height/treatment, window/door openings (which wall, size, count), natural light direction and intensity, flooring material, spatial connections.\n2. FURNITURE & FIXTURES: every piece, placement relative to walls, orientation, scale, built-ins.\n3. OBJECTS & ACCESSORIES: decorative objects, plants, artwork, soft furnishings, lifestyle props, lighting fixtures.\n4. MATERIALS & TEXTURES: every surface finish by name (e.g. white-washed oak, honed Carrara marble, brushed brass, limewash plaster, boucle, raw linen).\n5. COLOUR PALETTE: dominant background tones, accent colours, highlight colours, warm/cool balance.\n6. ARTIFICIAL LIGHTING: fixture types, positions, colour temperature, whether ambient/task/accent.\n7. STYLE EXPRESSION (${style}): specific vocabulary, materials, cultural/period references that signal this style.\n8. MOOD & ATMOSPHERE: emotional register, perceived time of day, lived-in vs staged.\n\nOutput BOTH blocks in this exact order, no preamble:\n\n===CAPTION===\n<prose caption - MUST name '${style}' and '${room}' at least once each>\n===END===\n===SPATIAL===\n{\n  \\\"declared_style\\\": \\\"${style}\\\",\n  \\\"declared_room_type\\\": \\\"${room}\\\",\n  \\\"style_signals_observed\\\": [\\\"<visible element supporting the declared style>\\\"],\n  \\\"room_shape\\\": \\\"rectangular|square|L-shaped|irregular\\\",\n  \\\"perceived_proportions\\\": {\\\"width_to_depth\\\": \\\"wider|deeper|equal\\\"},\n  \\\"ceiling\\\": {\\\"height\\\": \\\"low|standard|high|vaulted\\\", \\\"treatment\\\": \\\"<string or null>\\\"},\n  \\\"walls_visible\\\": [\\\"left\\\", \\\"rear\\\"],\n  \\\"openings\\\": [{\\\"wall\\\": \\\"rear\\\", \\\"type\\\": \\\"window\\\", \\\"approx_count\\\": 1}],\n  \\\"natural_light\\\": {\\\"direction\\\": \\\"front-left\\\", \\\"intensity\\\": \\\"medium\\\"},\n  \\\"flooring\\\": {\\\"material\\\": \\\"<string>\\\", \\\"coverage\\\": \\\"<string>\\\"},\n  \\\"furniture\\\": [{\\\"type\\\": \\\"<string>\\\", \\\"wall_relation\\\": \\\"<string>\\\"}],\n  \\\"fixed_features\\\": []\n}\n===END_SPATIAL===\n\nRules for the SPATIAL block:\n- 'declared_style' MUST be exactly '${style}' — copy it verbatim.\n- 'declared_room_type' MUST be exactly '${room}' — copy it verbatim.\n- 'style_signals_observed': only list elements visible in the image that justify the style. Empty array if none — do NOT fabricate.\n- All other fields must be based on what is literally visible.`;\n\nconst openrouter_body = {\n  model: 'qwen/qwen3-vl-8b-instruct',\n  messages: [\n    { role: 'system', content: SYSTEM },\n    {\n      role: 'user',\n      content: [\n        { type: 'text', text: `Declared room type: ${room}\\nDeclared design style: ${style}\\n\\nAnalyse this interior design image and produce both the CAPTION and SPATIAL blocks.` },\n        { type: 'image_url', image_url: { url: imageForLlm } }\n      ]\n    }\n  ],\n  temperature: 0.3,\n  max_tokens: 1800\n};\n\nreturn [{ json: { ...ctx, openrouter_body } }];"
       },
       "id": "build_request",
       "name": "Build caption request",
@@ -182,14 +182,11 @@
       "parameters": {
         "method": "POST",
         "url": "={{ 'https://openrouter.ai/api/v1' + '/chat/completions' }}",
-        "authentication": "none",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
-            },
             {
               "name": "Content-Type",
               "value": "application/json"
@@ -200,7 +197,7 @@
             },
             {
               "name": "X-Title",
-              "value": "Interior Design RAG — caption generator"
+              "value": "Interior Design RAG - caption generator"
             }
           ]
         },
@@ -222,7 +219,13 @@
       "position": [
         1920,
         540
-      ]
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "Gt5ifbeeT5CxcfZZ",
+          "name": "OpenRouter account"
+        }
+      }
     },
     {
       "parameters": {
@@ -303,6 +306,64 @@
         2640,
         660
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
+      },
+      "id": "35b8af0a-2eea-4f71-b2af-717c02b76171",
+      "name": "Check email allowed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "not_invited",
+              "leftValue": "={{ $json._error || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "c762efcf-fbdc-4b82-8037-c015cf94dcae",
+      "name": "Email allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "d0489d21-8cca-46cd-a0c8-984c470f4063",
+      "name": "Respond 403",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        160
+      ]
     }
   ],
   "connections": {
@@ -332,14 +393,14 @@
       "main": [
         [
           {
-            "node": "Respond 401",
+            "node": "Check email allowed",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Validate body",
+            "node": "Respond 401",
             "type": "main",
             "index": 0
           }
@@ -431,6 +492,35 @@
         [
           {
             "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check email allowed": {
+      "main": [
+        [
+          {
+            "node": "Email allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email allowed?": {
+      "main": [
+        [
+          {
+            "node": "Respond 403",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate body",
             "type": "main",
             "index": 0
           }

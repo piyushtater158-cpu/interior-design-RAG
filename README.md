@@ -1,16 +1,18 @@
 # Interior Design RAG
 
+**Repository:** https://github.com/piyushtater158-cpu/interior-design-RAG
+
 Reference-image catalog, Supabase Postgres, n8n webhooks (OpenRouter + Gemini), and a static **mobile-app** shell. There is no in-repo FastAPI service and no Next.js desktop app.
 
 ## Layout
 
 | Path | Role |
 |---|---|
-| `supabase/migrations/` | Authoritative forward migrations (apply in filename order). `016_remove_embeddings_and_vector_rpcs.sql` drops pgvector, `reference_embeddings`, and `retrieve_references` RPCs. |
+| `supabase/migrations/` | Authoritative DDL: `100_reset_and_rebuild.sql` (full schema, FTS `retrieve_candidates_text`, no pgvector), then dated forward migrations. |
 | `database/` | Local/mirror migrations, Python seed (`database/seed/`), and tests. |
 | `n8n/` | Workflow JSON, SQL under `n8n/migrations/` (005, 006, 008, 012), prompts, docs. |
 | `mobile-app/` | PWA / static client; point it at your n8n webhook base + Supabase anon settings. |
-| `contracts/` | `schema.sql` / `schema.md`, `openapi.yaml` where present. |
+| `contracts/` | `openapi.yaml` and other API docs where present. DDL lives in `supabase/migrations/`. |
 
 ## Retrieval
 

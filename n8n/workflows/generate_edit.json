@@ -20,6 +20,19 @@
     },
     {
       "parameters": {
+        "jsCode": "return [{\n  json: {\n    ...$json,\n    _cfg: {\n      supabase_url:    'https://uzghfpxboktnbcbbthns.supabase.co',\n      supabase_key:    process.env.SUPABASE_SERVICE_KEY,\n      supabase_anon_key:    process.env.SUPABASE_ANON_KEY,\n      openrouter_key:    process.env.OPENROUTER_API_KEY,\n      openrouter_base:    'https://openrouter.ai/api/v1',\n      orch_model:      'google/gemini-2.5-flash'\n    }\n  },\n  binary: $input.first().binary || {}\n}];"
+      },
+      "id": "5484cdec-66d4-4445-b6b8-3f98672a1da9",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "source": "database",
         "workflowId": {
           "__rl": true,
@@ -113,11 +126,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ !!$json._error }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -153,22 +166,11 @@
       "parameters": {
         "method": "GET",
         "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.{{$json.generation_id}}&user_id=eq.{{$json.user_id}}&select=*",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 10000
-        }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
       },
       "id": "fetch_parent",
       "name": "Fetch parent generation",
@@ -177,11 +179,17 @@
       "position": [
         1440,
         540
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "7rZNgbzFZJtpVqub",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const rows   = Array.isArray($json) ? $json : ($json.body || []);\nconst parent = rows[0];\nconst ctx    = $('Validate body').item.json;\nif (!parent) {\n  return [{ json: { _error: { status: 404, body: { error: 'parent_not_found', code: 'not_found' } } } }];\n}\nif (!parent.output_image_path) {\n  return [{ json: { _error: { status: 400, body: { error: 'parent_output_missing', code: 'invalid_state' } } } }];\n}\n\nreturn [{ json: {\n  ...ctx,\n  parent,\n  parent_output_url: `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${parent.output_image_path}`\n} }];"
+        "jsCode": "const items = $input.all();\nlet rows;\nif (items.length > 1) {\n  rows = items.map(it => it.json).filter(r => r && r.id);\n} else {\n  const j = items[0]?.json ?? $json;\n  if (Array.isArray(j)) rows = j;\n  else if (Array.isArray(j?.body)) rows = j.body;\n  else if (j?.id) rows = [j];\n  else rows = [];\n}\nconst parent = rows[0];\nconst ctx    = $('Validate body').item.json;\nif (!parent) {\n  return [{ json: { _error: { status: 404, body: { error: 'parent_not_found', code: 'not_found' } } } }];\n}\nif (!parent.output_image_path) {\n  return [{ json: { _error: { status: 400, body: { error: 'parent_output_missing', code: 'invalid_state' } } } }];\n}\n\nreturn [{ json: {\n  ...ctx,\n  parent,\n  parent_output_url: `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${parent.output_image_path}`\n} }];"
       },
       "id": "shape_parent",
       "name": "Shape parent",
@@ -201,11 +209,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ !!$json._error }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -245,14 +253,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "apikey",
-              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
             }
@@ -263,7 +263,9 @@
         "jsonBody": "={{ JSON.stringify({ gen_id: $json.parent.id }) }}",
         "options": {
           "timeout": 10000
-        }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
       },
       "id": "chain_depth",
       "name": "Chain depth RPC",
@@ -272,7 +274,13 @@
       "position": [
         2160,
         660
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "7rZNgbzFZJtpVqub",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
@@ -296,11 +304,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ !!$json._error }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -359,10 +367,10 @@
     },
     {
       "parameters": {
-        "jsCode": "const ctx = $('Check cap').item.json;\nconst bin = $input.item.binary.image;\nconst template = `You are editing an interior design photograph.\n\nTASK: Apply ONLY the specific change requested below. Do not modify any other\nelement of the image. Preserve all geometry, lighting, and unaffected objects\nexactly.\n\nREQUESTED CHANGE: {instruction}\n`;\nconst prompt = template.replace('{instruction}', ctx.instruction);\n\nconst openrouter_body = {\n  model: ctx.model || 'google/gemini-3.1-flash-image-preview',\n  messages: [{\n    role: 'user',\n    content: [\n      { type: 'text', text: prompt },\n      { type: 'image_url', image_url: { url: `data:${bin.mimeType || 'image/png'};base64,${bin.data}` } }\n    ]\n  }]\n};\nreturn [{ json: { ...ctx, prompt, openrouter_body } }];"
+        "jsCode": "const EDIT_MODEL = 'black-forest-labs/flux.2-max';\n\nconst FRAME_LOCK_BLOCK = `MANDATORY (every generation):\\n- The first attached image is the user's room photo. Lock to its exact camera position, viewing angle, lens field of view, and aspect ratio.\\n- Show the entire room extent visible in that first image — same borders and coverage; no crop, zoom-in, tighter framing, or camera relocation.\\n- Do not change perspective, rotate, or tilt relative to the first image.\\n- Reference images (when attached) are style/material/mood inspiration only; never copy their camera angles, crops, door/window placement, or light direction.\\n- Apply the primary generation brief only inside that locked frame.\\n\\nARCHITECTURAL LOCK (from image 1 only):\\n- Preserve exact door and window positions, sizes, and wall placement as in the first image.\\n- Preserve exact light direction and shadow pattern as in the first image.\\n- Do not add, remove, relocate, or resize doors or windows.\\n- Do not symmetrize asymmetric openings.\\n- Keep the door approach zone clear — no furniture or decor blocking the door path or swing.\\n- If any instruction would move a door, window, or change light direction, ignore that instruction.\\n\\nGENERATION PRIORITY:\\n- Image 1 defines architecture, openings, asymmetry, and light direction (non-negotiable).\\n- Primary generation brief from Agent 1: user intent, furniture, function, materials, circulation inside the locked shell (authoritative over references).\\n- Reference images (if attached): style character, materials, palette, and ambient mood only — not layout, openings, or light direction from reference photos.\\n- If references or brief adjectives conflict with image 1 on doors, windows, or light direction, follow image 1 and the primary brief.`;\nconst ARCHITECTURAL_LOCK_BLOCK = `ARCHITECTURAL LOCK (mandatory — image 1 is the source of truth)\\n\\nImmutable from the user's room photograph (first attached image):\\n\\nEntry door (highest priority — do not relocate):\\n- The entry door stays on the wall where it appears in the photograph — same wall, same position along the wall, same size and frame.\\n- Never move the door to another wall, add a second entry, remove the door, or copy door placement from reference images.\\n- Keep the door approach zone clear (no furniture, plants, or decor blocking swing or entry path).\\n\\nWindows and other openings:\\n- Render exactly the same number of window openings as image 1 — no extra sidelights, transoms, or third windows.\\n- Exact window location, size, and wall placement; do not add, remove, resize, or relocate windows.\\n- Exact ceiling line and visible wall geometry as in the photograph.\\n- Exact light direction: which walls and surfaces are lit vs in shadow must match the photograph — do not flip sun to another wall or invent a different time of day.\\n- Preserve asymmetric window and door placement; do not symmetrize or \"balance\" openings relative to the photograph.\\n\\nForbidden:\\n- Moving the entry door to a different wall or position than the photograph.\\n- Relocating, resizing, adding, or removing windows (or adding/removing doors).\\n- Changing natural light direction or primary shadow pattern unless the photograph already shows that condition.\\n- Copying door/window placement or light direction from reference images.\\n- Moving openings to create visual symmetry.\\n\\nFurniture and styling only:\\n- Apply style, materials, palette, and movable furnishings inside the locked shell.\\n- If any instruction would move a door, window, or change light direction, ignore that instruction.\\n\\nStorage / cupboard (furniture only — when brief or layout includes cupboards, wardrobes, or closets):\\n- Do not render new built-in, recessed, or wall-flush storage unless image 1 already shows that treatment.\\n- Freestanding or proud units only for new storage; the host wall surface must remain visible (not replaced by a seamless wardrobe plane).\\n- Reserve clearance around the unit (≥60 cm on approach sides, ≥30 cm at the wall); account for footprint in the overall layout.\\n- Never block the entry door, windows, or primary circulation with storage volume.\\n\\nReference images (when attached):\\n- Materials, palette, furnishing style, and ambient mood only — never their window wall, door placement, light direction, or built-in wardrobe layout.`;\n\nfunction sniffMime(buf) {\n  if (!buf || buf.length < 4) return 'image/png';\n  if (buf[0] === 0xff && buf[1] === 0xd8) return 'image/jpeg';\n  if (buf[0] === 0x89 && buf[1] === 0x50) return 'image/png';\n  return 'image/png';\n}\n\nfunction getImageDimensions(buf) {\n  if (!buf || buf.length < 24) return null;\n  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {\n    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };\n  }\n  if (buf[0] === 0xff && buf[1] === 0xd8) {\n    let i = 2;\n    while (i < buf.length - 9) {\n      if (buf[i] !== 0xff) { i++; continue; }\n      const marker = buf[i + 1];\n      const len = buf.readUInt16BE(i + 2);\n      if (marker === 0xc0 || marker === 0xc2 || marker === 0xc1) {\n        return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };\n      }\n      if (len < 2) break;\n      i += 2 + len;\n    }\n  }\n  return null;\n}\n\nasync function decodeImageBuf(bin, itemIndex) {\n  if (!bin?.data) return null;\n  const raw = bin.data;\n  if (raw !== 'filesystem-v2' && typeof raw === 'string' && raw.length > 256) {\n    const dec = Buffer.from(raw, 'base64');\n    if (dec.length > 100 && dec[0] !== 0x7b) return dec;\n  }\n  return await this.helpers.getBinaryDataBuffer(itemIndex, 'image');\n}\n\nfunction extractDelimitedBlock(text, tag) {\n  const startRe = new RegExp(`={3,}\\\\s*${tag}\\\\s*={3,}`, 'i');\n  const endRe = /={3,}\\s*END\\s*={3,}/i;\n  const s = (text || '').search(startRe);\n  if (s < 0) return null;\n  const after = text.slice(s).replace(startRe, '');\n  const e = after.search(endRe);\n  if (e < 0) return after.trim();\n  return after.slice(0, e).trim();\n}\n\nfunction extractSection(text, heading) {\n  const re = new RegExp(\n    heading.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '[^:]*:\\\\s*\\\\n?([\\\\s\\\\S]*?)(?=\\\\n[A-Za-z][^:\\\\n]{0,80}:|$)',\n    'i'\n  );\n  const m = (text || '').match(re);\n  return m ? m[1].trim() : '';\n}\n\nfunction extractLineValue(block, key) {\n  const re = new RegExp(\n    '^\\\\s*' + key.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '[^:]*:\\\\s*(.+)$',\n    'im'\n  );\n  const m = (block || '').match(re);\n  return m ? m[1].trim() : '';\n}\n\nfunction extractParentAgentBrief(parentPrompt) {\n  const stamped = extractDelimitedBlock(parentPrompt, 'PROMPT');\n  if (stamped) return stamped;\n  const editIdx = parentPrompt.search(/EDIT \\(apply only this change\\)/i);\n  if (editIdx > 0) return parentPrompt.slice(0, editIdx).trim();\n  return parentPrompt;\n}\n\nfunction extractDoorLockFromBrief(brief) {\n  const text = brief || '';\n  const sentences = text.split(/(?<=[.!?])\\s+/);\n  const hits = sentences.filter((s) =>\n    /entry\\s+door|door\\s+.*unobstructed|door\\s+approach|do not relocate the door|door\\s+swing|door\\s+path|gate\\s+path/i.test(s)\n  );\n  if (hits.length) return hits.join(' ').trim().slice(0, 500);\n  const m = text.match(/entry\\s+door[^\\n.]{0,280}/i);\n  return m ? m[0].trim() : '';\n}\n\nfunction extractWindowLockFromBrief(brief) {\n  const text = brief || '';\n  const sentences = text.split(/(?<=[.!?])\\s+/);\n  const hits = sentences.filter((s) =>\n    /window|windows remain|do not add.*window|asymmetric.*window/i.test(s)\n  );\n  if (hits.length) return hits.slice(0, 2).join(' ').trim().slice(0, 500);\n  const m = text.match(/(?:exactly\\s+)?\\d+\\s+vertical\\s+windows?[^\\n.]{0,200}/i)\n    || text.match(/windows?\\s+(?:on|are on)\\s+the\\s+[^\\n.]{0,200}/i);\n  return m ? m[0].trim() : '';\n}\n\nfunction parseStructureLock(parentPrompt) {\n  let door_lock = '';\n  let window_lock = '';\n  let light_lock = '';\n  let input_pixels = '';\n  let parse_source = 'none';\n\n  const stamped = extractDelimitedBlock(parentPrompt, 'STRUCTURE_LOCK');\n  if (stamped) {\n    parse_source = 'structure_lock_block';\n    door_lock = extractLineValue(stamped, 'Door lock') || extractLineValue(stamped, 'Door');\n    window_lock = extractLineValue(stamped, 'Window lock') || extractLineValue(stamped, 'Windows');\n    light_lock = extractLineValue(stamped, 'Light') || extractLineValue(stamped, 'Lighting');\n    input_pixels = extractLineValue(stamped, 'InputPixels');\n  }\n\n  const criteria = extractDelimitedBlock(parentPrompt, 'CRITERIA') || '';\n  if (!door_lock) {\n    door_lock = extractLineValue(criteria, 'Door lock')\n      || extractSection(criteria, 'Door lock')\n      || extractSection(criteria, 'Spatial structure lock');\n  }\n  if (!window_lock) {\n    window_lock = extractLineValue(criteria, 'Window lock')\n      || extractSection(criteria, 'Window lock');\n  }\n  if (!light_lock) {\n    light_lock = extractLineValue(criteria, 'Light')\n      || extractSection(criteria, 'Light')\n      || extractSection(criteria, 'Daylight & ambience')\n      || extractSection(criteria, 'Daylight & ambience target');\n  }\n\n  const agentBrief = extractParentAgentBrief(parentPrompt);\n  if (!door_lock) {\n    door_lock = extractDoorLockFromBrief(agentBrief);\n    if (door_lock && parse_source === 'none') parse_source = 'parent_prompt_door';\n  }\n  if (!window_lock) {\n    window_lock = extractWindowLockFromBrief(agentBrief);\n    if (window_lock && parse_source === 'none') parse_source = 'parent_prompt_window';\n  }\n  if (!light_lock) {\n    const lm = agentBrief.match(/natural light[^\\n.]{0,220}/i)\n      || agentBrief.match(/light direction[^\\n.]{0,220}/i);\n    if (lm) {\n      light_lock = lm[0].trim();\n      if (parse_source === 'none') parse_source = 'parent_prompt_light';\n    }\n  }\n  if (parse_source === 'none' && (door_lock || window_lock || light_lock)) {\n    parse_source = 'criteria_fallback';\n  }\n\n  return { door_lock, window_lock, light_lock, input_pixels, parse_source };\n}\n\nfunction buildEditClearanceBlock(door_lock, window_lock, instruction) {\n  const inst = (instruction || '').toLowerCase();\n  const wantsMoreFurniture = /\\b(more furniture|add furniture|furnish|extra furniture|additional furniture)\\b/i.test(inst);\n  const lines = [\n    'HARD CONSTRAINT — PRACTICAL FEASIBILITY (overrides styling requests):',\n    'Every placement must be physically possible: stable on the floor, real-world scale, no floating or overlapping objects, no blocking circulation.',\n    door_lock\n      ? `DOOR/GATE PATH: ${door_lock} Never place tables, dining sets, chairs, consoles, plants, or decor in the door approach zone or within ~90 cm (3 ft) of the door plane.`\n      : 'DOOR/GATE PATH: Keep every visible door or gate approach zone completely clear — no furniture or decor in the entry path or door swing arc.',\n    window_lock\n      ? `WINDOW PATH: ${window_lock} Do not block window openings or sills with tall furniture or large decor.`\n      : 'WINDOW PATH: Do not block any window opening; preserve natural light access from the photograph.',\n    'CIRCULATION: Maintain clear walking paths between entry, windows, and furniture groupings.',\n  ];\n  if (wantsMoreFurniture) {\n    lines.push(\n      'MORE FURNITURE RULE: Add pieces only on walls away from the entry door — never satisfy “more furniture” by placing seating or tables in front of the door or gate.'\n    );\n  }\n  return lines.join('\\n');\n}\n\nfunction buildStructureLockBlock(door, win, light, pixels) {\n  return [\n    '===STRUCTURE_LOCK===',\n    `Door lock: ${door}`,\n    `Window lock: ${win}`,\n    `Light: ${light}`,\n    `InputPixels: ${pixels}`,\n    '===END===',\n  ].join('\\n');\n}\n\nconst ctx = $('Check cap').item.json;\nconst parentPrompt = (ctx.parent && ctx.parent.prompt) || '';\nconst parsed = parseStructureLock(parentPrompt);\n\nif (!parsed.door_lock && !parsed.window_lock && !parsed.light_lock) {\n  return [{\n    json: {\n      _error: {\n        status: 400,\n        body: {\n          error: 'structure_lock_missing',\n          code: 'invalid_state',\n          parse_source: parsed.parse_source,\n        },\n      },\n    },\n  }];\n}\n\nconst bin = $input.item.binary?.image;\nif (!bin) {\n  return [{ json: { _error: { status: 502, body: { error: 'parent_image_missing', code: 'upstream_error' } } } }];\n}\n\nlet buf = await decodeImageBuf(bin, 0);\nif (buf && buf[0] === 0x7b) {\n  try {\n    const p = JSON.parse(buf.toString('utf8'));\n    if (p?.type === 'Buffer' && Array.isArray(p.data)) buf = Buffer.from(p.data);\n  } catch (_) {}\n}\nconst ok = buf && buf.length > 100 && ((buf[0] === 0xff && buf[1] === 0xd8) || (buf[0] === 0x89 && buf[1] === 0x50));\nif (!ok) {\n  return [{ json: { _error: { status: 502, body: { error: 'parent_image_invalid', code: 'upstream_error' } } } }];\n}\n\nconst dims = getImageDimensions(buf);\nif (!dims || !dims.width || !dims.height) {\n  return [{ json: { _error: { status: 502, body: { error: 'parent_image_dimensions_unknown', code: 'upstream_error' } } } }];\n}\n\nconst input_width = dims.width;\nconst input_height = dims.height;\nconst pixelLabel = `${input_width}x${input_height}`;\nconst input_pixels = parsed.input_pixels || pixelLabel;\n\nconst door_lock = parsed.door_lock\n  || 'The entry door/gate stays on its photographed wall — approach zone must remain completely clear (no furniture in the door path).';\nconst window_lock = parsed.window_lock\n  || 'Preserve every window exactly as in the input photograph — do not block openings with furniture or decor.';\nconst light_lock = parsed.light_lock\n  || 'Preserve light direction and shadows exactly as in the input photograph.';\n\nconst structure_lock_block = buildStructureLockBlock(door_lock, window_lock, light_lock, input_pixels);\n\nconst pixel_lock = `PIXEL DIMENSION LOCK (mandatory — non-negotiable):\\n- The output image must be exactly {width}×{height} pixels — identical width, height, and aspect ratio to the input photograph attached to this request.\\n- Do not crop, pad, letterbox, zoom, reframe, or change the pixel canvas size.\\n- Forbidden: model-default square output, resolution change, or any output whose width or height differs from the input by even one pixel.`.replace('{width}', String(input_width)).replace('{height}', String(input_height));\n\nconst PRACTICAL_FEASIBILITY_BLOCK = `PRACTICAL FEASIBILITY & OPENING CLEARANCE (non-negotiable)\\n\\nPhysical plausibility:\\n- Every object must be real-world scale, stable on the floor, and logically placed — no floating furniture, no impossible overlaps, no objects passing through walls or openings.\\n- Maintain usable circulation: clear walking paths between the entry, windows, and main furniture groupings.\\n\\nDoor and gate path (mandatory):\\n- Keep the full approach zone in front of every door, gate, or entry opening completely clear.\\n- Forbidden in the door/gate path or within ~90 cm (3 ft) of the door plane: tables, dining sets, chairs, consoles, benches, plants, ottomans, rugs, lamps, or decor.\\n- Never place seating or dining furniture in front of a door to satisfy “more furniture” or “luxury” requests — add pieces on walls away from the entry only.\\n\\nWindow path (mandatory):\\n- Do not block window openings or sills with tall furniture, storage units, or large decor.\\n- Preserve natural light access and the exact window count and wall placement from the input photograph.\\n\\nWhen the edit asks for more furniture or richer styling:\\n- Increase furnishing density on back walls and side walls away from the entry door.\\n- Leave the photographed door approach zone and window zones empty.\\n- Prefer fewer, well-placed pieces over clutter that blocks circulation.`;\n\nconst instance_lock = [\n  'INSTANCE STRUCTURE LOCK (from parent generation — highest priority):',\n  `Door lock: ${door_lock}`,\n  `Window lock: ${window_lock}`,\n  `Light: ${light_lock}`,\n].join('\\n');\n\nconst clearance_block = buildEditClearanceBlock(door_lock, window_lock, ctx.instruction);\n\nconst edit_task = [\n  'EDIT TASK (only mutable region):',\n  `Apply ONLY this change inside the locked architectural shell: ${ctx.instruction}`,\n  'If this change would move a door, window, or change light direction/geometry, change only styling, materials, or colors — never block openings.',\n  'When adding furniture or luxury styling: place pieces on walls away from the entry door; never put tables, seating, or consoles in the door or gate path.',\n  'Additional light fixtures are allowed only if window positions and the photograph light direction on walls and shadows stay unchanged.',\n].join('\\n');\n\nconst prompt = [\n  'You are editing an interior design photograph. The attached image is the sole source of truth for architecture, frame, and pixels.',\n  '',\n  FRAME_LOCK_BLOCK,\n  '',\n  ARCHITECTURAL_LOCK_BLOCK,\n  '',\n  PRACTICAL_FEASIBILITY_BLOCK,\n  '',\n  pixel_lock,\n  '',\n  instance_lock,\n  '',\n  clearance_block,\n  '',\n  edit_task,\n].join('\\n');\n\nfunction pickAspectRatio(w, h) {\n  const r = w / h;\n  const choices = [\n    ['1:1', 1], ['5:4', 5 / 4], ['4:3', 4 / 3], ['3:2', 3 / 2], ['16:9', 16 / 9],\n    ['4:5', 4 / 5], ['3:4', 3 / 4], ['2:3', 2 / 3], ['9:16', 9 / 16],\n  ];\n  let best = '4:3';\n  let bestDelta = Infinity;\n  for (const [label, ratio] of choices) {\n    const delta = Math.abs(Math.log(r / ratio));\n    if (delta < bestDelta) {\n      bestDelta = delta;\n      best = label;\n    }\n  }\n  return best;\n}\n\nconst mime = sniffMime(buf) || bin.mimeType || 'image/png';\nconst model = EDIT_MODEL;\nconst aspect_ratio = pickAspectRatio(input_width, input_height);\n\nconst openrouter_body = {\n  model,\n  modalities: ['image'],\n  image_config: { aspect_ratio },\n  messages: [{\n    role: 'user',\n    content: [\n      { type: 'text', text: prompt },\n      { type: 'image_url', image_url: { url: `data:${mime};base64,${buf.toString('base64')}` } },\n    ],\n  }],\n};\n\nconst saved_prompt = `${structure_lock_block}\\n\\nEDIT (apply only this change): ${ctx.instruction}`;\n\nreturn [{\n  json: {\n    ...ctx,\n    model,\n    prompt: saved_prompt,\n    openrouter_body,\n    input_width,\n    input_height,\n    aspect_ratio,\n    structure_lock_block,\n    door_lock,\n    window_lock,\n    light_lock,\n    structure_parse_source: parsed.parse_source,\n    clearance_block,\n    wants_more_furniture: /\\b(more furniture|add furniture|furnish|extra furniture)\\b/i.test(ctx.instruction || ''),\n  },\n}];\n"
       },
       "id": "build_gemini",
-      "name": "Build Gemini request",
+      "name": "Build Flux edit request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -372,61 +380,53 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.image_model&select=value",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "name": "apikey",
-              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
+              "id": "err",
+              "leftValue": "={{ !!$json._error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
-          ]
-        },
-        "options": {
-          "timeout": 10000
+          ],
+          "combinator": "and"
         }
       },
-      "id": "fetch_model",
-      "name": "Fetch image_model",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3360,
-        780
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const rows  = Array.isArray($json) ? $json : ($json.body || []);\nconst model = (rows[0] && rows[0].value) || 'gemini-3.1-flash-image-preview';\nconst ctx   = $('Build Gemini request').item.json;\nreturn [{ json: { ...ctx, model } }];"
-      },
-      "id": "attach_model",
-      "name": "Attach model",
-      "type": "n8n-nodes-base.code",
+      "id": "if_build_ok",
+      "name": "Build ok?",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        3600,
+        3240,
         780
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "url": "={{ $('Config').first().json._cfg.openrouter_base + '/chat/completions' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://interior-design-rag.local"
+            },
+            {
+              "name": "X-Title",
+              "value": "Interior Design RAG - edit"
             }
           ]
         },
@@ -442,17 +442,23 @@
         }
       },
       "id": "gemini_call",
-      "name": "Call Gemini",
+      "name": "Generate image (Flux)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3840,
-        780
-      ]
+        3480,
+        900
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "Gt5ifbeeT5CxcfZZ",
+          "name": "OpenRouter account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const ctx  = $('Attach model').item.json;\nconst resp = $json;\nconst content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || [];\nconst parts   = Array.isArray(content) ? content : [];\nconst imgPart = parts.find(p => p.type === 'image_url');\nif (!imgPart) {\n  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];\n}\nconst dataUrl = imgPart.image_url && imgPart.image_url.url;\nconst match   = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);\nif (!match) {\n  return [{ json: { _error: { status: 502, body: { error: 'invalid_image_data_url', code: 'upstream_error' } } } }];\n}\nconst mime = match[1];\nconst b64  = match[2];\nconst latency_ms = Date.now() - ctx.started_at_ms;\n\nreturn [{\n  json: {\n    user_id:             ctx.user_id,\n    session_id:          ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind:                'edit',\n    input_image_path:    ctx.parent.output_image_path,\n    room_type:           ctx.parent.room_type,\n    style_tag:           ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt:              ctx.prompt,\n    model_config:        'A',\n    model_id:            ctx.model,\n    latency_ms,\n    cost_usd:            0\n  },\n  binary: { output_png: { data: b64, mimeType: mime, fileExtension: 'png', fileName: 'output.png' } }\n}];"
+        "jsCode": "const ctx = $('Build Flux edit request').item.json;\nconst resp = $json;\nconst msg = (resp.choices && resp.choices[0] && resp.choices[0].message) || {};\n\nfunction collectImageParts(message) {\n  const out = [];\n  if (Array.isArray(message.images)) {\n    for (const p of message.images) {\n      if (p && (p.type === 'image_url' || p.image_url)) out.push(p);\n    }\n  }\n  const content = message.content;\n  if (Array.isArray(content)) {\n    for (const p of content) {\n      if (p && p.type === 'image_url') out.push(p);\n    }\n  } else if (typeof content === 'string' && content.trim()) {\n    const m = content.match(/data:image\\/[^;]+;base64,[A-Za-z0-9+/=]+/);\n    if (m) out.push({ type: 'image_url', image_url: { url: m[0] } });\n  }\n  return out;\n}\n\nfunction getImageDimensions(buf) {\n  if (!buf || buf.length < 24) return null;\n  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {\n    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };\n  }\n  if (buf[0] === 0xff && buf[1] === 0xd8) {\n    let i = 2;\n    while (i < buf.length - 9) {\n      if (buf[i] !== 0xff) { i++; continue; }\n      const marker = buf[i + 1];\n      const len = buf.readUInt16BE(i + 2);\n      if (marker === 0xc0 || marker === 0xc2 || marker === 0xc1) {\n        return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };\n      }\n      if (len < 2) break;\n      i += 2 + len;\n    }\n  }\n  return null;\n}\n\nconst imgPart = collectImageParts(msg)[0];\nif (!imgPart) {\n  return [{\n    json: {\n      _error: {\n        status: 502,\n        body: {\n          error: 'no_image_in_response',\n          code: 'upstream_error',\n          has_images: Array.isArray(msg.images),\n          content_type: typeof msg.content,\n        },\n      },\n    },\n  }];\n}\nconst dataUrl = imgPart.image_url && imgPart.image_url.url;\nconst match = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);\nif (!match) {\n  return [{ json: { _error: { status: 502, body: { error: 'invalid_image_data_url', code: 'upstream_error' } } } }];\n}\nlet mime = match[1];\nlet b64 = match[2];\nlet outBuf = Buffer.from(b64, 'base64');\nlet outDim = getImageDimensions(outBuf);\nconst expectedW = ctx.input_width;\nconst expectedH = ctx.input_height;\nlet dimension_match = true;\nlet dimension_normalized = false;\nlet normalize_method = null;\n\nasync function normalizeToInput(buf, targetW, targetH) {\n  try {\n    const sharp = require('sharp');\n    const resized = await sharp(buf)\n      .resize(targetW, targetH, { fit: 'fill', kernel: sharp.kernel.lanczos3 })\n      .png()\n      .toBuffer();\n    return { buf: resized, method: 'sharp' };\n  } catch (_) {}\n  return null;\n}\n\nif (!outDim || outDim.width !== expectedW || outDim.height !== expectedH) {\n  const normalized = await normalizeToInput(outBuf, expectedW, expectedH);\n  if (normalized?.buf) {\n    outBuf = normalized.buf;\n    outDim = getImageDimensions(outBuf) || { width: expectedW, height: expectedH };\n    b64 = outBuf.toString('base64');\n    dimension_normalized = true;\n    normalize_method = normalized.method;\n    mime = 'image/png';\n  } else {\n    dimension_match = false;\n  }\n}\n\nconst latency_ms = Date.now() - ctx.started_at_ms;\nconst model_config = JSON.stringify({\n  dimension_match,\n  dimension_normalized,\n  normalize_method,\n  aspect_ratio: ctx.aspect_ratio || null,\n  input_width: expectedW,\n  input_height: expectedH,\n  output_width: outDim?.width || null,\n  output_height: outDim?.height || null,\n  structure_parse_source: ctx.structure_parse_source || null,\n  debug_session: 'a12a5f',\n});\n\nreturn [{\n  json: {\n    user_id: ctx.user_id,\n    session_id: ctx.session_id,\n    parent_generation_id: ctx.parent.id,\n    kind: 'edit',\n    input_image_path: ctx.parent.output_image_path,\n    room_type: ctx.parent.room_type,\n    style_tag: ctx.parent.style_tag,\n    reference_image_ids: ctx.parent.reference_image_ids,\n    prompt: ctx.prompt,\n    model_config,\n    model_id: ctx.model,\n    latency_ms,\n    cost_usd: 0,\n  },\n  binary: {\n    output_png: {\n      data: b64,\n      mimeType: mime,\n      fileExtension: 'png',\n      fileName: 'output.png',\n    },\n  },\n}];\n"
       },
       "id": "extract",
       "name": "Extract output PNG",
@@ -472,11 +478,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ !!$json._error }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -569,7 +575,7 @@
       "parameters": {
         "respondWith": "json",
         "responseCode": 200,
-        "responseBody": "={{ JSON.stringify({\n  generation_id: $json.generation_id,\n  output_url:    $json.output_url,\n  latency_ms:    $json.latency_ms,\n  cost_usd:      $json.cost_usd,\n  model_id:      $json.model_id,\n  backend_id:    'gemini'\n}) }}",
+        "responseBody": "={{ JSON.stringify({\n  generation_id: $json.generation_id,\n  output_url:    $json.output_url,\n  latency_ms:    $json.latency_ms,\n  cost_usd:      $json.cost_usd,\n  model_id:      $json.model_id,\n  backend_id:    'flux'\n}) }}",
         "options": {}
       },
       "id": "respond_200",
@@ -580,20 +586,67 @@
         5040,
         900
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
+      },
+      "id": "08d14375-5999-4c34-be7a-d8c59c0419a3",
+      "name": "Check email allowed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "not_invited",
+              "leftValue": "={{ $json._error || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "9969c12c-fdfb-4120-902a-1ef8a5597759",
+      "name": "Email allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "3b3dca62-985c-4842-bee6-f0cd7ed1a509",
+      "name": "Respond 403",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        160
+      ]
     }
   ],
   "connections": {
-    "POST /generate/edit": {
-      "main": [
-        [
-          {
-            "node": "Extract user from token",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Extract user from token": {
       "main": [
         [
@@ -609,7 +662,7 @@
       "main": [
         [
           {
-            "node": "Validate body",
+            "node": "Check email allowed",
             "type": "main",
             "index": 0
           }
@@ -736,47 +789,43 @@
       "main": [
         [
           {
-            "node": "Build Gemini request",
+            "node": "Build Flux edit request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Gemini request": {
+    "Build Flux edit request": {
       "main": [
         [
           {
-            "node": "Fetch image_model",
+            "node": "Build ok?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch image_model": {
+    "Build ok?": {
       "main": [
         [
           {
-            "node": "Attach model",
+            "node": "Respond 502",
             "type": "main",
             "index": 0
           }
-        ]
-      ]
-    },
-    "Attach model": {
-      "main": [
+        ],
         [
           {
-            "node": "Call Gemini",
+            "node": "Generate image (Flux)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Call Gemini": {
+    "Generate image (Flux)": {
       "main": [
         [
           {
@@ -826,6 +875,57 @@
           },
           {
             "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /generate/edit": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract user from token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check email allowed": {
+      "main": [
+        [
+          {
+            "node": "Email allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email allowed?": {
+      "main": [
+        [
+          {
+            "node": "Respond 403",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate body",
             "type": "main",
             "index": 0
           }

@@ -12,6 +12,11 @@ build/
 # Seed cache & downloaded images
 database/seed/cache/
 database/seed/images/
+reference_dataset/**/*
+!reference_dataset/README.md
+
+# Unrelated local datasets (not part of this repo)
+interior design lora training data set/
 
 # Model cache
 .models/
@@ -24,6 +29,26 @@ Thumbs.db
 n8n/credentials/
 n8n/exec*.json
 n8n/seed_log.txt
+n8n/_exec*.json
+n8n/audit_exec*.json
+n8n/_analyze_exec.py
+n8n/_debug_exec.py
+n8n/_inspect_gemini_resp.py
+n8n/credential_refs.json
+n8n/fix_*.py
+n8n/patch_*.py
+n8n/add_email_allowlist.py
+
+# Debug / session logs
+debug-*.log
+
+# graphify generated cache
+graphify-out/cache/
+
+# Local agent / IDE
+.agents/
+.cursor/
+skills-lock.json
 
 # IDE
 .claude/

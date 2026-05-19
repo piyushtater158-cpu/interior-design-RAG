@@ -33,7 +33,7 @@ GOOGLE_AI_STUDIO_KEY=<gemini-api-key>
 python database/migrate.py
 ```
 
-This runs, in order, every `*.sql` file in **`database/migrations/`** and **`supabase/migrations/`** (sorted by filename). That includes base tables plus Supabase-only DDL (auth/RLS, `retrieve_candidates_text`, catalog fixes **013–015**, and **016** which removes the legacy `reference_embeddings` table and vector RPCs).
+This runs, in order, every `*.sql` file in **`database/migrations/`** and **`supabase/migrations/`** (sorted by filename). The canonical rebuild is **`supabase/migrations/100_reset_and_rebuild.sql`** (tables, RLS, storage policies, app_config seed).
 
 **If `migrate.py` fails to connect** (pooler `tenant/user … not found`, timeout, etc.): fix `DATABASE_URL` in `.env` to match [Supabase connect settings](https://supabase.com/dashboard/project/_/settings/database) (direct `db.<ref>.supabase.co:5432` or pooler `…:6543` with the correct username format for your pool mode). Alternatively, open **SQL Editor** in the dashboard and run pending `supabase/migrations/*.sql` in filename order.
 
@@ -87,11 +87,10 @@ database/
     verify_seed.py         # Seed verification test suite
   vps/
     setup.sh               # VPS helper notes (optional)
-
-contracts/
-  schema.sql               # Full DDL
-  schema.md                # Human-readable schema docs
-  seed-report.md           # Generated after seed run
+  wipe_empty.py            # Destructive: empty public + storage catalog (see scripts/)
+  scripts/
+    wipe_public_schema.sql # SQL used by wipe_empty.py
+    verify_reference_catalog.sql
 ```
 
 ## Re-running
@@ -103,4 +102,6 @@ The pipeline is idempotent:
 - **Uploads**: Skips existing files in Supabase Storage
 - **Insertions**: Uses `ON CONFLICT` upsert on `(source, source_id)`
 
-To fully reset: `python database/migrate.py --reset`
+To drop all app tables only (then re-run migrations): `python database/migrate.py --reset` (types `yes` when prompted).
+
+To wipe **`public`** entirely (empty schema) plus app storage bucket rows/policies, then rebuild from migrations: `python database/wipe_empty.py --yes` (requires a working `DATABASE_URL`). The raw SQL is `database/scripts/wipe_public_schema.sql` (paste into Supabase SQL Editor if you prefer).

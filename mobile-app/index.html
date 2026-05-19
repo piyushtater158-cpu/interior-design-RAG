@@ -457,6 +457,18 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
 
+// #region agent log
+const dbgLog = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? function(loc, message, data, hypothesisId) {
+      fetch('http://127.0.0.1:7274/ingest/699656ec-740a-4bc6-9d4c-26d18444e793', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e9f08a' },
+        body: JSON.stringify({ sessionId: 'e9f08a', location: loc, message, data, hypothesisId, timestamp: Date.now() }),
+      }).catch(() => {});
+    }
+  : function() {};
+// #endregion
+
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
   jwt:    '',
@@ -544,19 +556,72 @@ async function apiReq(path, opts = {}) {
   const headers = {};
   const { data: { session } } = await sb.auth.getSession();
   if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
+  const isBulkRef = path.includes('/uploads/reference/bulk');
+  // #region agent log
+  if (isBulkRef) {
+    dbgLog('index.html:apiReq', 'bulk request start', {
+      path,
+      hasSession: !!session,
+      fileCount: Array.isArray(opts.json?.files) ? opts.json.files.length : null,
+      style_tag: opts.json?.style_tag ?? null,
+      room_type: opts.json?.room_type ?? null,
+    }, 'H1');
+  }
+  // #endregion
   if (opts.json !== undefined) {
     headers['Content-Type'] = 'application/json';
-    opts = { ...opts, body: JSON.stringify(opts.json) };
+    let bodyStr;
+    try {
+      bodyStr = JSON.stringify(opts.json);
+    } catch (e) {
+      // #region agent log
+      if (isBulkRef) dbgLog('index.html:apiReq', 'JSON.stringify failed', { message: e.message || String(e) }, 'H6');
+      // #endregion
+      throw new Error('Upload payload too large for the browser to encode. Try fewer images per batch.');
+    }
+    // #region agent log
+    if (isBulkRef) {
+      dbgLog('index.html:apiReq', 'bulk body encoded', {
+        bodyBytes: bodyStr.length,
+        fileCount: opts.json?.files?.length ?? null,
+      }, 'H6');
+    }
+    // #endregion
+    opts = { ...opts, body: bodyStr };
     delete opts.json;
   }
   const res = await fetch(`${API}${path}`, { ...opts, headers });
+  // #region agent log
+  if (isBulkRef) {
+    dbgLog('index.html:apiReq', 'bulk response', { status: res.status, ok: res.ok }, 'H2');
+  }
+  // #endregion
   if (!res.ok) {
     let b = {};
     try { b = await res.json(); } catch {}
+    // #region agent log
+    if (isBulkRef) {
+      dbgLog('index.html:apiReq', 'bulk http error', {
+        status: res.status,
+        error: b.error || b.message || res.statusText,
+        code: b.code || null,
+      }, 'H2');
+    }
+    // #endregion
     throw new Error(b.error || b.message || res.statusText || `HTTP ${res.status}`);
   }
   if (res.status === 204) return null;
-  return res.json();
+  const body = await res.json();
+  // #region agent log
+  if (isBulkRef) {
+    dbgLog('index.html:apiReq', 'bulk body parsed', {
+      hasResults: Array.isArray(body?.results),
+      resultCount: body?.results?.length ?? 0,
+      statuses: Array.isArray(body?.results) ? body.results.map(r => r.status) : [],
+    }, 'H3');
+  }
+  // #endregion
+  return body;
 }
 
 const WH = {
@@ -574,6 +639,15 @@ function absUrl(url) {
   if (!url) return '';
   if (/^https?:\/\//i.test(url)) return url;
   return `${API}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+/** Normalize Supabase storage URLs for <img> (public bucket path). */
+function refImageUrl(url) {
+  if (!url) return '';
+  const u = absUrl(url);
+  if (u.includes('.supabase.co/storage/v1/object/') && !u.includes('/object/public/')) {
+    return u.replace('/storage/v1/object/', '/storage/v1/object/public/');
+  }
+  return u;
 }
 function revLabel(i) { return `Rev ${String(i+1).padStart(2,'0')}` }
 function wait(ms) { return new Promise(r=>setTimeout(r,ms)) }
@@ -1239,9 +1313,8 @@ async function sendEdit() {
   const log = document.getElementById('chat-log');
   if (log) {
     if (log.querySelector('div[style*="margin-top:24px"]')) log.innerHTML = '';
-    log.innerHTML += `<div class="chat-msg user">${instruction}</div>`;
-    log.innerHTML += `<div class="chat-msg sys" id="typing">
-      <span class="spin" style="width:12px;height:12px;display:inline-block"></span></div>`;
+    const _um = document.createElement('div'); _um.className = 'chat-msg user'; _um.textContent = instruction; log.appendChild(_um);
+    const _tm = document.createElement('div'); _tm.className = 'chat-msg sys'; _tm.id = 'typing'; _tm.innerHTML = '<span class="spin" style="width:12px;height:12px;display:inline-block"></span>'; log.appendChild(_tm);
     log.scrollTop = log.scrollHeight;
   }
 
@@ -1548,6 +1621,35 @@ const REF_CANONICAL_ROOM = {
   mandir: 'mandir',
   living: 'living room',
 };
+/** Hostinger proxy drops POST bodies above ~15MB; stay under with margin. */
+const BULK_MAX_B64_PER_REQUEST = 12 * 1024 * 1024;
+/** Each file runs caption+storage sequentially in n8n (~20–30s each); keep batches small. */
+const BULK_MAX_FILES_PER_REQUEST = 5;
+const REF_MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+function chunkFileDataForBulk(files) {
+  const batches = [];
+  let cur = [];
+  let size = 0;
+  for (const f of files) {
+    const b64Len = (f.content_b64 || '').length;
+    const bytes = Math.floor(b64Len * 3 / 4);
+    if (bytes > REF_MAX_FILE_BYTES) {
+      throw new Error(`${f.filename || 'Image'} exceeds the 10MB per-file limit.`);
+    }
+    const overSize = cur.length && size + b64Len > BULK_MAX_B64_PER_REQUEST;
+    const overCount = cur.length >= BULK_MAX_FILES_PER_REQUEST;
+    if (cur.length && (overSize || overCount)) {
+      batches.push(cur);
+      cur = [];
+      size = 0;
+    }
+    cur.push(f);
+    size += b64Len;
+  }
+  if (cur.length) batches.push(cur);
+  return batches;
+}
 
 function dbStyleLabel(id) { const x = DB_STYLES.find(a => a[0] === id); return x ? x[1] : id; }
 function dbRoomLabel(id) { const x = DB_ROOMS.find(a => a[0] === id); return x ? x[1] : id; }
@@ -1562,7 +1664,20 @@ function refDisplayCaption(row) {
   return c;
 }
 
+function dbCatalogAuthed() {
+  if (S.jwt) return true;
+  S.db.listError = 'Sign in to browse the reference catalog.';
+  S.db.styleCounts = {};
+  S.db.roomCounts = {};
+  S.db.detailRows = [];
+  S.db.stylesLoading = false;
+  S.db.roomsLoading = false;
+  S.db.detailLoading = false;
+  return false;
+}
+
 async function dbFetchStyleCounts() {
+  if (!dbCatalogAuthed()) { render(); return; }
   S.db.stylesLoading = true;
   S.db.listError = '';
   render();
@@ -1585,6 +1700,7 @@ async function dbFetchStyleCounts() {
 }
 
 async function dbFetchRoomCounts() {
+  if (!dbCatalogAuthed()) { render(); return; }
   const st = S.db.style;
   S.db.roomsLoading = true;
   S.db.listError = '';
@@ -1609,22 +1725,41 @@ async function dbFetchRoomCounts() {
   }
 }
 
+function refOwnerLineHtml(row) {
+  const isMine = row.owner_id && S.userId && row.owner_id === S.userId;
+  if (isMine && S.email) {
+    return `<div class="anno" style="text-transform:none;font-size:11px;margin-bottom:4px">owner · ${escHtml(S.email)}</div>`;
+  }
+  return `<div class="anno" style="text-transform:none;font-size:11px;margin-bottom:4px;color:var(--mute)">shared catalog</div>`;
+}
+
 async function dbFetchDetailRows() {
+  if (!dbCatalogAuthed()) { render(); return; }
   const st = S.db.style, rm = S.db.room;
   const variants = REF_ROOM_VARIANTS[rm] || [rm];
   S.db.detailLoading = true;
   S.db.listError = '';
   render();
+  // #region agent log
+  dbgLog('index.html:dbFetchDetailRows', 'detail fetch start', { style: st, room: rm, variants }, 'A');
+  // #endregion
   try {
     const { data, error } = await sb.from('reference_images')
-      .select('id, source_url, storage_path, caption, room_type, style_tags, dominant_colors, detected_objects, quality_score, created_at, source, source_id, owner_id, owner_email')
+      .select('id, source_url, storage_path, caption, room_type, style_tags, dominant_colors, detected_objects, quality_score, created_at, source, source_id, owner_id')
       .in('room_type', variants)
       .overlaps('style_tags', refStyleTagsFor(st))
       .order('created_at', { ascending: false });
     if (error) throw error;
     S.db.detailRows = data || [];
+    // #region agent log
+    dbgLog('index.html:dbFetchDetailRows', 'detail fetch ok', { rowCount: S.db.detailRows.length }, 'A');
+    // #endregion
   } catch (e) {
-    S.db.listError = e.message || String(e);
+    const msg = e.message || String(e);
+    // #region agent log
+    dbgLog('index.html:dbFetchDetailRows', 'detail fetch error', { message: msg, code: e.code || null }, 'A');
+    // #endregion
+    S.db.listError = msg;
     S.db.detailRows = [];
   } finally {
     S.db.detailLoading = false;
@@ -1693,23 +1828,74 @@ async function dbFilesPicked(ev) {
       reader.readAsDataURL(f);
     })));
 
-    const { results } = await apiReq('/uploads/reference/bulk', {
-      method: 'POST',
-      json: { style_tag: st, room_type: rm, files: fileData },
-    });
+    const room_type = REF_CANONICAL_ROOM[rm] || rm;
+    const totalB64 = fileData.reduce((s, f) => s + (f.content_b64 || '').length, 0);
+    const batches = chunkFileDataForBulk(fileData);
+    // #region agent log
+    dbgLog('index.html:dbFilesPicked', 'bulk payload', {
+      style: st,
+      roomUi: rm,
+      room_type,
+      fileCount: fileData.length,
+      totalB64,
+      batchCount: batches.length,
+      batchB64Sizes: batches.map(b => b.reduce((s, f) => s + (f.content_b64 || '').length, 0)),
+    }, 'H4');
+    // #endregion
 
-    S.db.uploadProgress = results.map(r => ({
-      index: r.file_index,
-      filename: imageFiles[r.file_index]?.name || `file ${r.file_index}`,
-      status: r.status,
-      error: r.error,
-      caption_preview: r.caption_preview,
-    }));
+    const allResults = [];
+    let fileOffset = 0;
+    for (let bi = 0; bi < batches.length; bi++) {
+      const batch = batches[bi];
+      // #region agent log
+      dbgLog('index.html:dbFilesPicked', 'bulk batch start', { batchIndex: bi, filesInBatch: batch.length, fileOffset }, 'H7');
+      // #endregion
+      const { results } = await apiReq('/uploads/reference/bulk', {
+        method: 'POST',
+        json: { style_tag: st, room_type, files: batch },
+      });
+      const resultList = Array.isArray(results) ? results : [];
+      const resultByIndex = new Map(resultList.map(r => [r.file_index ?? 0, r]));
+      // #region agent log
+      if (resultList.length < batch.length) {
+        dbgLog('index.html:dbFilesPicked', 'bulk batch incomplete results', {
+          batchIndex: bi,
+          expected: batch.length,
+          got: resultList.length,
+        }, 'H8');
+      }
+      // #endregion
+      for (let i = 0; i < batch.length; i++) {
+        const gi = fileOffset + i;
+        const r = resultByIndex.get(i);
+        if (r) {
+          allResults.push({ ...r, file_index: gi });
+          if (S.db.uploadProgress[gi]) {
+            S.db.uploadProgress[gi].status = r.status;
+            S.db.uploadProgress[gi].error = r.error;
+            S.db.uploadProgress[gi].caption_preview = r.caption_preview;
+          }
+        } else if (S.db.uploadProgress[gi]) {
+          S.db.uploadProgress[gi].status = 'error';
+          S.db.uploadProgress[gi].error = 'server did not return a result for this file';
+          allResults.push({ file_index: gi, status: 'error', error: 'missing_result' });
+        }
+      }
+      fileOffset += batch.length;
+      render();
+    }
 
-    const failed = results.filter(r => r.status !== 'ok').length;
-    if (failed > 0) S.db.listError = `${failed} of ${results.length} file(s) failed — see details below.`;
+    const failed = allResults.filter(r => r.status !== 'ok').length;
+    if (failed > 0) {
+      S.db.listError = `${failed} of ${allResults.length} file(s) failed — see details below.`;
+    } else if (batches.length > 1) {
+      S.db.listError = '';
+    }
     await dbFetchDetailRows();
   } catch (e) {
+    // #region agent log
+    dbgLog('index.html:dbFilesPicked', 'bulk catch', { message: e.message || String(e) }, 'H5');
+    // #endregion
     S.db.listError = e.message || String(e);
     S.db.uploadProgress = [];
   } finally {
@@ -1740,6 +1926,17 @@ async function dbDeleteRef(rowId) {
 }
 
 function scrProfileDatabase() {
+  if (!S.jwt) {
+    return `
+    <div class="db-empty">
+      <div class="serif" style="font-size:20px;margin-bottom:10px">Sign in required</div>
+      <div class="anno" style="text-transform:none;line-height:1.5;max-width:300px;margin:0 auto 16px">
+        The reference catalog is available to signed-in users. Sign in from the home screen, then return here.
+      </div>
+      <button type="button" class="btn btn-primary" onclick="go('signin')">Sign in</button>
+    </div>`;
+  }
+
   const step = S.db.step || 'styles';
   const st = S.db.style, rm = S.db.room;
   const rows = S.db.detailRows || [];
@@ -1755,16 +1952,14 @@ function scrProfileDatabase() {
     ).join('');
     const delBusy = S.db.deletingId === row.id;
     const fname = row.storage_path ? String(row.storage_path).split('/').pop() : '';
-    const ownerLine = row.owner_email
-      ? `<div class="anno" style="text-transform:none;font-size:11px;margin-bottom:4px">owner · ${escHtml(row.owner_email)}</div>`
-      : `<div class="anno" style="text-transform:none;font-size:11px;margin-bottom:4px;color:var(--mute)">shared catalog</div>`;
+    const ownerLine = refOwnerLineHtml(row);
     const meta = [row.quality_score != null ? `quality ${row.quality_score}` : '', fname].filter(Boolean).join(' · ');
     const objArr = Array.isArray(row.detected_objects) ? row.detected_objects : [];
     const objs = objArr.length
       ? `<div class="anno" style="text-transform:none;font-size:11px;margin-top:4px">${escHtml(objArr.slice(0, 6).join(', '))}</div>`
       : '';
     return `<div class="db-row">
-      <div class="db-thumb">${row.source_url ? `<img src="${escHtml(row.source_url)}" alt="">` : ''}</div>
+      <div class="db-thumb">${row.source_url ? `<img src="${escHtml(refImageUrl(row.source_url))}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}</div>
       <div style="flex:1;min-width:0">
         ${tagHtml ? `<div style="margin-bottom:6px">${tagHtml}</div>` : ''}
         ${cap ? `<div style="font-size:12px;color:var(--ink-soft);line-height:1.45;margin-bottom:6px">${escHtml(cap)}</div>` : ''}

@@ -11,7 +11,7 @@ mobile-app (static) ── HTTPS ──▶ n8n (webhooks) ──▶ Supabase (DB
                                          └──▶ Google Gemini (image generation)
 ```
 
-Reference pool selection for `generate/orchestrated` uses **`retrieve_candidates_text`** (FTS on `caption_enhanced` / `caption`). The `reference_embeddings` table and **`retrieve_references`** RPCs were removed; see `supabase/migrations/016_remove_embeddings_and_vector_rpcs.sql`.
+Reference pool selection for `generate/orchestrated` uses **`retrieve_candidates_text`** (FTS on `caption_enhanced` / `caption`). Vector embeddings and **`retrieve_references`** are not part of the current schema (`supabase/migrations/100_reset_and_rebuild.sql`).
 
 ## Directory layout
 
@@ -33,14 +33,14 @@ Use the Supabase SQL editor or CLI. Combine with **all** prior `supabase/migrati
 3. `migrations/008_admin_metrics_rpc.sql` — `admin_metrics` RPC if used.
 4. `migrations/012_enhanced_captions_spatial.sql` — `caption_enhanced`, `spatial_signature`, `caption_fts`, **`retrieve_candidates_text`**.
 
-Then apply root **`supabase/migrations/016_remove_embeddings_and_vector_rpcs.sql`** (and any other numbered supabase migrations not duplicated above) so production matches git.
+Then apply root **`supabase/migrations/100_reset_and_rebuild.sql`** on greenfield databases, followed by any newer `supabase/migrations/2026*.sql` and `database/migrations/*.sql` not already covered above.
 
 **Sanity checks**
 
 ```sql
 SELECT key FROM app_config ORDER BY key;
 SELECT proname FROM pg_proc WHERE proname IN ('retrieve_candidates_text','generation_chain_depth','admin_metrics');
--- retrieve_references must NOT appear after 016
+-- retrieve_references must NOT appear (FTS-only schema)
 ```
 
 ## n8n environment variables
@@ -81,7 +81,7 @@ Legacy **`POST /retrieve/references`** may still exist inside an old consolidate
 
 ## Contracts
 
-- `contracts/schema.sql` / `contracts/schema.md` — table shapes.
+- `supabase/migrations/100_reset_and_rebuild.sql` — table shapes and policies (authoritative DDL).
 - `contracts/openapi.yaml` — HTTP shapes where maintained.
 
 ## Docs

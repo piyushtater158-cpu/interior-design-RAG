@@ -15,6 +15,20 @@
       }
     },
     {
+      "id": "norm-auth-header",
+      "name": "Normalize auth header",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const item = $input.first().json;\nconst SUPABASE_APIKEY = process.env.SUPABASE_ANON_KEY;\nconst raw = item.authorization\n  || (item.headers && (item.headers.authorization || item.headers.Authorization))\n  || '';\nlet t = String(raw).trim();\nwhile (/^Bearer\\s+/i.test(t)) t = t.replace(/^Bearer\\s+/i, '').trim();\nconst authorization = t ? `Bearer ${t}` : '';\nreturn [{ json: { ...item, authorization, supabase_apikey: SUPABASE_APIKEY } }];"
+      }
+    },
+    {
       "id": "359f7c07-1bfe-4c0d-9d57-9163ca355526",
       "name": "Verify with Supabase",
       "type": "n8n-nodes-base.httpRequest",
@@ -32,11 +46,11 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{ $json.authorization || ($json.headers && $json.headers.authorization) || \"\" }}"
+              "value": "={{ $json.authorization }}"
             },
             {
               "name": "apikey",
-              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+              "value": "={{ $json.supabase_apikey }}"
             }
           ]
         },
@@ -70,7 +84,7 @@
       "main": [
         [
           {
-            "node": "Verify with Supabase",
+            "node": "Normalize auth header",
             "type": "main",
             "index": 0
           }
@@ -82,6 +96,17 @@
         [
           {
             "node": "Normalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize auth header": {
+      "main": [
+        [
+          {
+            "node": "Verify with Supabase",
             "type": "main",
             "index": 0
           }

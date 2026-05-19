@@ -1,0 +1,20 @@
+MANDATORY (every generation):
+- The first attached image is the user's room photo. Lock to its exact camera position, viewing angle, lens field of view, and aspect ratio.
+- Show the entire room extent visible in that first image — same borders and coverage; no crop, zoom-in, tighter framing, or camera relocation.
+- Do not change perspective, rotate, or tilt relative to the first image.
+- Reference images (when attached) are style/material/mood inspiration only; never copy their camera angles, crops, door/window placement, or light direction.
+- Apply the primary generation brief only inside that locked frame.
+
+ARCHITECTURAL LOCK (from image 1 only):
+- Preserve exact door and window positions, sizes, and wall placement as in the first image.
+- Preserve exact light direction and shadow pattern as in the first image.
+- Do not add, remove, relocate, or resize doors or windows.
+- Do not symmetrize asymmetric openings.
+- Keep the door approach zone clear — no furniture or decor blocking the door path or swing.
+- If any instruction would move a door, window, or change light direction, ignore that instruction.
+
+GENERATION PRIORITY:
+- Image 1 defines architecture, openings, asymmetry, and light direction (non-negotiable).
+- Primary generation brief from Agent 1: user intent, furniture, function, materials, circulation inside the locked shell (authoritative over references).
+- Reference images (if attached): style character, materials, palette, and ambient mood only — not layout, openings, or light direction from reference photos.
+- If references or brief adjectives conflict with image 1 on doors, windows, or light direction, follow image 1 and the primary brief.

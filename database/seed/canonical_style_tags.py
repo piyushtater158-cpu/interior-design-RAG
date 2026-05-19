@@ -153,6 +153,4 @@ def pick_canonical_style_tags_singleton(caption: str, tags: list[str] | None) ->
         return [hit]
     if not tags:
         return ["scandinavian"]
-    if len(tags) == 1:
-        return [_from_tags_only(tags)]
     return [_from_tags_only(tags)]

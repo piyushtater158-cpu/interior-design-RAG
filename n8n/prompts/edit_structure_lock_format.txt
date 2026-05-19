@@ -1,0 +1,10 @@
+# Stamped structure lock (persisted in generations.prompt for edit chains)
+
+===STRUCTURE_LOCK===
+Door lock: <wall, position along wall, size/frame; door must not move to another wall>
+Window lock: <each window wall, sizes; asymmetric placement as observed>
+Light: <light direction and lit vs shadow surfaces from the photograph>
+InputPixels: <width>x<height>
+===END===
+
+EDIT (apply only this change): <user instruction>

@@ -7,7 +7,23 @@
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    ...$json,\n    _cfg: {\n      supabase_url:    'https://uzghfpxboktnbcbbthns.supabase.co',\n      supabase_key:    process.env.SUPABASE_SERVICE_KEY\n    }\n  },\n  binary: $input.first().binary || {}\n}];"
+      },
+      "id": "639640d2-e12f-46ed-a246-1bec95983480",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        0
+      ]
     },
     {
       "parameters": {
@@ -17,7 +33,10 @@
       "name": "Shape event",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [224, 0]
+      "position": [
+        224,
+        0
+      ]
     },
     {
       "parameters": {
@@ -26,10 +45,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
-            { "name": "Authorization", "value": "Bearer ={{ $env.SUPABASE_SERVICE_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" },
-            { "name": "Prefer",        "value": "return=minimal" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
@@ -37,14 +60,30 @@
         "jsonBody": "={{ JSON.stringify({ user_id: $json.user_id, session_id: $json.session_id, event_type: $json.event_type, payload: $json.payload }) }}",
         "options": {
           "timeout": 10000,
-          "response": { "response": { "neverError": true, "fullResponse": false } }
-        }
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": false
+            }
+          }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
       },
       "id": "a983ab9b-c3ae-4933-af1c-b14ab1bf4d5d",
       "name": "Insert into events",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [448, 0]
+      "position": [
+        448,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "7rZNgbzFZJtpVqub",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
@@ -54,21 +93,66 @@
       "name": "Return OK",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [672, 0]
+      "position": [
+        672,
+        0
+      ]
     }
   ],
   "connections": {
-    "When Executed by Another Workflow": {
-      "main": [[{ "node": "Shape event", "type": "main", "index": 0 }]]
-    },
     "Shape event": {
-      "main": [[{ "node": "Insert into events", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Insert into events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Insert into events": {
-      "main": [[{ "node": "Return OK", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Return OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Shape event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
-  "settings": { "executionOrder": "v1", "availableInMCP": true },
-  "tags": [{ "name": "shared" }]
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "tags": [
+    {
+      "name": "shared"
+    }
+  ]
 }

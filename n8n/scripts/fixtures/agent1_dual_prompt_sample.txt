@@ -1,0 +1,23 @@
+===CRITERIA===
+Spatial structure lock (from photograph — highest priority):
+Openings lock: preserve all doors and windows exactly as in the attached photograph; image 1 is authoritative for Agent 3 — do not state door/window wall positions or counts in this block
+Door clearance: swing zone and entry path empty; no furniture blocking door path
+Light: soft natural daylight mood
+
+User design intent (for Agent 3 prompt and retrieval):
+- wooden floor
+- colorful lights
+
+Style & retrieval targets:
+scandinavian, bedroom
+
+Agent 3 mandate:
+- ===PROMPT=== is the authoritative image-generation brief; reference images are style/material/mood inspiration only; image 1 locks openings.
+
+Complementarity guidance for references (up to 3):
+Reference 1 should best cover style without conflicting opening layout vs user photo.
+===END===
+
+===PROMPT===
+A fully furnished, photorealistic scandinavian bedroom interior, preserving the exact room geometry and camera frame shown in the first input image. Preserve all doors, windows, and light exactly as in the attached room photograph — image 1 is authoritative; do not relocate, add, remove, or symmetrize openings. Keep the entry approach zone clear with no furniture blocking door swing.
+===END===

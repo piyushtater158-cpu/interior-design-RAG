@@ -9,58 +9,26 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-
-def get_supabase_client():
-    """Create Supabase client."""
-    from supabase import create_client
-    
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_KEY")
-    
-    if not url or not key:
-        print("ERROR: SUPABASE_URL or SUPABASE_SERVICE_KEY not set in .env")
-        sys.exit(1)
-    
-    return create_client(url, key)
+from database.seed import supabase_rest
 
 
-def ensure_bucket(supabase, bucket_name):
+def ensure_bucket(bucket_name):
     """Create the storage bucket if it doesn't exist."""
     try:
-        supabase.storage.get_bucket(bucket_name)
-        print(f"  Bucket '{bucket_name}' already exists.")
-    except Exception:
-        try:
-            supabase.storage.create_bucket(
-                bucket_name,
-                options={"public": True}
-            )
-            print(f"  Created bucket '{bucket_name}' (public).")
-        except Exception as e:
-            # Bucket might already exist with different case
-            print(f"  Bucket creation note: {e}")
+        supabase_rest.ensure_bucket_public(bucket_name)
+        print(f"  Bucket '{bucket_name}' ready (public).")
+    except Exception as e:
+        print(f"  Bucket note: {e}")
 
 
-def upload_image(supabase, bucket_name, local_path, storage_path):
-    """Upload a single image to Supabase Storage.
-    
-    Args:
-        supabase: Supabase client
-        bucket_name: Storage bucket name
-        local_path: Local file path
-        storage_path: Path within the bucket (e.g. 'industrial/1.png')
-        
-    Returns:
-        Public URL of the uploaded image
-    """
-    # Read file
+def upload_image(bucket_name, local_path, storage_path):
+    """Upload a single image to Supabase Storage."""
     with open(local_path, "rb") as f:
         file_data = f.read()
-    
-    # Determine content type
+
     ext = Path(local_path).suffix.lower()
     content_types = {
         ".png": "image/png",
@@ -69,33 +37,14 @@ def upload_image(supabase, bucket_name, local_path, storage_path):
         ".webp": "image/webp",
     }
     content_type = content_types.get(ext, "image/png")
-    
+
     try:
-        # Try to upload (will fail if file exists)
-        supabase.storage.from_(bucket_name).upload(
-            storage_path,
-            file_data,
-            file_options={"content-type": content_type}
-        )
+        supabase_rest.upload_object(bucket_name, storage_path, file_data, content_type)
     except Exception as e:
-        if "Duplicate" in str(e) or "already exists" in str(e):
-            # File already uploaded, skip
-            pass
-        else:
-            # Try upsert
-            try:
-                supabase.storage.from_(bucket_name).update(
-                    storage_path,
-                    file_data,
-                    file_options={"content-type": content_type}
-                )
-            except Exception as e2:
-                print(f"    WARNING: Could not upload {storage_path}: {e2}")
-                return None
-    
-    # Get public URL
-    url = supabase.storage.from_(bucket_name).get_public_url(storage_path)
-    return url
+        print(f"    WARNING: Could not upload {storage_path}: {e}")
+        return None
+
+    return supabase_rest.public_url(bucket_name, storage_path)
 
 
 def upload_all_images(image_entries, bucket_name="reference-images"):
@@ -108,8 +57,7 @@ def upload_all_images(image_entries, bucket_name="reference-images"):
     Returns:
         dict mapping image_id -> {storage_path, public_url}
     """
-    supabase = get_supabase_client()
-    ensure_bucket(supabase, bucket_name)
+    ensure_bucket(bucket_name)
     
     results = {}
     total = len(image_entries)
@@ -122,7 +70,7 @@ def upload_all_images(image_entries, bucket_name="reference-images"):
         
         print(f"  [{i+1}/{total}] Uploading {storage_path}...", end="", flush=True)
         
-        url = upload_image(supabase, bucket_name, entry["image_path"], storage_path)
+        url = upload_image(bucket_name, entry["image_path"], storage_path)
         
         if url:
             results[img_id] = {

@@ -1,7 +1,7 @@
 # Seed Report
 
-**Generated:** 2026-04-18 17:29:28  
-**Elapsed:** 57.6 seconds  
+**Generated:** 2026-05-16 22:27:03  
+**Elapsed:** 292.9 seconds  
 **Total images processed:** 104
 
 ## Image Counts by Room Type
@@ -61,14 +61,6 @@
 | Min | 0.900 |
 | Max | 1.000 |
 
-## Embedding Statistics
-
-| Metric | Value |
-|---|---|
-| Embeddings generated | 104 |
-| Embedding dimension | 512 (CLIP ViT-B/32) |
-| 1:1 with images | Yes |
-
 ## Upload Statistics
 
 | Metric | Value |
@@ -80,9 +72,8 @@
 
 | Metric | Value |
 |---|---|
-| Images inserted | 104 |
-| Images skipped | 0 |
-| Embeddings inserted | 104 |
+| Images inserted | 0 |
+| Images skipped | 104 |
 
 ## Cost Summary
 
@@ -90,5 +81,4 @@
 |---|---|
 | Gemini 2.5 Flash tagging (free tier) | $0.00 |
 | Supabase Storage (free tier) | $0.00 |
-| CLIP embeddings (local/VPS) | $0.00 |
 | **Total** | **$0.00** |

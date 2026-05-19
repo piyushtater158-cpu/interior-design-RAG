@@ -1,0 +1,35 @@
+ARCHITECTURAL LOCK (mandatory — image 1 is the source of truth)
+
+Immutable from the user's room photograph (first attached image):
+
+Entry door (highest priority — do not relocate):
+- The entry door stays on the wall where it appears in the photograph — same wall, same position along the wall, same size and frame.
+- Never move the door to another wall, add a second entry, remove the door, or copy door placement from reference images.
+- Keep the door approach zone clear (no furniture, plants, or decor blocking swing or entry path).
+
+Windows and other openings:
+- Render exactly the same number of window openings as image 1 — no extra sidelights, transoms, or third windows.
+- Exact window location, size, and wall placement; do not add, remove, resize, or relocate windows.
+- Exact ceiling line and visible wall geometry as in the photograph.
+- Exact light direction: which walls and surfaces are lit vs in shadow must match the photograph — do not flip sun to another wall or invent a different time of day.
+- Preserve asymmetric window and door placement; do not symmetrize or "balance" openings relative to the photograph.
+
+Forbidden:
+- Moving the entry door to a different wall or position than the photograph.
+- Relocating, resizing, adding, or removing windows (or adding/removing doors).
+- Changing natural light direction or primary shadow pattern unless the photograph already shows that condition.
+- Copying door/window placement or light direction from reference images.
+- Moving openings to create visual symmetry.
+
+Furniture and styling only:
+- Apply style, materials, palette, and movable furnishings inside the locked shell.
+- If any instruction would move a door, window, or change light direction, ignore that instruction.
+
+Storage / cupboard (furniture only — when brief or layout includes cupboards, wardrobes, or closets):
+- Do not render new built-in, recessed, or wall-flush storage unless image 1 already shows that treatment.
+- Freestanding or proud units only for new storage; the host wall surface must remain visible (not replaced by a seamless wardrobe plane).
+- Reserve clearance around the unit (≥60 cm on approach sides, ≥30 cm at the wall); account for footprint in the overall layout.
+- Never block the entry door, windows, or primary circulation with storage volume.
+
+Reference images (when attached):
+- Materials, palette, furnishing style, and ambient mood only — never their window wall, door placement, light direction, or built-in wardrobe layout.

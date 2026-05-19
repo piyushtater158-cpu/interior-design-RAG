@@ -49,7 +49,7 @@ Header: `Authorization: Bearer <jwt>` → returns the caller's `{ user_id, email
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `GET /auth/me` | Webhook | Receive `GET /webhook/auth/me` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
+| 2 | `Extract user from token` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Fetch user` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/users?id=eq.…&select |
 | 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
@@ -67,16 +67,20 @@ Multipart upload (binary field `file`) of a room photo. Stores in `user-uploads/
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /uploads/room-photo` | Webhook | Receive `POST /webhook/uploads/room-photo` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
-| 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
-| 4 | `Validate + name` | Code | Input: verify step returned { ok, user_id, email }. |
-| 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Validation error?` | IF | Route on `={{ $json._error || '' }}` notEmpty |
-| 7 | `Respond validation err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Upload to storage` | HTTP | `POST` =https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/user-uploa |
-| 9 | `Build preview_url` | Code | Build the public URL for the uploaded object. |
-| 10 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
-| 11 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ upload_id: $json.upload_id, preview_url |
+| 2 | `Config` | Code | Code |
+| 3 | `Extract user from token` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
+| 4 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
+| 5 | `Check email allowed` | Code | Code |
+| 6 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
+| 7 | `Email allowed?` | IF | Route on `={{ $json._error || '' }}` notEmpty |
+| 8 | `Respond 403` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 9 | `Validate + name` | Code | Input: verify step returned { ok, user_id, email }. |
+| 10 | `Validation error?` | IF | Route on `={{ $json._error || '' }}` notEmpty |
+| 11 | `Respond validation err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 12 | `Upload to storage` | HTTP | `POST` =https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/user-uploa |
+| 13 | `Build preview_url` | Code | Build the public URL for the uploaded object. |
+| 14 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
+| 15 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ upload_id: $json.upload_id, preview_url |
 <!-- WFSYNC:uploads_room_photo:END -->
 
 ---
@@ -85,7 +89,7 @@ Multipart upload (binary field `file`) of a room photo. Stores in `user-uploads/
 
 **Removed from the active product path.** The primary generation flow is `POST /generate/orchestrated`, which builds a candidate pool from `reference_images` using the Supabase RPC `retrieve_candidates_text` (full-text search on `caption_enhanced` / `caption`), not vector similarity.
 
-If your deployed consolidated workflow still exposes `POST /retrieve/references`, it depended on the `reference_embeddings` table and `retrieve_references` Postgres RPCs — both removed by `supabase/migrations/016_remove_embeddings_and_vector_rpcs.sql`. Do not rely on Nemotron image embeddings for new deployments.
+If your deployed consolidated workflow still exposes `POST /retrieve/references`, it depended on the `reference_embeddings` table and `retrieve_references` Postgres RPCs — neither exists in `supabase/migrations/100_reset_and_rebuild.sql`. Do not rely on Nemotron image embeddings for new deployments.
 
 <!-- WFSYNC:retrieve_references:START -->
 | Step | Node | Type | What it does |
@@ -139,31 +143,34 @@ Body: `{ generation_id, instruction }`. Takes an existing generation as the pare
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /generate/edit` | Webhook | Receive `POST /webhook/generate/edit` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
-| 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
-| 4 | `Validate body` | Code | Code |
-| 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Body valid?` | IF | Route on `={{ $json._error }}` notEmpty |
-| 7 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Fetch parent generation` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.…& |
-| 9 | `Shape parent` | Code | Code |
-| 10 | `Parent ok?` | IF | Route on `={{ $json._error }}` notEmpty |
-| 11 | `Respond parent err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 12 | `Chain depth RPC` | HTTP | `POST` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/rpc/generation_chain |
-| 13 | `Check cap` | Code | Parent itself consumes depth N ancestors; this new edit adds 1 more. |
-| 14 | `Under cap?` | IF | Route on `={{ $json._error }}` notEmpty |
-| 15 | `Respond cap exceeded` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 16 | `Fetch parent PNG` | HTTP | `GET` =… |
-| 17 | `Build Gemini request` | Code | Code |
-| 18 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
-| 19 | `Attach model` | Code | Code |
-| 20 | `Call Gemini` | HTTP | `POST` https://openrouter.ai/api/v1/chat/completions |
-| 21 | `Extract output PNG` | Code | Code |
-| 22 | `Extract ok?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 2 | `Config` | Code | Code |
+| 3 | `Extract user from token` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
+| 4 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
+| 5 | `Check email allowed` | Code | Code |
+| 6 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
+| 7 | `Email allowed?` | IF | Route on `={{ $json._error || '' }}` notEmpty |
+| 8 | `Respond 403` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 9 | `Validate body` | Code | Code |
+| 10 | `Body valid?` | IF | Route on `={{ !!$json._error }}` equals |
+| 11 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 12 | `Fetch parent generation` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.…& |
+| 13 | `Shape parent` | Code | Code |
+| 14 | `Parent ok?` | IF | Route on `={{ !!$json._error }}` equals |
+| 15 | `Respond parent err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 16 | `Chain depth RPC` | HTTP | `POST` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/rpc/generation_chain |
+| 17 | `Check cap` | Code | Parent itself consumes depth N ancestors; this new edit adds 1 more. |
+| 18 | `Under cap?` | IF | Route on `={{ !!$json._error }}` equals |
+| 19 | `Respond cap exceeded` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 20 | `Fetch parent PNG` | HTTP | `GET` =… |
+| 21 | `Build Flux edit request` | Code | Code |
+| 22 | `Build ok?` | IF | Route on `={{ !!$json._error }}` equals |
 | 23 | `Respond 502` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 24 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
-| 25 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
-| 26 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id: $json.generation_id,   |
+| 24 | `Generate image (Flux)` | HTTP | `POST` =… |
+| 25 | `Extract output PNG` | Code | Code |
+| 26 | `Extract ok?` | IF | Route on `={{ !!$json._error }}` equals |
+| 27 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
+| 28 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
+| 29 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id: $json.generation_id,   |
 <!-- WFSYNC:generate_edit:END -->
 
 ---
@@ -176,29 +183,33 @@ Body: `{ parent_generation_id }`. Produces a polished "final deliverable" from a
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /generate/commit` | Webhook | Receive `POST /webhook/generate/commit` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
-| 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
-| 4 | `Validate body` | Code | Code |
-| 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Body valid?` | IF | Route on `={{ $json._error }}` notEmpty |
-| 7 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Fetch parent generation` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.…& |
-| 9 | `Shape parent` | Code | Code |
-| 10 | `Parent ok?` | IF | Route on `={{ $json._error }}` notEmpty |
-| 11 | `Respond parent err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 12 | `Fetch reference URLs` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id= |
-| 13 | `Order fetch list` | Code | Build ordered fetch list: parent input (original room), then parent output, |
-| 14 | `Fetch image bytes` | HTTP | `GET` =… |
-| 15 | `Collect image parts` | Code | Code |
-| 16 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
-| 17 | `Build Gemini request` | Code | Code |
-| 18 | `Call Gemini` | HTTP | `POST` https://openrouter.ai/api/v1/chat/completions |
-| 19 | `Extract output PNG` | Code | Code |
-| 20 | `Gen error?` | IF | Route on `={{ $json._error }}` notEmpty |
-| 21 | `Respond 502` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
-| 22 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
-| 23 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
-| 24 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id: $json.generation_id,   |
+| 2 | `Config` | Code | Code |
+| 3 | `Extract user from token` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
+| 4 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
+| 5 | `Check email allowed` | Code | Code |
+| 6 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
+| 7 | `Email allowed?` | IF | Route on `={{ $json._error || '' }}` notEmpty |
+| 8 | `Respond 403` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 9 | `Validate body` | Code | Code |
+| 10 | `Body valid?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 11 | `Respond 400` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 12 | `Fetch parent generation` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.…& |
+| 13 | `Shape parent` | Code | Code |
+| 14 | `Parent ok?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 15 | `Respond parent err` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 16 | `Fetch reference URLs` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id= |
+| 17 | `Order fetch list` | Code | Build ordered fetch list: parent input (original room), then parent output, |
+| 18 | `Fetch image bytes` | HTTP | `GET` =… |
+| 19 | `Collect image parts` | Code | Code |
+| 20 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
+| 21 | `Build Gemini request` | Code | Code |
+| 22 | `Call Gemini` | HTTP | `POST` https://openrouter.ai/api/v1/chat/completions |
+| 23 | `Extract output PNG` | Code | Code |
+| 24 | `Gen error?` | IF | Route on `={{ $json._error }}` notEmpty |
+| 25 | `Respond 502` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 26 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
+| 27 | `Log event` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
+| 28 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id: $json.generation_id,   |
 <!-- WFSYNC:generate_commit:END -->
 
 ---
@@ -211,12 +222,20 @@ Body: `{ upload_id, brief, style_tag?, room_type?, session_id? }`.
 
 **This is the primary generation path.** When the user uploads a photo, selects a style, and writes a brief, this endpoint handles everything in a single call — no separate retrieve step needed.
 
-Three-agent pipeline:
-- **Agent 1 (Orchestrator)**: Reads upload image + brief + optional style_tag. Produces `===CRITERIA===` (3D spatial structure notes + style intent for Agent 2) and `===PROMPT===` (Gemini generation brief). Also derives `fts_search_text` (brief + style + room) for pool pre-filtering.
-- **Agent 2 (Spatial-aware Retriever)**: Receives candidate pool cards that include `caption_enhanced` + `spatial_signature` JSONB. Picks 3 references: Reference 1 → spatial/layout match, Reference 2 → style/materials match, Reference 3 → lighting/ambience match.
-- **Agent 3 (Gemini)**: Generates the final designed-room image from Agent 1's prompt + [upload, ref1, ref2, ref3] images.
+Three-agent pipeline (prompt sources in `n8n/prompts/`):
 
-**Pool fetching**: Uses `retrieve_candidates_text` Supabase RPC (FTS on `caption_enhanced`) instead of vector similarity — no 2048-dim sequential scan needed. Falls back to quality-ordered unfiltered pool if FTS yields < 3 results.
+**Priority ladder:** photograph architecture (doors, windows, asymmetry, light) → Agent 1 `===PROMPT===` (Agent 3 primary brief) → `===CRITERIA===` for retrieval → reference images (style/mood only).
+
+**Hard constraints (baked in Parse Agent 1 + Build Gemini request):**
+
+- **Openings:** `opening_inventory` → OPENING INVENTORY, door clearance, window count blocks; `Check pool` drops refs with extra windows or conflicting door wall.
+- **Storage:** `storage_constraints` from brief/criteria → STORAGE CONSTRAINTS in `agent_prompt`; Build Gemini adds `STORAGE_PLACEMENT_BLOCK` and conditional `CUPBOARD_FOOTPRINT_BLOCK` (no new built-in/recessed cupboards unless image 1 shows them; freestanding/proud units with visible host wall and clearance). `Check pool` drops refs whose captions describe built-in wardrobes when the brief adds freestanding storage.
+
+- **Agent 1 (Orchestrator)**: Reads upload image + brief + optional style_tag. Produces `===CRITERIA===` with **Spatial structure lock** (photo-first), user design intent, style/retrieval targets, retrieval expansion, and Agent 3 mandate. Produces `===PROMPT===` as the **Agent 3 generation brief** (authoritative for the image model): architectural fidelity (preserve asymmetric openings), practical layout, daylight from photograph only, frame-lock. Emits `fts_search_text`, `mood_tags`, and optional `spatial_req` for the pool RPC. See `agent1_orchestrator.txt`, `design_principles.txt`, `architectural_lock.txt`, `agent3_generation_mandate.txt`.
+- **Agent 2 (Retriever)**: Picks **up to 3** references from the FTS pool; rejects candidates whose window wall / light conflicts with spatial lock. References are style/material/mood inspiration only. Proceeds with 1–2 picks when the pool is small. See `agent2_retriever.txt`.
+- **Agent 3 (Gemini)**: Assembles architectural lock + `agent3_generation_mandate.txt` + design principles + **PRIMARY GENERATION BRIEF** (Agent 1 `agent_prompt` last) + [upload, 0–3 refs]. Does not author prompts — only renders. Empty catalog → **Photo-only path** (upload + brief, no refs).
+
+**Pool fetching**: `POST /rest/v1/rpc/retrieve_candidates_text` with `p_search_text` (from Parse Agent 1), `p_room_type`, `p_style_tag`, `p_user_id`, `p_spatial_req`, `p_mood_tags`, `p_k=20`. Falls back to quality-ordered REST pool when RPC returns fewer than 3 distinct rows (`pool_fallback`). Generation no longer hard-fails when fewer than 3 pool rows exist.
 
 **Edit flow after this**: Call `POST /generate/edit` with the returned `generation_id` to iterate on the result.
 
@@ -224,49 +243,53 @@ Three-agent pipeline:
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /generate/orchestrated` | Webhook | Receive `POST /webhook/generate/orchestrated` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
-| 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
-| 4 | `Validate body` | Code | Code |
-| 5 | `Respond 401` | Respond | Respond 200 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 6 | `Body valid?` | IF | Route on `={{ Boolean($json._error) }}` equals |
-| 7 | `Respond 400` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Fetch & encode upload` | Code | Code |
-| 9 | `Build Agent 1 request` | Code | Code |
-| 10 | `Agent 1 (Orchestrator)` | HTTP | `POST` =… |
-| 11 | `Parse Agent 1` | Code | Code |
-| 12 | `Agent 1 ok?` | IF | Route on `={{ Boolean($json._error) }}` equals |
-| 13 | `Respond Agent 1 err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 14 | `Log Agent 1` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
-| 15 | `Fetch candidate pool` | HTTP | `GET` =… |
-| 16 | `Check pool` | Code | Code |
-| 17 | `Empty pool?` | IF | Route on `={{ $json.pool_empty }}` equals |
-| 18 | `Respond no refs` | Respond | Respond 200 — ={ "error": "no_reference_images", "code": "empty_catalog",  |
-| 19 | `Need fallback?` | IF | Route on `={{ $json.pool_fallback }}` equals |
-| 20 | `Fetch candidate pool (all)` | HTTP | `GET` ={{ (() => {
+| 2 | `Respond no refs` | Respond | Respond 422 — ={ "error": "no_reference_images", "code": "empty_catalog",  |
+| 3 | `Extract user from token` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
+| 4 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
+| 5 | `Check email allowed` | Code | Code |
+| 6 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
+| 7 | `Email allowed?` | IF | Route on `={{ $json._error || '' }}` notEmpty |
+| 8 | `Respond 403` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 9 | `Validate body` | Code | Code |
+| 10 | `Body valid?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 11 | `Respond 400` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 12 | `Fetch & encode upload` | Code | Code |
+| 13 | `Build Agent 1 request` | Code | Code |
+| 14 | `Agent 1 (Orchestrator)` | HTTP | `POST` =… |
+| 15 | `Parse Agent 1` | Code | Code |
+| 16 | `Agent 1 success?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 17 | `Respond Agent 1 err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 18 | `Log Agent 1` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
+| 19 | `Fetch candidate pool` | HTTP | `POST` https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/rpc/retrieve_candidat |
+| 20 | `Check pool` | Code | Code |
+| 21 | `Empty pool?` | IF | Route on `={{ $json.pool_empty }}` equals |
+| 22 | `Photo-only path` | Code | Code |
+| 23 | `Need fallback?` | IF | Route on `={{ $json.pool_fallback }}` equals |
+| 24 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
+| 25 | `Fetch candidate pool (all)` | HTTP | `GET` ={{ (() => {
   const c = $json;
   const base = 'https://uzghfpxboktnbc |
-| 21 | `Build Agent 2 request` | Code | Code |
-| 22 | `Shape pool (fallback)` | Code | Code |
-| 23 | `Agent 2 build ok?` | IF | Route on `={{ Boolean($json._error) }}` equals |
-| 24 | `Respond pool err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 25 | `Agent 2 (Retriever)` | HTTP | `POST` =… |
-| 26 | `Parse Agent 2` | Code | Code |
-| 27 | `Agent 2 ok?` | IF | Route on `={{ Boolean($json._error) }}` equals |
-| 28 | `Respond Agent 2 err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 29 | `Log Agent 2` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
-| 30 | `Fetch picked URLs` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id= |
-| 31 | `Order fetch list` | Code | Code |
-| 32 | `Fetch image bytes` | HTTP | `GET` =… |
-| 33 | `Collect image parts` | Code | Code |
-| 34 | `Fetch image_model` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/app_config?key=eq.im |
-| 35 | `Build Gemini request` | Code | Code |
-| 36 | `Agent 3 (Gemini)` | HTTP | `POST` https://openrouter.ai/api/v1/chat/completions |
-| 37 | `Extract output PNG` | Code | OpenRouter returns choices[0].message.content as array of content parts |
-| 38 | `Gen error?` | IF | Route on `={{ Boolean($json._error) }}` equals |
-| 39 | `Respond 502` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 40 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
+| 26 | `Build Agent 2 request` | Code | Code |
+| 27 | `Build Gemini request` | Code | Code |
+| 28 | `Shape pool (fallback)` | Code | Code |
+| 29 | `Agent 2 build success?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 30 | `Generate image (Gemini)` | HTTP | `POST` https://openrouter.ai/api/v1/chat/completions |
+| 31 | `Respond pool err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 32 | `Agent 2 (Retriever)` | HTTP | `POST` =… |
+| 33 | `Extract output PNG` | Code | OpenRouter returns choices[0].message.content as array of content parts |
+| 34 | `Parse Agent 2` | Code | Code |
+| 35 | `Gen error?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 36 | `Agent 2 success?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 37 | `Respond 502` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 38 | `Save generation` | SubWF | Call sub-workflow `CdB8jeEoxr2p3Nht` (sync) |
+| 39 | `Respond Agent 2 err` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 40 | `Log Agent 2` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
 | 41 | `Log orchestrated_ok` | SubWF | Call sub-workflow `Hycihwac8DqZzBje` (fire-and-forget) |
-| 42 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id:       $json.generation |
+| 42 | `Fetch picked URLs` | HTTP | `GET` =https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/reference_images?id= |
+| 43 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({   generation_id:       $json.generation |
+| 44 | `Order fetch list` | Code | Code |
+| 45 | `Fetch image bytes` | HTTP | `GET` =… |
+| 46 | `Collect image parts` | Code | Code |
 <!-- WFSYNC:generate_orchestrated:END -->
 
 ---
@@ -279,7 +302,7 @@ Returns every generation in one session in chronological order so the UI can ren
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `GET /generations/session/:session_id` | Webhook | Receive `GET /webhook/generations/session/:session_id` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
+| 2 | `Extract user from token` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Validate params` | Code | Code |
 | 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
@@ -300,7 +323,7 @@ Gives the user a download URL for a specific generation.
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /generations/:generation_id/export` | Webhook | Receive `POST /webhook/generations/:generation_id/export` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
+| 2 | `Extract user from token` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
 | 4 | `Validate params` | Code | Code |
 | 5 | `Respond 401` | Respond | Respond 401 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
@@ -342,19 +365,22 @@ Body: `{ image_url, style_tag, room_type }`. Fetches the image from the given UR
 | Step | Node | Type | What it does |
 |---|---|---|---|
 | 1 | `POST /caption/generate` | Webhook | Receive `POST /webhook/caption/generate` |
-| 2 | `Verify JWT` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
+| 2 | `Extract user from token` | SubWF | Call sub-workflow `56BlN6jqFkXVszX2` (sync) |
 | 3 | `Token valid?` | IF | Route on `={{ $json.ok }}` equals |
-| 4 | `Respond 401` | Respond | Respond 200 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
-| 5 | `Validate body` | Code | Code |
-| 6 | `Body valid?` | IF | Route on `={{ Boolean($json._error) }}` equals |
-| 7 | `Respond 400` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 8 | `Fetch & encode image` | Code | Code |
-| 9 | `Build caption request` | Code | Code |
-| 10 | `Call OpenRouter` | HTTP | `POST` =… |
-| 11 | `Parse response` | Code | Code |
-| 12 | `Parse ok?` | IF | Route on `={{ Boolean($json._error) }}` equals |
-| 13 | `Respond 502` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
-| 14 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ caption: $json.caption, spatial_signatu |
+| 4 | `Check email allowed` | Code | Code |
+| 5 | `Respond 401` | Respond | Respond 200 — ={{ JSON.stringify({ error: $json.error, code: $json.code }) |
+| 6 | `Email allowed?` | IF | Route on `={{ $json._error || '' }}` notEmpty |
+| 7 | `Respond 403` | Respond | Respond ={{ $json._error.status }} — ={{ JSON.stringify($json._error.body) }} |
+| 8 | `Validate body` | Code | Code |
+| 9 | `Body valid?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 10 | `Respond 400` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 11 | `Fetch & encode image` | Code | SSRF guard: only allow images from known Supabase storage |
+| 12 | `Build caption request` | Code | Code |
+| 13 | `Call OpenRouter` | HTTP | `POST` =… |
+| 14 | `Parse response` | Code | Code |
+| 15 | `Parse ok?` | IF | Route on `={{ Boolean($json._error) }}` equals |
+| 16 | `Respond 502` | Respond | Respond 200 — ={{ JSON.stringify($json._error.body) }} |
+| 17 | `Respond 200` | Respond | Respond 200 — ={{ JSON.stringify({ caption: $json.caption, spatial_signatu |
 <!-- WFSYNC:caption_generate:END -->
 
 ---

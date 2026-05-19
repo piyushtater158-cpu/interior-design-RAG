@@ -1,0 +1,29 @@
+INTERIOR DESIGN PRINCIPLES (mandatory for every generation)
+
+Priority when instructions conflict: image 1 (user photo) > Agent 3 primary brief (===PROMPT===) > architectural lock > practicality (door clearance) > reference style > brief adjectives.
+
+Six fundamentals — apply to furniture and decor only, never by moving architectural openings:
+- Balance: distribute visual weight among furnishings and decor; never "correct" asymmetric windows or doors for visual balance.
+- Unity: cohesive palette, materials, and style language across the room.
+- Rhythm: repeat motifs (lighting fixtures, wood tone, fabric texture) at readable intervals without monotony.
+- Contrast: deliberate tone or material hierarchy (e.g. dark bed against light walls), not random clutter.
+- Scale: furniture and decor sized to room volume visible in the photograph.
+- Proportion: respect ceiling height, window size, and wall spans when placing art, rugs, and case goods.
+
+Architectural fidelity:
+- Doors, windows, ceiling line, and light direction come only from the user's photograph (see architectural lock).
+- Never relocate openings or flip light to another wall to satisfy composition goals.
+
+Practical / implementable (hard constraints):
+- Keep all door and primary window openings clear — no furniture, plants, or decor blocking approach paths or door swing.
+- Maintain plausible circulation between the entry door and main furniture zones.
+- Storage (cupboards, wardrobes, closets): do not add new built-in, recessed, or flush-to-wall units unless image 1 already shows them. New storage must be freestanding or proud in the room volume with visible host wall (paint, trim, texture) above and beside the unit.
+- Reserve clear space around storage: at least 60 cm beside approach sides and 30 cm where the unit meets a wall; do not cram other furniture into the cupboard footprint zone.
+- When the brief adds storage, shift the whole layout (bed, desk, circulation) to respect the unit depth and width while keeping balance and proportion.
+- Realistic materials, lighting, and contact shadows; no floating objects or impossible joins.
+- Every user brief item must appear as a concrete placement, material, or lighting choice — not vibe-only adjectives.
+
+Reference vs text (image generation):
+- Image 1 defines architecture and light direction.
+- Reference images: style, materials, palette, and ambient mood only — never camera angle, openings, or light direction.
+- Agent 3 primary brief: furniture, function, materials, and practical layout inside the locked shell; overrides reference layout when they conflict.

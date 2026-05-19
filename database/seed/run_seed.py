@@ -25,9 +25,35 @@ sys.path.insert(0, PROJECT_ROOT)
 from database.seed.config import (
     IMAGES_DIR, CAPTIONS_DIR, CACHE_DIR, STYLE_FOLDERS, STORAGE_BUCKET
 )
-from database.seed.processors.tagger import tag_all_images
 from database.seed.uploader import upload_all_images
-from database.seed.inserter import insert_all
+from database.seed.inserter import insert_all, get_seed_owner_id
+from database.seed import supabase_rest
+
+
+def resolve_seed_owner_id() -> str:
+    owner_id = os.environ.get("SEED_OWNER_USER_ID", "").strip()
+    if owner_id:
+        return owner_id
+    uid = supabase_rest.first_auth_user_id()
+    if uid:
+        os.environ["SEED_OWNER_USER_ID"] = uid
+        print(f"  Using SEED_OWNER_USER_ID from auth.users: {uid}")
+        return uid
+    return ""
+
+
+def fallback_tags_from_entries(entries):
+    """Minimal tags when Gemini cache/API is unavailable."""
+    tags = {}
+    for entry in entries:
+        tags[entry["id"]] = {
+            "room_type": "living room",
+            "style_tags": [entry.get("style_folder", "unknown")],
+            "dominant_colors": [],
+            "detected_objects": [],
+            "quality_score": 0.85,
+        }
+    return tags
 
 
 def discover_images():
@@ -196,16 +222,19 @@ def main():
     
     # Fail fast if no owner is configured — inserter will refuse to run without this,
     # but better to surface it before any tagging or upload work happens.
-    owner_id = os.environ.get("SEED_OWNER_USER_ID", "").strip()
-    if not owner_id and not args.tag_only:
-        print(
-            "\nERROR: SEED_OWNER_USER_ID env var is required.\n"
-            "Set it to the UUID of the auth.users row that should own the seeded reference images.\n"
-            "Example:\n"
-            "  $env:SEED_OWNER_USER_ID='xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'  # PowerShell\n"
-            "  export SEED_OWNER_USER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  # bash\n"
-        )
-        sys.exit(1)
+    if not args.tag_only:
+        owner_id = resolve_seed_owner_id()
+        if not owner_id:
+            print(
+                "\nERROR: SEED_OWNER_USER_ID is not set and no auth.users row was found.\n"
+                "Sign up once in the mobile app, or set SEED_OWNER_USER_ID in .env.\n"
+            )
+            sys.exit(1)
+        try:
+            get_seed_owner_id()
+        except RuntimeError as e:
+            print(f"\nERROR: {e}")
+            sys.exit(1)
 
     start_time = time.time()
 
@@ -246,8 +275,12 @@ def main():
             if os.path.exists(cache_file):
                 with open(cache_file, "r") as f:
                     tags[entry["id"]] = json.load(f)
+        if len(tags) < len(entries):
+            print(f"  Cache partial ({len(tags)}/{len(entries)}); using folder fallbacks for the rest.")
+            tags.update(fallback_tags_from_entries([e for e in entries if e["id"] not in tags]))
     else:
         print("\n[2/4] Tagging images via Gemini 2.5 Flash...")
+        from database.seed.processors.tagger import tag_all_images
         tags = tag_all_images(entries, use_cache=True)
 
     tagged_count = sum(1 for t in tags.values() if t.get("room_type") != "unknown")

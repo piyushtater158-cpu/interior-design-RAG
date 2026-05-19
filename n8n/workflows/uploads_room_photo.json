@@ -3,6 +3,19 @@
   "nodes": [
     {
       "parameters": {
+        "jsCode": "return [{\n  json: {\n    ...$json,\n    _cfg: {\n      supabase_url: 'https://uzghfpxboktnbcbbthns.supabase.co',\n      supabase_key: process.env.SUPABASE_SERVICE_KEY\n    }\n  },\n  binary: $input.first().binary || {}\n}];"
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "httpMethod": "POST",
         "path": "uploads/room-photo",
         "responseMode": "responseNode",
@@ -160,14 +173,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "apikey",
-              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
               "name": "Content-Type",
               "value": "={{ $json.mime }}"
             },
@@ -182,7 +187,9 @@
         "inputDataFieldName": "file",
         "options": {
           "timeout": 60000
-        }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
       },
       "id": "upload_storage",
       "name": "Upload to storage",
@@ -191,7 +198,13 @@
       "position": [
         1440,
         540
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "7rZNgbzFZJtpVqub",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
@@ -251,10 +264,79 @@
         2160,
         540
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
+      },
+      "id": "246c4fb5-1f3a-4788-890e-fecec91dfe8a",
+      "name": "Check email allowed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "not_invited",
+              "leftValue": "={{ $json._error || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "f5f55217-0ee3-48b4-8250-7521b4fe5171",
+      "name": "Email allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": "={{ $json._error.status }}",
+        "responseBody": "={{ JSON.stringify($json._error.body) }}",
+        "options": {}
+      },
+      "id": "d8e0dd6f-8cfa-46a4-aea5-c31b834a1cd4",
+      "name": "Respond 403",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        160
+      ]
     }
   ],
   "connections": {
     "POST /uploads/room-photo": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
       "main": [
         [
           {
@@ -280,7 +362,7 @@
       "main": [
         [
           {
-            "node": "Validate + name",
+            "node": "Check email allowed",
             "type": "main",
             "index": 0
           }
@@ -344,6 +426,35 @@
           },
           {
             "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check email allowed": {
+      "main": [
+        [
+          {
+            "node": "Email allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email allowed?": {
+      "main": [
+        [
+          {
+            "node": "Respond 403",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate + name",
             "type": "main",
             "index": 0
           }
