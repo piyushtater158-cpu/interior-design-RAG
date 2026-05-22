@@ -1,4 +1,14 @@
-PIXEL DIMENSION LOCK (mandatory — non-negotiable):
-- The output image must be exactly {width}×{height} pixels — identical width, height, and aspect ratio to the input photograph attached to this request.
-- Do not crop, pad, letterbox, zoom, reframe, or change the pixel canvas size.
-- Forbidden: model-default square output, resolution change, or any output whose width or height differs from the input by even one pixel.
+CANVAS HARD LOCK (mandatory — non-negotiable)
+
+1) WIDTH LOCK
+- Output width must be exactly {width} pixels — identical to the attached input image.
+- Forbidden: narrowing the scene, horizontal squeeze, side crop, letterbox bars, or any output width ≠ {width}.
+
+2) HEIGHT AND ASPECT
+- Output height must be exactly {height} pixels; aspect ratio {width}:{height} unchanged.
+- Forbidden: model-default square output, independent width/height scaling, or resolution change.
+
+3) 3D SPATIAL EXPRESSION (inside this locked canvas)
+- Preserve the room as a fixed 3D volume: same wall planes, corner angles, ceiling line, floor plane, and depth cues as the input.
+- Forbidden: changing horizontal field of view, zoom that alters apparent room width, perspective shift, rotate, or tilt.
+- Allowed: furnishings, materials, decor, and lighting inside the existing shell only (inpainting / furnish-in-place).

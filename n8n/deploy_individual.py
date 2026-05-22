@@ -21,13 +21,8 @@ from pathlib import Path
 PROJECT = Path(__file__).parent.parent
 WF_DIR  = PROJECT / "n8n" / "workflows"
 
-N8N_BASE             = "http://localhost:5678"
-CONSOLIDATED_WF_ID   = "JbnB5CPdoqgCl75F"
-N8N_API_KEY          = (
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-    ".eyJzdWIiOiJmMGYzMzNlNi1jNTM0LTQxMDYtYWE0ZS1lZDdkMTIzNDE5YWMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZDk3MGQzOTMtMjMzYi00YTMxLWIzODUtMzA4Nzg3ODk4NGE2IiwiaWF0IjoxNzc3MDAzMTQyLCJleHAiOjE3Nzk1MDg4MDB9"
-    ".7BxoC8bG6LIKExWd_Jnuuct4y50xfNTiLoVFZe8dcfY"
-)
+N8N_BASE           = os.environ.get("N8N_API_BASE", "http://localhost:5678/api/v1").replace("/api/v1", "")
+CONSOLIDATED_WF_ID = "JbnB5CPdoqgCl75F"
 
 # ── Credentials ───────────────────────────────────────────────────────────────
 
@@ -69,9 +64,13 @@ def _load_env() -> dict:
         # .env uses "Admin Token" (with space) — check both forms
         "ADMIN_TOKEN":                   get("ADMIN_TOKEN", "Admin Token"),
         "JWT_TTL_HOURS":                 get("JWT_TTL_HOURS", default="24"),
+        "N8N_API_KEY":                   get("N8N_API_KEY"),
     }
 
 _ENV = _load_env()
+N8N_API_KEY = _ENV.get("N8N_API_KEY", "")
+if not N8N_API_KEY:
+    raise SystemExit("N8N_API_KEY not set in .env")
 
 ENV_TO_CFG = {
     "SUPABASE_URL":                  "supabase_url",

@@ -4,23 +4,39 @@ Run once against the VPS n8n instance.
 """
 import json, urllib.request, urllib.error, copy
 
-API_BASE = "https://n8n.srv1649259.hstgr.cloud/api/v1"
-API_KEY  = (
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-    ".eyJzdWIiOiJiNjM5NGU0MC02YzQ2LTQ1M2ItYWNhOS01Y2NhMTdlZWJmOGEiLCJpc3MiOiJuOG4i"
-    "LCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNTkxNTQxZDAtNjFkNi00MTI0LWFhZGMtZTZkNGY3"
-    "ZDI3YTU3IiwiaWF0IjoxNzc4MDgwOTEzLCJleHAiOjE3ODA2MTA0MDB9"
-    ".dtY7tmo61eiTqkJevyA5sThzKnMWbrPj4k8LAehnOzk"
-)
+import os
+from pathlib import Path
 
-SUPABASE_URL     = "https://uzghfpxboktnbcbbthns.supabase.co"
-SUPABASE_KEY     = "__REDACTED_SUPABASE_SERVICE_KEY__"
-SUPABASE_KEY_OLD = "__REDACTED_SUPABASE_SERVICE_KEY__"
-OPENROUTER_KEY   = "__REDACTED_OPENROUTER_API_KEY__"
-GEMINI_KEY       = "__REDACTED_GEMINI_API_KEY__"
-JWT_DEV          = "__REDACTED_JWT_SECRET__"
-JWT_SECRET       = "__REDACTED_JWT_SECRET__"
-ADMIN_TOKEN      = "__REDACTED_ADMIN_TOKEN__"
+PROJECT = Path(__file__).resolve().parent.parent
+
+
+def _load_env() -> dict[str, str]:
+    out: dict[str, str] = {}
+    env_path = PROJECT / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, _, v = line.partition("=")
+            out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+
+
+_ENV = _load_env()
+API_BASE = os.environ.get("N8N_API_BASE", _ENV.get("N8N_API_BASE", "https://n8n.srv1649259.hstgr.cloud/api/v1"))
+API_KEY = os.environ.get("N8N_API_KEY", _ENV.get("N8N_API_KEY", ""))
+if not API_KEY:
+    raise SystemExit("Set N8N_API_KEY in .env before running migrate_credentials.py")
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", _ENV.get("SUPABASE_URL", ""))
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", _ENV.get("SUPABASE_SERVICE_KEY", ""))
+SUPABASE_KEY_OLD = os.environ.get("SUPABASE_SERVICE_KEY_OLD", _ENV.get("SUPABASE_SERVICE_KEY_OLD", SUPABASE_KEY))
+OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", _ENV.get("OPENROUTER_API_KEY", ""))
+GEMINI_KEY = os.environ.get("GOOGLE_AI_STUDIO_KEY", _ENV.get("GEMINI_API_KEY", _ENV.get("GOOGLE_AI_STUDIO_KEY", "")))
+JWT_DEV = os.environ.get("JWT_SECRET", _ENV.get("JWT_SECRET", ""))
+JWT_SECRET = JWT_DEV
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", _ENV.get("ADMIN_TOKEN", ""))
 
 WF_IDS = [
     ("85QkGoCbJy5HFOCi", "health"),
@@ -93,16 +109,16 @@ GEMINI_C    = {"id": cred_gem["id"],  "name": "Google Gemini API"}   if cred_gem
 
 # ── Step 2: patch functions ──────────────────────────────────────────────────
 
-# All literal secrets → process.env.*  (applies inside jsCode strings)
+# All literal secrets → $env.*  (n8n task-runner sandbox has no process.env)
 SECRET_MAP = [
-    (SUPABASE_KEY_OLD, "process.env.SUPABASE_SERVICE_KEY"),
-    (SUPABASE_KEY,     "process.env.SUPABASE_SERVICE_KEY"),
-    (SUPABASE_URL,     "process.env.SUPABASE_URL"),
-    (GEMINI_KEY,       "process.env.GOOGLE_AI_STUDIO_KEY"),
-    (OPENROUTER_KEY,   "process.env.OPENROUTER_API_KEY"),
-    (JWT_DEV,          "process.env.JWT_SECRET"),
-    (JWT_SECRET,       "process.env.JWT_SECRET"),
-    (ADMIN_TOKEN,      "process.env.ADMIN_TOKEN"),
+    (SUPABASE_KEY_OLD, "$env.SUPABASE_SERVICE_KEY"),
+    (SUPABASE_KEY,     "$env.SUPABASE_SERVICE_KEY"),
+    (SUPABASE_URL,     "$env.SUPABASE_URL"),
+    (GEMINI_KEY,       "$env.GOOGLE_AI_STUDIO_KEY"),
+    (OPENROUTER_KEY,   "$env.OPENROUTER_API_KEY"),
+    (JWT_DEV,          "$env.JWT_SECRET"),
+    (JWT_SECRET,       "$env.JWT_SECRET"),
+    (ADMIN_TOKEN,      "$env.ADMIN_TOKEN"),
 ]
 
 

@@ -533,7 +533,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
+        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\",\"siddhant@100xengineers.com\",\"shipra@100xengineers.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
       },
       "id": "e6f2dcad-93f0-493a-a5f7-0a4e9a2ba6b6",
       "name": "Check email allowed",
@@ -863,13 +863,13 @@
       ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": true
   },
-  "tags": [
-    {
-      "name": "generate"
-    }
-  ]
+  "_export": {
+    "workflow_id": "sfVJP0fobCZLRIN2",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:34.072340+00:00"
+  }
 }

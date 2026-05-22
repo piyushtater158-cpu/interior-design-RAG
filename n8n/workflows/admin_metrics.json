@@ -207,13 +207,13 @@
       ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": true
   },
-  "tags": [
-    {
-      "name": "admin"
-    }
-  ]
+  "_export": {
+    "workflow_id": "qGFtMyFOqd4IDzsu",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:33.040311+00:00"
+  }
 }

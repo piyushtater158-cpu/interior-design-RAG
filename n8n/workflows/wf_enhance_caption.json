@@ -7,7 +7,10 @@
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
-      "position": [200, 300]
+      "position": [
+        200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -29,7 +32,10 @@
       "name": "Fetch reference image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 300]
+      "position": [
+        440,
+        300
+      ]
     },
     {
       "parameters": {
@@ -39,7 +45,10 @@
       "name": "Build enhancement request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
@@ -48,10 +57,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "==Bearer {{ $env.OPENROUTER_API_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" },
-            { "name": "HTTP-Referer",  "value": "https://interior-design-rag.local" },
-            { "name": "X-Title",       "value": "Interior Design RAG — caption enhancer" }
+            {
+              "name": "Authorization",
+              "value": "==Bearer {{ $env.OPENROUTER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://interior-design-rag.local"
+            },
+            {
+              "name": "X-Title",
+              "value": "Interior Design RAG — caption enhancer"
+            }
           ]
         },
         "sendBody": true,
@@ -59,14 +80,20 @@
         "jsonBody": "={{ JSON.stringify($json.openrouter_body) }}",
         "options": {
           "timeout": 60000,
-          "retry": { "tryTimes": 3, "waitBetweenTries": 3000 }
+          "retry": {
+            "tryTimes": 3,
+            "waitBetweenTries": 3000
+          }
         }
       },
       "id": "call_llm",
       "name": "Call vision LLM",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [920, 300]
+      "position": [
+        920,
+        300
+      ]
     },
     {
       "parameters": {
@@ -76,18 +103,26 @@
       "name": "Parse enhancement",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1160, 300]
+      "position": [
+        1160,
+        300
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "typeValidation": "strict" },
+          "options": {
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "err",
               "leftValue": "={{ $json._error }}",
               "rightValue": "",
-              "operator": { "type": "string", "operation": "notEmpty" }
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
             }
           ],
           "combinator": "and"
@@ -97,7 +132,10 @@
       "name": "Parse ok?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1400, 300]
+      "position": [
+        1400,
+        300
+      ]
     },
     {
       "parameters": {
@@ -107,7 +145,10 @@
       "name": "Log parse failure",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1640, 180]
+      "position": [
+        1640,
+        180
+      ]
     },
     {
       "parameters": {
@@ -116,22 +157,39 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "=={{ $env.SUPABASE_SERVICE_KEY }}" },
-            { "name": "Authorization", "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}" },
-            { "name": "Content-Type",  "value": "application/json" },
-            { "name": "Prefer",        "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ caption_enhanced: $json.caption_enhanced, spatial_signature: $json.spatial_signature, mood_tags: $json.mood_tags || [], caption_enhanced_at: new Date().toISOString() }) }}",
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "update_db",
       "name": "Update reference_images",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1640, 420]
+      "position": [
+        1640,
+        420
+      ]
     },
     {
       "parameters": {
@@ -141,19 +199,105 @@
       "name": "Return ok",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1880, 420]
+      "position": [
+        1880,
+        420
+      ]
     }
   ],
   "connections": {
-    "When Executed by Another Workflow": { "main": [[{ "node": "Fetch reference image", "type": "main", "index": 0 }]] },
-    "Fetch reference image":            { "main": [[{ "node": "Build enhancement request", "type": "main", "index": 0 }]] },
-    "Build enhancement request":        { "main": [[{ "node": "Call vision LLM", "type": "main", "index": 0 }]] },
-    "Call vision LLM":                  { "main": [[{ "node": "Parse enhancement", "type": "main", "index": 0 }]] },
-    "Parse enhancement":                { "main": [[{ "node": "Parse ok?", "type": "main", "index": 0 }]] },
-    "Parse ok?":                        { "main": [[{ "node": "Log parse failure", "type": "main", "index": 0 }], [{ "node": "Update reference_images", "type": "main", "index": 0 }]] },
-    "Update reference_images":          { "main": [[{ "node": "Return ok", "type": "main", "index": 0 }]] }
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Fetch reference image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch reference image": {
+      "main": [
+        [
+          {
+            "node": "Build enhancement request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build enhancement request": {
+      "main": [
+        [
+          {
+            "node": "Call vision LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call vision LLM": {
+      "main": [
+        [
+          {
+            "node": "Parse enhancement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse enhancement": {
+      "main": [
+        [
+          {
+            "node": "Parse ok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse ok?": {
+      "main": [
+        [
+          {
+            "node": "Log parse failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update reference_images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update reference_images": {
+      "main": [
+        [
+          {
+            "node": "Return ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "active": false,
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "shared" }, { "name": "caption" }]
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "_export": {
+    "workflow_id": "uzivvsijQnPa8wBz",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:36.273006+00:00"
+  }
 }

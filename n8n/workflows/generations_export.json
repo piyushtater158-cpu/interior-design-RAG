@@ -4,12 +4,12 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "generations/:generation_id/export",
+        "path": "export-generation",
         "responseMode": "responseNode",
         "options": {}
       },
       "id": "webhook",
-      "name": "POST /generations/:generation_id/export",
+      "name": "POST /export-generation",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
@@ -93,7 +93,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const params = $('POST /generations/:generation_id/export').item.json.params || {};\nconst generation_id = (params.generation_id || '').toString().trim();\nconst user_id = $json.user_id;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(generation_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_generation_id', code: 'invalid_request' } } } }];\n}\nreturn [{ json: { user_id, generation_id } }];"
+        "jsCode": "const wh = $('POST /export-generation').first().json;\nconst _raw = wh.body || {};\nconst body = (() => {\n  const keys = Object.keys(_raw);\n  if (keys.length === 1 && String(keys[0]).trimStart().startsWith('{')) {\n    try { return JSON.parse(keys[0]); } catch (_) {}\n  }\n  return _raw;\n})();\nconst generation_id = (body.generation_id || '').toString().trim();\nconst user_id = $json.user_id;\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(generation_id)) {\n  return [{ json: { _error: { status: 400, body: { error: 'invalid_generation_id', code: 'invalid_request' } } } }];\n}\nreturn [{ json: { user_id, generation_id } }];"
       },
       "id": "validate",
       "name": "Validate params",
@@ -113,11 +113,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ Boolean($json._error) }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -153,22 +153,11 @@
       "parameters": {
         "method": "GET",
         "url": "=https://uzghfpxboktnbcbbthns.supabase.co/rest/v1/generations?id=eq.{{$json.generation_id}}&user_id=eq.{{$json.user_id}}&select=id,output_image_path",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "=={{ $env.SUPABASE_SERVICE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer ={{ $env.SUPABASE_SERVICE_KEY }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 10000
-        }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
       },
       "id": "fetch_row",
       "name": "Fetch generation",
@@ -177,11 +166,17 @@
       "position": [
         1440,
         540
-      ]
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "7rZNgbzFZJtpVqub",
+          "name": "Supabase account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const rows = Array.isArray($json) ? $json : ($json.body || []);\nconst row  = rows[0];\nconst ctx  = $('Validate params').item.json;\nif (!row || !row.output_image_path) {\n  return [{ json: { _error: { status: 404, body: { error: 'generation_not_found', code: 'not_found' } } } }];\n}\nconst download_url = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${row.output_image_path}`;\nreturn [{ json: { ...ctx, download_url } }];"
+        "jsCode": "const j = $json;\nlet row;\nif (Array.isArray(j)) {\n  row = j[0];\n} else if (Array.isArray(j?.body)) {\n  row = j.body[0];\n} else if (j && j.id) {\n  row = j;\n} else {\n  row = null;\n}\nconst ctx = $('Validate params').item.json;\nif (!row || !row.output_image_path) {\n  return [{ json: { _error: { status: 404, body: { error: 'generation_not_found', code: 'not_found' } } } }];\n}\nconst download_url = `https://uzghfpxboktnbcbbthns.supabase.co/storage/v1/object/public/${row.output_image_path}`;\nreturn [{ json: { ...ctx, download_url } }];"
       },
       "id": "shape",
       "name": "Build download URL",
@@ -201,11 +196,11 @@
           "conditions": [
             {
               "id": "err",
-              "leftValue": "={{ $json._error }}",
-              "rightValue": "",
+              "leftValue": "={{ Boolean($json._error) }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -285,7 +280,7 @@
     }
   ],
   "connections": {
-    "POST /generations/:generation_id/export": {
+    "POST /export-generation": {
       "main": [
         [
           {
@@ -400,13 +395,13 @@
       ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": true
   },
-  "tags": [
-    {
-      "name": "generations"
-    }
-  ]
+  "_export": {
+    "workflow_id": "la36BW7IfLmI6hW9",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:34.938648+00:00"
+  }
 }

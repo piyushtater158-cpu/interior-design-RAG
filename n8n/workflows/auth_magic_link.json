@@ -1,92 +1,5 @@
 {
-  "connections": {
-    "POST /auth/magic-link": {
-      "main": [
-        [
-          {
-            "node": "Validate email",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate email": {
-      "main": [
-        [
-          {
-            "node": "If validation failed",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "If validation failed": {
-      "main": [
-        [
-          {
-            "node": "Respond 400",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Upsert user",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upsert user": {
-      "main": [
-        [
-          {
-            "node": "Extract user",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract user": {
-      "main": [
-        [
-          {
-            "node": "Sign JWT",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sign JWT": {
-      "main": [
-        [
-          {
-            "node": "Log event",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Respond 200",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "settings": {
-    "executionOrder": "v1",
-    "availableInMCP": true
-  },
-  "staticData": null,
-  "pinData": null,
   "name": "auth_magic_link",
-  "description": null,
   "nodes": [
     {
       "parameters": {
@@ -297,5 +210,94 @@
         420
       ]
     }
-  ]
+  ],
+  "connections": {
+    "POST /auth/magic-link": {
+      "main": [
+        [
+          {
+            "node": "Validate email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate email": {
+      "main": [
+        [
+          {
+            "node": "If validation failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If validation failed": {
+      "main": [
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upsert user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert user": {
+      "main": [
+        [
+          {
+            "node": "Extract user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract user": {
+      "main": [
+        [
+          {
+            "node": "Sign JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign JWT": {
+      "main": [
+        [
+          {
+            "node": "Log event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "_export": {
+    "workflow_id": "URWOKul2iCfEww83",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:33.221439+00:00"
+  }
 }

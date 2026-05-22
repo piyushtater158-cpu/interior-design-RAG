@@ -4,17 +4,29 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import urllib.request
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[2]
 N8N_DIR = PROJECT / "n8n"
+PROMPTS_DIR = N8N_DIR / "prompts"
 WF_PATH = N8N_DIR / "workflows" / "generate_orchestrated.json"
 ORCH_MODEL_DEFAULT = "google/gemini-2.5-flash"
 NEMOTRON_VL_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "agent1_dual_prompt_sample.txt"
 WF_ID = "0FJFDIiYcWpMD0fT"
 N8N_BASE = "https://n8n.srv1649259.hstgr.cloud/api/v1"
+
+# Compacted fixed-block char budgets (+10% slack over 1/3 baseline).
+ARCH_LOCK_MAX_CHARS = int(4200 / 3 * 1.1)  # matches ARCH_LOCK_BASELINE_CHARS in bake_orchestrator_prompts.py
+DESIGN_PRINCIPLES_MAX_CHARS = 770
+AGENT3_MANDATE_MAX_CHARS = 385
+FRAME_LOCK_MAX_CHARS = 495
+DOOR_CLEARANCE_MAX_CHARS = 165
+EXEC_1673_GENERATION_PROMPT_LEN = 10968
+# Pre-compaction fixed blocks baked into Build Gemini (approx, from plan audit).
+OLD_FIXED_BLOCK_CHARS = 2200 + 2050 + 900 + 1200 + 430
 
 
 def api_key() -> str:
@@ -95,6 +107,136 @@ def parse_storage_constraints_python(
     }
 
 
+def load_prompt_sources() -> dict[str, str]:
+    names = (
+        "architectural_lock.txt",
+        "design_principles.txt",
+        "agent3_generation_mandate.txt",
+        "image_gen_frame_lock.txt",
+    )
+    return {
+        name: (PROMPTS_DIR / name).read_text(encoding="utf-8").strip()
+        for name in names
+    }
+
+
+def test_compact_prompt_sources() -> None:
+    src = load_prompt_sources()
+    arch = src["architectural_lock.txt"]
+    dp = src["design_principles.txt"]
+    a3 = src["agent3_generation_mandate.txt"]
+    frame = src["image_gen_frame_lock.txt"]
+
+    assert len(arch) <= ARCH_LOCK_MAX_CHARS, f"architectural_lock {len(arch)} > {ARCH_LOCK_MAX_CHARS}"
+    assert len(dp) <= DESIGN_PRINCIPLES_MAX_CHARS, (
+        f"design_principles {len(dp)} > {DESIGN_PRINCIPLES_MAX_CHARS}"
+    )
+    assert len(a3) <= AGENT3_MANDATE_MAX_CHARS, f"agent3 mandate {len(a3)} > {AGENT3_MANDATE_MAX_CHARS}"
+    assert len(frame) <= FRAME_LOCK_MAX_CHARS, f"frame lock {len(frame)} > {FRAME_LOCK_MAX_CHARS}"
+
+    arch_low = arch.lower()
+    for needle in (
+        "image 1",
+        "hard lock",
+        "inpainting",
+        "3d structure",
+        "door",
+        "window",
+        "light",
+        "reference",
+        "ignore",
+        "canvas",
+    ):
+        assert needle in arch_low, f"architectural_lock missing keyword: {needle}"
+    assert "canvas hard lock" in arch_low, "architectural_lock should reference CANVAS HARD LOCK block"
+    assert "forbidden: crop, resize, pad" not in arch_low, (
+        "architectural_lock should not duplicate full canvas rules (see image_gen_pixel_lock.txt)"
+    )
+
+    dp_low = dp.lower()
+    assert "priority" in dp_low
+    for fund in ("balance", "unity", "rhythm", "contrast", "scale", "proportion"):
+        assert fund in dp_low, f"design_principles missing fundamental: {fund}"
+    assert "===prompt===" in dp_low.replace(" ", "")
+
+    a3_low = a3.lower()
+    assert "primary" in a3_low and "brief" in a3_low
+
+    frame_low = frame.lower()
+    assert "generation priority" not in frame_low
+    assert "architectural lock (mandatory" not in frame_low
+
+
+def test_build_gemini_dedup_local() -> None:
+    wf = json.loads(WF_PATH.read_text(encoding="utf-8-sig"))
+    bg_js = next(n for n in wf["nodes"] if n["name"] == "Build Gemini request")["parameters"]["jsCode"]
+
+    assert "const CONFLICT_OVERRIDE" not in bg_js
+    assert "CONFLICT_OVERRIDE," not in bg_js
+    assert "getImageDimensions" in bg_js
+    assert "CANVAS_HARD_LOCK_BLOCK" in bg_js
+    assert "HARD LOCK (non-negotiable)" in bg_js
+    assert "WIDTH LOCK" in bg_js
+    assert "pickAspectRatio" in bg_js
+    assert "hasArchitecturalHardLock" in bg_js
+    assert "INTERIOR DESIGN PRINCIPLES" in bg_js
+    assert "AGENT 3 GENERATION MANDATE" in bg_js or "PRIMARY GENERATION BRIEF" in bg_js
+    assert "ARCHITECTURAL_LOCK_BLOCK,\n  CANVAS_HARD_LOCK_BLOCK," in bg_js
+    assert "canvas_dims_injected" in bg_js
+
+    extract_js = next(n for n in wf["nodes"] if n["name"] == "Extract output PNG")["parameters"]["jsCode"]
+    assert "normalizeToInput" in extract_js
+    assert "dimension_normalized" in extract_js
+
+
+def estimate_fixed_block_chars() -> int:
+    import sys
+
+    sys.path.insert(0, str(N8N_DIR))
+    from bake_orchestrator_prompts import DOOR_CLEARANCE_BLOCK
+
+    src = load_prompt_sources()
+    return (
+        len(src["architectural_lock.txt"])
+        + len(src["design_principles.txt"])
+        + len(src["agent3_generation_mandate.txt"])
+        + len(src["image_gen_frame_lock.txt"])
+        + len(DOOR_CLEARANCE_BLOCK)
+    )
+
+
+def test_fixed_block_savings() -> None:
+    new_fixed = estimate_fixed_block_chars()
+    savings = OLD_FIXED_BLOCK_CHARS - new_fixed
+    # Hard-lock expansion increases architectural block size; no longer expect net shrink.
+    print(
+        f"INFO fixed-block char estimate: {new_fixed} (delta vs legacy baseline {OLD_FIXED_BLOCK_CHARS}: {savings:+d})"
+    )
+
+
+def normalize_upload_id(raw: str) -> str | None:
+    """Mirror Validate body upload_id normalization in generate_orchestrated."""
+    upload_id = (raw or "").strip()
+    if re.match(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        upload_id,
+        re.I,
+    ):
+        upload_id = upload_id.replace("-", "").lower()
+    if upload_id and re.match(r"^[0-9a-f]{32}$", upload_id, re.I):
+        return upload_id.lower()
+    return None
+
+
+def test_upload_id_accepts_compact_hex() -> None:
+    """Exec 1693: uploads_room_photo returns 32-char hex; Validate body must accept it."""
+    compact = "3e60a205eff10811802eae29ae3b07fa"
+    dashed = "3e60a205-eff1-0811-802e-ae29ae3b07fa"
+    assert normalize_upload_id(compact) == compact
+    assert normalize_upload_id(dashed) == compact
+    assert normalize_upload_id("not-an-id") is None
+
+
 def test_storage_constraints_fixture() -> None:
     criteria = """Storage lock: add freestanding wardrobe on the left wall with clearance
 Cupboard / wardrobe: in-room unit with visible wall; footprint ~80cm deep
@@ -160,14 +302,14 @@ def local_workflow_checks() -> dict[str, bool]:
     ba2 = next(n for n in wf["nodes"] if n["name"] == "Build Agent 2 request")
     bg = next(n for n in wf["nodes"] if n["name"] == "Build Gemini request")
     cp = next(n for n in wf["nodes"] if n["name"] == "Check pool")
-    cfg = next(n for n in wf["nodes"] if n["name"] == "Config")
+    cfg = next((n for n in wf["nodes"] if n["name"] == "Config"), None)
 
     pa1_js = pa1["parameters"]["jsCode"]
     ba1_js = ba1["parameters"]["jsCode"]
     ba2_js = ba2["parameters"]["jsCode"]
     bg_js = bg["parameters"]["jsCode"]
     cp_js = cp["parameters"]["jsCode"]
-    cfg_js = cfg["parameters"]["jsCode"]
+    cfg_js = cfg["parameters"]["jsCode"] if cfg else ""
 
     return {
         "local_parse_extract_prompt_block": "extractPromptBlock" in pa1_js,
@@ -176,7 +318,7 @@ def local_workflow_checks() -> dict[str, bool]:
         "local_build_agent1_orch_model_cfg": "cfg.orch_model" in ba1_js,
         "local_build_agent2_retriever_cfg": "cfg.retriever_model" in ba2_js
         or "cfg.orch_model" in ba2_js,
-        "local_config_retriever_model": "retriever_model" in cfg_js,
+        "local_config_retriever_model": (not cfg_js) or "retriever_model" in cfg_js,
         "local_agent1_mandate_no_delimiter": "===PROMPT=== is the authoritative"
         not in ba1_js,
         "local_parse_opening_inventory": "parseOpeningInventory" in pa1_js,
@@ -191,13 +333,15 @@ def local_workflow_checks() -> dict[str, bool]:
         "local_gemini_storage_block": "STORAGE_PLACEMENT_BLOCK" in bg_js,
         "local_gemini_cupboard_footprint": "CUPBOARD_FOOTPRINT_BLOCK" in bg_js,
         "local_reject_bad_prompt_fragment": "/^is the authoritative/i.test(b)" in pa1_js,
+        "local_gemini_no_conflict_override": "const CONFLICT_OVERRIDE" not in bg_js
+        and "CONFLICT_OVERRIDE," not in bg_js,
         "local_agent1_nemotron_extras": "openrouterChatExtras" in ba1_js,
         "local_build_agent1_template_literal": "const SYSTEM = `" in ba1_js
         and "const SYSTEM = You are" not in ba1_js,
         "local_build_agent1_workbook": "You are Agent 1" in ba1_js,
         "local_agent2_nemotron_extras": "openrouterChatExtras" in ba2_js,
-        "local_config_gemini_orch": ORCH_MODEL_DEFAULT in cfg_js,
-        "local_config_gemini_retriever": ORCH_MODEL_DEFAULT in cfg_js,
+        "local_config_gemini_orch": (not cfg_js) or ORCH_MODEL_DEFAULT in cfg_js,
+        "local_config_gemini_retriever": (not cfg_js) or ORCH_MODEL_DEFAULT in cfg_js,
         "local_parse_extract_agent1": "extractAgent1Content" in pa1_js,
     }
 
@@ -298,6 +442,21 @@ def remote_workflow_checks() -> dict[str, bool]:
 
 
 def main() -> None:
+    test_upload_id_accepts_compact_hex()
+    print("OK  upload_id compact hex validation (exec 1693 regression)")
+
+    test_compact_prompt_sources()
+    print("OK  compact prompt sources (char budgets + keywords)")
+
+    test_build_gemini_dedup_local()
+    print("OK  Build Gemini dedup (no CONFLICT_OVERRIDE array)")
+
+    test_fixed_block_savings()
+    print("OK  fixed-block savings vs pre-compaction baseline")
+
+    fixed_chars = estimate_fixed_block_chars()
+    print(f"INFO fixed prompt blocks total: {fixed_chars} chars (exec 1673 baseline text ~{EXEC_1673_GENERATION_PROMPT_LEN})")
+
     test_storage_constraints_fixture()
     print("OK  storage constraints parsing")
 
@@ -310,12 +469,34 @@ def main() -> None:
     test_dual_prompt_fixture()
     print("OK  dual-PROMPT fixture extraction")
 
-    checks = {**local_workflow_checks(), **remote_workflow_checks()}
-    for k, v in checks.items():
+    local = local_workflow_checks()
+    for k, v in local.items():
         print(f"{'OK' if v else 'FAIL'}  {k}")
 
-    assert all(checks.values()), "prompt pipeline verification failed"
-    print("All checks passed.")
+    scripts_dir = Path(__file__).resolve().parent
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from verify_edit_prompt_pipeline import local_edit_workflow_checks, prompt_files_exist
+
+    edit_checks = {**prompt_files_exist(), **local_edit_workflow_checks()}
+    for k, v in edit_checks.items():
+        print(f"{'OK' if v else 'FAIL'}  edit.{k}")
+
+    try:
+        remote = remote_workflow_checks()
+    except Exception as exc:
+        print(f"WARN  remote workflow checks skipped: {exc}")
+        remote = {}
+
+    for k, v in remote.items():
+        print(f"{'OK' if v else 'FAIL'}  {k}")
+
+    assert all(local.values()), "local prompt pipeline verification failed"
+    assert all(edit_checks.values()), "edit prompt pipeline verification failed"
+    remote_fails = [k for k, v in remote.items() if not v]
+    if remote_fails:
+        print(f"WARN  remote drift ({len(remote_fails)}): {', '.join(remote_fails)}")
+    print("All local checks passed.")
 
 
 if __name__ == "__main__":

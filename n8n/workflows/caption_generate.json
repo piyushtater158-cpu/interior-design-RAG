@@ -309,7 +309,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
+        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\",\"siddhant@100xengineers.com\",\"shipra@100xengineers.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
       },
       "id": "35b8af0a-2eea-4f71-b2af-717c02b76171",
       "name": "Check email allowed",
@@ -528,13 +528,17 @@
       ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": true
   },
-  "tags": [
-    {
-      "name": "caption"
-    }
-  ]
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "_export": {
+    "workflow_id": "XfzyMx6c4spt0AxC",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:33.768144+00:00"
+  }
 }

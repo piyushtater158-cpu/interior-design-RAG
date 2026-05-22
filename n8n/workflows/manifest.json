@@ -1,0 +1,119 @@
+{
+  "exported_at": "2026-05-22T22:06:32.854162+00:00",
+  "workflows": [
+    {
+      "id": "qGFtMyFOqd4IDzsu",
+      "name": "admin_metrics",
+      "active": true,
+      "file": "n8n/workflows/admin_metrics.json"
+    },
+    {
+      "id": "URWOKul2iCfEww83",
+      "name": "auth_magic_link",
+      "active": true,
+      "file": "n8n/workflows/auth_magic_link.json"
+    },
+    {
+      "id": "Zd7ljIVPwGgfmiBv",
+      "name": "auth_me",
+      "active": true,
+      "file": "n8n/workflows/auth_me.json"
+    },
+    {
+      "id": "XfzyMx6c4spt0AxC",
+      "name": "caption_generate",
+      "active": true,
+      "file": "n8n/workflows/caption_generate.json"
+    },
+    {
+      "id": "sfVJP0fobCZLRIN2",
+      "name": "generate_commit",
+      "active": true,
+      "file": "n8n/workflows/generate_commit.json"
+    },
+    {
+      "id": "r1eiHJf1twXOECJd",
+      "name": "generate_edit",
+      "active": true,
+      "file": "n8n/workflows/generate_edit.json"
+    },
+    {
+      "id": "0FJFDIiYcWpMD0fT",
+      "name": "generate_orchestrated",
+      "active": true,
+      "file": "n8n/workflows/generate_orchestrated.json"
+    },
+    {
+      "id": "la36BW7IfLmI6hW9",
+      "name": "generations_export",
+      "active": true,
+      "file": "n8n/workflows/generations_export.json"
+    },
+    {
+      "id": "KJlz5cR0HG0zhcGx",
+      "name": "generations_session",
+      "active": true,
+      "file": "n8n/workflows/generations_session.json"
+    },
+    {
+      "id": "85QkGoCbJy5HFOCi",
+      "name": "health",
+      "active": true,
+      "file": "n8n/workflows/health.json"
+    },
+    {
+      "id": "Rld1UXU0W81sZIiH",
+      "name": "uploads_reference",
+      "active": true,
+      "file": "n8n/workflows/uploads_reference.json"
+    },
+    {
+      "id": "f7z0T8JNKRTpUZiS",
+      "name": "uploads_reference_bulk",
+      "active": true,
+      "file": "n8n/workflows/uploads_reference_bulk.json"
+    },
+    {
+      "id": "neBg3130bCVFDqNZ",
+      "name": "uploads_room_photo",
+      "active": true,
+      "file": "n8n/workflows/uploads_room_photo.json"
+    },
+    {
+      "id": "uzivvsijQnPa8wBz",
+      "name": "wf_enhance_caption",
+      "active": true,
+      "file": "n8n/workflows/wf_enhance_caption.json"
+    },
+    {
+      "id": "Hycihwac8DqZzBje",
+      "name": "wf_event_log",
+      "active": true,
+      "file": "n8n/workflows/_shared/wf_event_log.json"
+    },
+    {
+      "id": "pWtkzdP2XLIl2JaW",
+      "name": "wf_jwt_sign",
+      "active": true,
+      "file": "n8n/workflows/wf_jwt_sign.json"
+    },
+    {
+      "id": "PN5YANsmuOGA6qGe",
+      "name": "wf_jwt_verify",
+      "active": false,
+      "file": "n8n/workflows/wf_jwt_verify.json"
+    },
+    {
+      "id": "CdB8jeEoxr2p3Nht",
+      "name": "wf_save_generation",
+      "active": true,
+      "file": "n8n/workflows/_shared/wf_save_generation.json"
+    },
+    {
+      "id": "56BlN6jqFkXVszX2",
+      "name": "wf_supabase_verify",
+      "active": true,
+      "file": "n8n/workflows/_shared/wf_supabase_verify.json"
+    }
+  ]
+}

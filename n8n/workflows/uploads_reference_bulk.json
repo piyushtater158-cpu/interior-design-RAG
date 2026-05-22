@@ -203,7 +203,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
+        "jsCode": "const ALLOWED_EMAILS = [\"piyushtater158@gmail.com\",\"siddhant@100xengineers.com\",\"shipra@100xengineers.com\"];\nconst email = ($json.email || '').toLowerCase();\nif (!ALLOWED_EMAILS.includes(email)) {\n  return [{ json: { _error: { status: 403, body: { error: 'access_denied', code: 'not_invited' } } } }];\n}\nreturn [{ json: $json }];"
       },
       "id": "58ae362b-aa5b-45a7-962d-02eb78005270",
       "name": "Check email allowed",
@@ -385,6 +385,9 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "tags": [],
-  "staticData": null
+  "_export": {
+    "workflow_id": "f7z0T8JNKRTpUZiS",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:35.793091+00:00"
+  }
 }

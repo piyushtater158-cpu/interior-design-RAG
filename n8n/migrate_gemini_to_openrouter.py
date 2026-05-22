@@ -128,14 +128,33 @@ const openrouter_body = {
 return [{ json: { ...ctx, model, prompt, openrouter_body } }];"""
 
 # Extract output PNG — OpenRouter response parser (same for all three)
+EXTRACT_IMAGE_PARTS_FN = r"""function collectImageParts(message) {
+  const out = [];
+  if (Array.isArray(message.images)) {
+    for (const p of message.images) {
+      if (p && (p.type === 'image_url' || p.image_url)) out.push(p);
+    }
+  }
+  const content = message.content;
+  if (Array.isArray(content)) {
+    for (const p of content) {
+      if (p && p.type === 'image_url') out.push(p);
+    }
+  } else if (typeof content === 'string' && content.trim()) {
+    const m = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+    if (m) out.push({ type: 'image_url', image_url: { url: m[0] } });
+  }
+  return out;
+}"""
+
 EXTRACT_CODE_ORCHESTRATED = r"""const ctx  = $('Build Gemini request').item.json;
 const resp = $json;
-// OpenRouter returns choices[0].message.content as array of content parts
-const content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || [];
-const parts   = Array.isArray(content) ? content : [];
-const imgPart = parts.find(p => p.type === 'image_url');
+const msg = (resp.choices && resp.choices[0] && resp.choices[0].message) || {};
+""" + EXTRACT_IMAGE_PARTS_FN + r"""
+
+const imgPart = collectImageParts(msg)[0];
 if (!imgPart) {
-  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];
+  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error', has_images: Array.isArray(msg.images), content_type: typeof msg.content } } } }];
 }
 const dataUrl = imgPart.image_url && imgPart.image_url.url;
 const match   = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
@@ -204,11 +223,12 @@ return [{
 
 EXTRACT_CODE_COMMIT = r"""const ctx  = $('Build Gemini request').item.json;
 const resp = $json;
-const content = (resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || [];
-const parts   = Array.isArray(content) ? content : [];
-const imgPart = parts.find(p => p.type === 'image_url');
+const msg = (resp.choices && resp.choices[0] && resp.choices[0].message) || {};
+""" + EXTRACT_IMAGE_PARTS_FN + r"""
+
+const imgPart = collectImageParts(msg)[0];
 if (!imgPart) {
-  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error' } } } }];
+  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error', has_images: Array.isArray(msg.images), content_type: typeof msg.content } } } }];
 }
 const dataUrl = imgPart.image_url && imgPart.image_url.url;
 const match   = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);

@@ -20,6 +20,7 @@ n8n/
 ├── migrations/          SQL to apply on Supabase (order below)
 ├── prompts/             Prompt source text (also inlined in workflows)
 ├── workflows/           Main + consolidated JSON
+├── PROMPT_BLOCKS.md     Agent 1 → 3 fixed vs parsed prompt blocks (orchestrated path)
 ├── WORKFLOW_SYSTEM.md   Node-by-node narrative (partially auto-synced)
 └── README.md            This file
 ```
@@ -58,9 +59,21 @@ Set in n8n → Settings → Variables (or your deployment env). Workflows may ba
 | `GEMINI_API_KEY` | yes | Image generation |
 | `ADMIN_TOKEN` | yes | `X-Admin-Token` for admin metrics |
 
+## Workflow JSON in git
+
+Production workflows are exported (secrets redacted) under `n8n/workflows/`. Refresh from the live server:
+
+```bash
+python n8n/scripts/fetch_all_workflows.py
+```
+
+See `n8n/workflows/manifest.json` for workflow IDs and file paths. Committed JSON uses `__REDACTED_*__` placeholders — set real values in n8n **Environment** or **Credentials**, not in git.
+
 ## Importing workflows
 
-Import the consolidated workflow (and any `_shared` pieces) from `n8n/workflows/`, activate it, and confirm webhook URLs match your deployment. Sub-workflows may be inlined; see `WORKFLOW_SYSTEM.md`.
+Import from `n8n/workflows/` (split deployment on Hostinger), activate, and confirm webhook URLs match your deployment. Sub-workflows live in `n8n/workflows/_shared/`. See `WORKFLOW_SYSTEM.md`.
+
+**Split workflows on Hostinger:** from the repo root, with `N8N_API_KEY` in `.env`, run `python n8n/push_consolidated_activate.py` to write `n8n/workflows/work.json` from `generations_export.json`, merge into the live `generations_export` workflow (`la36BW7IfLmI6hW9` by default), and activate it.
 
 ## Wire **mobile-app**
 
@@ -75,6 +88,7 @@ Configure the mobile shell with your public **n8n webhook base** (e.g. `https://
 | POST | `/uploads/room-photo` | Bearer |
 | POST | `/generate/orchestrated` | Bearer |
 | POST | `/generate/draft`, `/generate/edit`, `/generate/commit` | Bearer |
+| POST | `/export-generation` | Bearer + JSON `{ "generation_id" }` |
 | GET | `/admin/metrics` | `X-Admin-Token` |
 
 Legacy **`POST /retrieve/references`** may still exist inside an old consolidated export; it will fail against a DB migrated with **016** until those nodes are removed or reworked to FTS-only.
@@ -87,4 +101,5 @@ Legacy **`POST /retrieve/references`** may still exist inside an old consolidate
 ## Docs
 
 - `n8n/WORKFLOW_SYSTEM.md` — deep dive per endpoint.
+- `n8n/PROMPT_BLOCKS.md` — Agent 1 / 2 / 3 prompt assembly (fixed blocks, parsed fields, execution inspection).
 - `database/README.md` — Python seed and local DB mirror.

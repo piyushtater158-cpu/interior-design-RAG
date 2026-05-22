@@ -29,6 +29,7 @@ PROJECT = Path(__file__).parent.parent
 WF_PATH = Path(__file__).parent / "workflows" / "generate_orchestrated.json"
 CRED_REFS_PATH = Path(__file__).parent / "credential_refs.json"
 DEBUG_LOG = PROJECT / "debug-1b1362.log"
+SESSION_DEBUG_LOG = PROJECT / "debug-79addd.log"
 N8N_BASE = "https://n8n.srv1649259.hstgr.cloud/api/v1"
 WORKFLOW_ID = "0FJFDIiYcWpMD0fT"
 
@@ -71,11 +72,7 @@ DEFAULT_CFG = {
     "openrouter_base": "https://openrouter.ai/api/v1",
     "orch_model": ORCH_MODEL_DEFAULT,
     "retriever_model": ORCH_MODEL_DEFAULT,
-    "supabase_anon_key": (
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6"
-        "InV6Z2hmcHhib2t0bmJjYmJ0aG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzUwOTAs"
-        "ImV4cCI6MjA5MjAxMTA5MH0.fWRtnXbZlBVIK34XybMrZfD-0vTueF_U1GDUsDNOiP8"
-    ),
+    "supabase_anon_key": "",
 }
 
 
@@ -108,15 +105,8 @@ def _read_env() -> dict[str, str]:
     return out
 
 
-def _anon_from_migrate() -> str:
-    text = (Path(__file__).parent / "migrate_to_named_credentials.py").read_text(
-        encoding="utf-8"
-    )
-    m = re.search(
-        r'"(eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[^"]+)"',
-        text,
-    )
-    return m.group(1) if m else DEFAULT_CFG["supabase_anon_key"]
+def _anon_from_env() -> str:
+    return _read_env().get("SUPABASE_ANON_KEY", "") or DEFAULT_CFG["supabase_anon_key"]
 
 
 def load_cred_refs() -> dict[str, Any]:
@@ -225,6 +215,50 @@ def config_js(cfg: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
+def ensure_config_node(wf: dict, cfg: dict[str, str]) -> bool:
+    """Insert Config after webhook when missing (Build Agent 1/2 use $('Config'))."""
+    nodes = wf.setdefault("nodes", [])
+    if any(n.get("name") == "Config" for n in nodes):
+        return False
+
+    webhook = next(
+        (n for n in nodes if n.get("type") == "n8n-nodes-base.webhook"),
+        None,
+    )
+    wh_pos = webhook.get("position", [240, 300]) if webhook else [240, 300]
+    verify_name = "Extract user from token"
+    verify = next((n for n in nodes if n.get("name") == verify_name), None)
+    if not verify:
+        raise RuntimeError("Cannot add Config: Extract user from token node missing")
+
+    nodes.append(
+        {
+            "parameters": {"jsCode": config_js(cfg)},
+            "id": "orch-config",
+            "name": "Config",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [wh_pos[0] + 120, wh_pos[1]],
+        }
+    )
+
+    conns = wf.setdefault("connections", {})
+    wh_name = webhook["name"] if webhook else "POST /generate/orchestrated"
+    old_targets = conns.get(wh_name, {}).get("main", [[]])[0]
+    next_node = (
+        old_targets[0]["node"]
+        if old_targets and old_targets[0].get("node")
+        else verify_name
+    )
+    conns[wh_name] = {
+        "main": [[{"node": "Config", "type": "main", "index": 0}]]
+    }
+    conns["Config"] = {
+        "main": [[{"node": next_node, "type": "main", "index": 0}]]
+    }
+    return True
+
+
 def _strip_header(params: dict, name: str) -> None:
     headers = params.get("headerParameters", {}).get("parameters", [])
     params.setdefault("headerParameters", {})["parameters"] = [
@@ -283,10 +317,33 @@ def patch_rls_node(node: dict, cred_refs: dict) -> bool:
 
 def patch_workflow(wf: dict, cred_refs: dict, cfg: dict[str, str]) -> dict:
     out = deepcopy(wf)
+    ensure_config_node(out, cfg)
+    from migrate_gemini_to_openrouter import EXTRACT_CODE_ORCHESTRATED
+
     for node in out.get("nodes", []):
         name = node.get("name", "")
         if name == "Config":
             node.setdefault("parameters", {})["jsCode"] = config_js(cfg)
+        elif name == "Extract output PNG":
+            js = node.setdefault("parameters", {}).get("jsCode", "")
+            if "collectImageParts" not in js:
+                node["parameters"]["jsCode"] = EXTRACT_CODE_ORCHESTRATED
+        elif name == "Respond 200":
+            params = node.setdefault("parameters", {})
+            body = params.get("responseBody", "")
+            if "Parse Agent 2" in body or "Parse Agent 1" in body:
+                params["responseBody"] = (
+                    "={{ JSON.stringify({\n"
+                    "  generation_id:       $json.generation_id,\n"
+                    "  output_url:          $json.output_url,\n"
+                    "  latency_ms:          $json.latency_ms,\n"
+                    "  cost_usd:            $json.cost_usd,\n"
+                    "  model_id:            $json.model_id,\n"
+                    "  backend_id:          'gemini',\n"
+                    "  reference_image_ids: $json.reference_image_ids,\n"
+                    "  criteria:            $json.criteria\n"
+                    "}) }}"
+                )
         elif name in OPENROUTER_NODE_NAMES:
             patch_openrouter_node(node, cred_refs)
         elif name in SERVICE_SUPABASE_NODES:
@@ -343,7 +400,7 @@ def main() -> None:
             env.get("OPENROUTER_ORCH_MODEL", orch_model),
         ),
     }
-    anon_key = env.get("SUPABASE_ANON_KEY") or _anon_from_migrate()
+    anon_key = env.get("SUPABASE_ANON_KEY") or _anon_from_env()
 
     debug_log("start", {"check": args.check, "apply": args.apply}, "H1")
 

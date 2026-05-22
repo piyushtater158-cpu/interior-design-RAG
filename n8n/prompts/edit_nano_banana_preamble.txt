@@ -1,0 +1,6 @@
+EDIT OPERATION (image edit on attached photograph)
+
+Style: photorealistic interior design photograph.
+Composition: keep the attached image camera angle, framing, and room layout unchanged.
+Action: perform only the PRIMARY EDIT below inside the existing scene.
+Use positive, concrete placement language (what to add, move, or change), not scene-wide redesign.

@@ -1,5 +1,6 @@
 # Environment
 .env
+n8n/workflows/work.json
 
 # Python
 __pycache__/
@@ -28,6 +29,12 @@ Thumbs.db
 # n8n specifics
 n8n/credentials/
 n8n/exec*.json
+n8n/exec_*_full.json
+n8n/*_full.json
+n8n/audit_exec*.json
+
+# Client runtime secrets (copy from config.example.js)
+mobile-app/config.js
 n8n/seed_log.txt
 n8n/_exec*.json
 n8n/audit_exec*.json
@@ -53,3 +60,4 @@ skills-lock.json
 # IDE
 .claude/
 .mcp.json
+.vercel

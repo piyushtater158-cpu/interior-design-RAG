@@ -447,12 +447,14 @@ textarea,input{font-family:inherit}
 <div id="sheet-layer"></div>
 <div id="toasts"></div>
 
+<script src="config.js"></script>
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 const API = (localStorage.getItem('atelier:api') || 'https://n8n.srv1649259.hstgr.cloud/webhook').replace(/\/$/, '');
 
-const SUPABASE_URL  = 'https://uzghfpxboktnbcbbthns.supabase.co';
-const SUPABASE_ANON = '__REDACTED_JWT_OR_ANON__';
+const SUPABASE_URL  = (window.ATELIER_CONFIG && window.ATELIER_CONFIG.SUPABASE_URL) || 'https://uzghfpxboktnbcbbthns.supabase.co';
+const SUPABASE_ANON = (window.ATELIER_CONFIG && window.ATELIER_CONFIG.SUPABASE_ANON_KEY) || '';
+if (!SUPABASE_ANON) console.error('Missing SUPABASE_ANON_KEY — copy mobile-app/config.example.js to config.js');
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
@@ -467,6 +469,30 @@ const dbgLog = (location.hostname === 'localhost' || location.hostname === '127.
       }).catch(() => {});
     }
   : function() {};
+function dbgAc5182(loc, message, data, hypothesisId, runId) {
+  const entry = { sessionId: 'ac5182', location: loc, message, data, hypothesisId, runId: runId || 'pre-fix', timestamp: Date.now() };
+  try {
+    const buf = JSON.parse(sessionStorage.getItem('atelier:dbg:ac5182') || '[]');
+    buf.push(entry);
+    if (buf.length > 40) buf.splice(0, buf.length - 40);
+    sessionStorage.setItem('atelier:dbg:ac5182', JSON.stringify(buf));
+  } catch (_) {}
+  fetch('http://127.0.0.1:7274/ingest/699656ec-740a-4bc6-9d4c-26d18444e793', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'ac5182' },
+    body: JSON.stringify(entry),
+  }).catch(() => {});
+}
+function apiErrLabel(b, res) {
+  const code = b.code || b.error;
+  if (code === 'not_invited' || code === 'access_denied') return 'This account is not invited for that action.';
+  if (code === 'invalid_token') return 'Sign in again, then retry.';
+  if (code === 'generation_not_found' || code === 'parent_not_found') return 'Revision not found on server — try a new draft.';
+  if (code === 'parent_incomplete') return 'Revision is missing image data — edit or re-draft first.';
+  if (code === 'invalid_generation_id' || code === 'invalid_parent_generation_id') return 'Invalid revision id — start a new session.';
+  if (res && !res.ok && (b.message || '').includes('not registered')) return 'Export API is not deployed on n8n yet.';
+  return b.error || b.message || (res ? res.statusText : null) || 'Request failed';
+}
 // #endregion
 
 // ── STATE ────────────────────────────────────────────────────────────────────
@@ -557,7 +583,16 @@ async function apiReq(path, opts = {}) {
   const { data: { session } } = await sb.auth.getSession();
   if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
   const isBulkRef = path.includes('/uploads/reference/bulk');
+  const isCommitExport = path.includes('/generate/commit') || path.includes('/export');
   // #region agent log
+  if (isCommitExport) {
+    dbgAc5182('index.html:apiReq', 'commit/export request', {
+      path,
+      hasSession: !!session,
+      userId: S.userId ? S.userId.slice(0, 8) : null,
+      currentId: S.sess?.currentId || null,
+    }, 'H1');
+  }
   if (isBulkRef) {
     dbgLog('index.html:apiReq', 'bulk request start', {
       path,
@@ -600,6 +635,14 @@ async function apiReq(path, opts = {}) {
     let b = {};
     try { b = await res.json(); } catch {}
     // #region agent log
+    if (isCommitExport) {
+      dbgAc5182('index.html:apiReq', 'commit/export http error', {
+        path,
+        status: res.status,
+        error: b.error || b.message || res.statusText,
+        code: b.code || null,
+      }, 'H2');
+    }
     if (isBulkRef) {
       dbgLog('index.html:apiReq', 'bulk http error', {
         status: res.status,
@@ -608,11 +651,22 @@ async function apiReq(path, opts = {}) {
       }, 'H2');
     }
     // #endregion
-    throw new Error(b.error || b.message || res.statusText || `HTTP ${res.status}`);
+    const err = new Error(apiErrLabel(b, res));
+    err.status = res.status;
+    err.code = b.code || b.error;
+    err.body = b;
+    throw err;
   }
   if (res.status === 204) return null;
   const body = await res.json();
   // #region agent log
+  if (isCommitExport) {
+    dbgAc5182('index.html:apiReq', 'commit/export ok', {
+      path,
+      keys: body && typeof body === 'object' ? Object.keys(body) : [],
+      hasDownload: !!(body?.download_url || body?.export_url || body?.output_url),
+    }, 'H3');
+  }
   if (isBulkRef) {
     dbgLog('index.html:apiReq', 'bulk body parsed', {
       hasResults: Array.isArray(body?.results),
@@ -631,7 +685,7 @@ const WH = {
   generateEdit:        (a) => apiReq('/generate/edit',         { method:'POST', json:a }),
   generateCommit:      (a) => apiReq('/generate/commit',       { method:'POST', json:a }),
   listSessGens:        (id)=> apiReq(`/generations/session/${encodeURIComponent(id)}`),
-  exportGen:           (id)=> apiReq(`/generations/${encodeURIComponent(id)}/export`, { method:'POST' }),
+  exportGen:           (id)=> apiReq('/export-generation', { method:'POST', json: { generation_id: id } }),
 };
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
@@ -648,6 +702,51 @@ function refImageUrl(url) {
     return u.replace('/storage/v1/object/', '/storage/v1/object/public/');
   }
   return u;
+}
+function exportFilename(generationId, url) {
+  const shortId = (generationId || 'export').toString().slice(0, 8);
+  let ext = 'png';
+  if (url) {
+    const m = String(url).match(/\.(jpe?g|png|webp|gif)(\?|$)/i);
+    if (m) ext = m[1].toLowerCase() === 'jpeg' ? 'jpg' : m[1].toLowerCase();
+  }
+  return `atelier-${shortId}.${ext}`;
+}
+function downloadBlobAsFile(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+async function downloadFromUrl(url, filename) {
+  const normalized = refImageUrl(url) || absUrl(url);
+  if (!normalized) throw new Error('missing_download_url');
+  const res = await fetch(normalized, { mode: 'cors' });
+  if (!res.ok) throw new Error(`download_failed_${res.status}`);
+  const blob = await res.blob();
+  downloadBlobAsFile(blob, filename);
+}
+function exportSuccessHtml(message) {
+  return `<div style="padding:16px;border-radius:12px;background:var(--bone);border:1px solid var(--line)">
+    <div class="anno" style="margin-bottom:6px">◆ export complete</div>
+    <p style="font-size:13px;line-height:1.5;color:var(--ink-soft);margin:0">${message}</p>
+  </div>`;
+}
+function exportFallbackLinkHtml(url, label) {
+  const safe = (refImageUrl(url) || absUrl(url)).replace(/"/g, '&quot;');
+  return `<div style="padding:16px;border-radius:12px;background:var(--bone);border:1px solid var(--line)">
+    <div class="anno" style="margin-bottom:10px">◆ download</div>
+    <p style="font-size:12px;color:var(--mute);margin-bottom:10px;line-height:1.5">
+      Automatic download failed. Use the link below.
+    </p>
+    <a href="${safe}" download class="btn btn-clay btn-full" style="display:flex">${label}</a>
+  </div>`;
 }
 function revLabel(i) { return `Rev ${String(i+1).padStart(2,'0')}` }
 function wait(ms) { return new Promise(r=>setTimeout(r,ms)) }
@@ -1384,6 +1483,14 @@ function sheetCommit() {
 async function doCommit() {
   const b = document.getElementById('commit-btn');
   if (!b) return;
+  // #region agent log
+  dbgAc5182('index.html:doCommit', 'start', {
+    currentId: S.sess.currentId,
+    sessionId: S.sess.id,
+    revCount: S.sess.revisions?.length ?? 0,
+    credits: S.credits,
+  }, 'H4');
+  // #endregion
   b.disabled = true;
   b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Committing…';
   try {
@@ -1399,9 +1506,15 @@ async function doCommit() {
     S.sess.currentId = r.generation_id;
     S.credits = Math.max(0, S.credits - 3);
     savePersist();
+    // #region agent log
+    dbgAc5182('index.html:doCommit', 'success', { generation_id: r.generation_id }, 'H4');
+    // #endregion
     toast('Commit complete!', 'ok');
     closeSheet(); go('canvas');
   } catch(e) {
+    // #region agent log
+    dbgAc5182('index.html:doCommit', 'error', { message: e.message, status: e.status, code: e.code }, 'H4');
+    // #endregion
     toast('Commit failed: ' + e.message);
     if (b) { b.disabled = false; b.textContent = 'Commit revision · 3 cr'; }
   }
@@ -1421,27 +1534,83 @@ function sheetExport() {
     </div>`);
 }
 
+async function tryAutoDownload(url, generationId, resEl, btnEl, successMsg, fallbackLabel) {
+  const fname = exportFilename(generationId, url);
+  try {
+    await downloadFromUrl(url, fname);
+    resEl.innerHTML = exportSuccessHtml(successMsg);
+    if (btnEl) btnEl.style.display = 'none';
+    toast('Download started', 'ok');
+    return true;
+  } catch (dlErr) {
+    resEl.innerHTML = exportFallbackLinkHtml(url, fallbackLabel);
+    if (btnEl) btnEl.style.display = 'none';
+    toast('Could not download automatically — use the link below', 'err');
+    return false;
+  }
+}
+
 async function doExport() {
   const b = document.getElementById('exp-btn');
   const res = document.getElementById('exp-result');
   if (!b || !res) return;
+  const rev = S.sess.revisions.find(r => r.id === S.sess.currentId) || S.sess.revisions[S.sess.revisions.length - 1];
+  // #region agent log
+  dbgAc5182('index.html:doExport', 'start', {
+    currentId: S.sess.currentId,
+    revUrl: rev?.url ? rev.url.slice(0, 80) : null,
+  }, 'H5');
+  // #endregion
   b.disabled = true;
   b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Preparing…';
   try {
     const r = await WH.exportGen(S.sess.currentId);
     const dlUrl = r.download_url || r.export_url || r.url;
-    res.innerHTML = `
-      <div style="padding:16px;border-radius:12px;background:var(--bone);border:1px solid var(--line)">
-        <div class="anno" style="margin-bottom:10px">◆ export ready</div>
-        ${dlUrl
-          ? `<a href="${absUrl(dlUrl)}" download target="_blank"
-               class="btn btn-clay btn-full" style="display:flex">
-               Download package →</a>`
-          : `<div class="anno" style="word-break:break-all">${JSON.stringify(r)}</div>`}
-      </div>`;
-    b.style.display = 'none';
-    toast('Export ready!', 'ok');
+    // #region agent log
+    dbgAc5182('index.html:doExport', 'api success', { hasDl: !!dlUrl }, 'H5');
+    // #endregion
+    if (!dlUrl) {
+      res.innerHTML = exportSuccessHtml('No file URL returned from export.');
+      b.style.display = 'none';
+      toast('Export failed: no download URL', 'err');
+      return;
+    }
+    b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Downloading…';
+    await tryAutoDownload(
+      dlUrl,
+      S.sess.currentId,
+      res,
+      b,
+      'Saved to your downloads folder.',
+      'Download package →'
+    );
   } catch(e) {
+    const fallbackUrl = rev?.url || '';
+    const useFallback = fallbackUrl && (
+      e.code === 'generation_not_found' ||
+      e.status === 404 ||
+      (e.message && (e.message.includes('not deployed') || e.message.includes('not registered')))
+    );
+    // #region agent log
+    dbgAc5182('index.html:doExport', 'error', {
+      message: e.message,
+      status: e.status,
+      code: e.code,
+      useFallback,
+    }, 'H5');
+    // #endregion
+    if (useFallback) {
+      b.innerHTML = '<span class="spin" style="width:14px;height:14px"></span> Downloading…';
+      await tryAutoDownload(
+        fallbackUrl,
+        S.sess.currentId,
+        res,
+        b,
+        'Saved to your downloads folder (canvas image).',
+        'Download image →'
+      );
+      return;
+    }
     toast('Export failed: ' + e.message);
     b.disabled = false; b.textContent = 'Export this revision →';
   }

@@ -25,57 +25,21 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const item = $input.first().json;\nconst SUPABASE_APIKEY = process.env.SUPABASE_ANON_KEY;\nconst raw = item.authorization\n  || (item.headers && (item.headers.authorization || item.headers.Authorization))\n  || '';\nlet t = String(raw).trim();\nwhile (/^Bearer\\s+/i.test(t)) t = t.replace(/^Bearer\\s+/i, '').trim();\nconst authorization = t ? `Bearer ${t}` : '';\nreturn [{ json: { ...item, authorization, supabase_apikey: SUPABASE_APIKEY } }];"
+        "jsCode": "const item = $input.first().json;\nconst SUPABASE_APIKEY = '__REDACTED_SUPABASE_ANON_KEY__';\nconst raw = item.authorization\n  || (item.headers && (item.headers.authorization || item.headers.Authorization))\n  || '';\nlet t = String(raw).trim();\nwhile (/^Bearer\\s+/i.test(t)) t = t.replace(/^Bearer\\s+/i, '').trim();\nconst authorization = t ? `Bearer ${t}` : '';\nreturn [{ json: { ...item, authorization, supabase_apikey: SUPABASE_APIKEY } }];"
       }
     },
     {
       "id": "359f7c07-1bfe-4c0d-9d57-9163ca355526",
       "name": "Verify with Supabase",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        224,
-        0
-      ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://uzghfpxboktnbcbbthns.supabase.co/auth/v1/user",
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ $json.authorization }}"
-            },
-            {
-              "name": "apikey",
-              "value": "={{ $json.supabase_apikey }}"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true,
-              "responseFormat": "json"
-            }
-          }
-        }
-      }
-    },
-    {
-      "id": "3e0851b0-7e0d-43c7-9560-769604f861b9",
-      "name": "Normalize Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        448,
+        336,
         0
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const item = $input.first().json;\nif (item.id) {\n  return [{ json: { ok: true, user_id: item.id, email: item.email || null } }];\n}\nconst msg = item.msg || item.message || item.error || 'unauthorized';\nreturn [{ json: { ok: false, status: 401, error: msg, code: 'invalid_token' } }];"
+        "jsCode": "const item = $('Normalize auth header').first().json;\nconst url = 'https://uzghfpxboktnbcbbthns.supabase.co/auth/v1/user';\nconst maxAttempts = 3;\nconst waitMs = 2000;\nlet lastErr = null;\nlet data = null;\nlet statusCode = 0;\nlet attemptsUsed = 0;\n\nif (!item.authorization) {\n  return [{ json: { ok: false, status: 401, error: 'missing_token', code: 'invalid_token' } }];\n}\n\nfor (let attempt = 1; attempt <= maxAttempts; attempt++) {\n  attemptsUsed = attempt;\n  try {\n    const res = await this.helpers.httpRequest({\n      method: 'GET',\n      url,\n      headers: {\n        Authorization: item.authorization,\n        apikey: item.supabase_apikey,\n      },\n      returnFullResponse: true,\n      json: true,\n      timeout: 12000,\n    });\n    statusCode = res.statusCode ?? 200;\n    const raw = res.body ?? res;\n    data = typeof raw === 'string' ? JSON.parse(raw) : raw;\n    lastErr = null;\n    break;\n  } catch (e) {\n    lastErr = e;\n    const msg = String(e.message || e);\n    const retryable = /ECONNRESET|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|socket hang|timeout|502|503|504|closed unexpectedly/i.test(msg);\n    if (!retryable || attempt === maxAttempts) break;\n    await new Promise((r) => setTimeout(r, waitMs * attempt));\n  }\n}\n\nif (lastErr) {\n  return [{ json: { ok: false, status: 503, error: 'auth_service_unavailable', code: 'auth_unavailable', _verify_debug: { attemptsUsed, statusCode, transport: String(lastErr.message || lastErr).slice(0, 160) } } }];\n}\nif (statusCode === 200 && data && data.id) {\n  return [{ json: { ok: true, user_id: data.id, email: data.email || null, _verify_debug: { attemptsUsed, statusCode } } }];\n}\nconst msg = (data && (data.msg || data.message || data.error_description)) || 'unauthorized';\nreturn [{ json: { ok: false, status: 401, error: msg, code: 'invalid_token', _verify_debug: { attemptsUsed, statusCode } } }];"
       }
     }
   ],
@@ -85,17 +49,6 @@
         [
           {
             "node": "Normalize auth header",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Verify with Supabase": {
-      "main": [
-        [
-          {
-            "node": "Normalize Result",
             "type": "main",
             "index": 0
           }
@@ -118,10 +71,13 @@
     "executionOrder": "v1",
     "availableInMCP": true
   },
-  "active": false,
-  "tags": [
-    {
-      "name": "shared"
-    }
-  ]
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "_export": {
+    "workflow_id": "56BlN6jqFkXVszX2",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:37.213321+00:00"
+  }
 }

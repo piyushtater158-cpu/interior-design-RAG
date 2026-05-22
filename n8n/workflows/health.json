@@ -12,7 +12,10 @@
       "name": "GET /health",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "health"
     },
     {
@@ -25,15 +28,32 @@
       "name": "Respond OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     }
   ],
   "connections": {
     "GET /health": {
-      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
-  "settings": { "executionOrder": "v1" },
-  "tags": []
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "_export": {
+    "workflow_id": "85QkGoCbJy5HFOCi",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:35.299584+00:00"
+  }
 }

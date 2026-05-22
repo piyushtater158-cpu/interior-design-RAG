@@ -16,7 +16,7 @@ The goal is to run the entire Interior Design RAG backend as a **single n8n work
 - Health branch **correctly has NO Config node** — `GET /webhook/health` returns 200 already
 - IF node v2 type-validation bug fixed (`_error` checks rewritten to string-truthy)
 - Workflow deployed to n8n as workflow ID **`JbnB5CPdoqgCl75F`**, active = true
-- n8n API key (expires ~2026-05-23): `__REDACTED_JWT_OR_ANON__`
+- n8n API key: set `N8N_API_KEY` in `.env` (never commit; rotate if previously exposed in git)
 
 ### Current Blocker — `$env` blocked in task runner sandbox
 n8n's default task runner (`N8N_RUNNERS_ENABLED=true`) runs Code nodes in a sandboxed subprocess. In this sandbox **both `$env` AND `process.env` are blocked**. All branches that have a Config Code node (which reads `$env.SUPABASE_URL` etc.) fail with:
@@ -109,7 +109,7 @@ Run this from the project root. The Python one-liner strips the JSON, then curl 
 
 ```bash
 cd "C:\Users\asus\OneDrive\Documents\Claude\Projects\Interior design RAG"
-N8N_KEY="__REDACTED_JWT_OR_ANON__"
+N8N_KEY="${N8N_API_KEY:?set in .env}"
 
 python -c "
 import json

@@ -1,0 +1,13 @@
+INTERIOR EDIT PRINCIPLES (mandatory)
+
+Output style: photorealistic interior design photograph.
+
+Priority when instructions conflict: image 1 (attached photograph) > structure locks (door, window, light, pixels) > PRIMARY EDIT instruction > frozen scene context > styling adjectives.
+
+The PRIMARY EDIT must start with a clear action verb (Remove, Replace, Move, Change, Add) and name a concrete target.
+
+Apply creativity only to the edit target and its immediate placement — not doors, windows, light direction, camera frame, or unrelated furniture.
+
+Physical plausibility: real-world scale, stable on floor, no floating objects, clear circulation, door and window paths unobstructed.
+
+Every word in the PRIMARY EDIT must appear as a concrete placement or material change — not vibe-only adjectives.

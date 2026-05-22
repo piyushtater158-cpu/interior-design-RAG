@@ -89,11 +89,11 @@ Both `retrieve_references.json` and `generate_draft.json` contain a `Config` nod
 
 ```javascript
 // Lines 29-30 of retrieve_references.json
-supabase_key:    '__REDACTED_SUPABASE_SERVICE_KEY__',
-gemini_key:      '__REDACTED_GEMINI_API_KEY__',
-openrouter_key:  '__REDACTED_OPENROUTER_API_KEY__',
-jwt_secret:      '__REDACTED_JWT_SECRET__',
-admin_token:     '__REDACTED_ADMIN_TOKEN__',
+supabase_key:    '<REDACTED_SUPABASE_SERVICE_KEY>',
+gemini_key:      '<REDACTED_GEMINI_API_KEY>',
+openrouter_key:  '<REDACTED_OPENROUTER_API_KEY>',
+jwt_secret:      '<REDACTED_JWT_SECRET>',
+admin_token:     '<REDACTED_ADMIN_TOKEN>',
 ```
 
 These secrets are **also in the pinned data** and **activeVersion** blocks — meaning they're triply exposed. The same file is committed to git.
@@ -105,7 +105,7 @@ These secrets are **also in the pinned data** and **activeVersion** blocks — m
 
 **Remediation:**
 ```diff
--      supabase_key:    '__REDACTED_SUPABASE_SERVICE_KEY__',
+-      supabase_key:    '<REDACTED_SUPABASE_SERVICE_KEY>',
 +      supabase_key:    $env.SUPABASE_SERVICE_KEY,
 -      openrouter_key:  'sk-or-v1-...',
 +      openrouter_key:  $env.OPENROUTER_API_KEY,
@@ -208,7 +208,7 @@ This means n8n sends back a `200` ACK **immediately** when the webhook receives 
 
 But in `.env` the variable is named `GOOGLE_AI_STUDIO_KEY`, not `GEMINI_API_KEY`:
 ```
-GOOGLE_AI_STUDIO_KEY=__REDACTED_GEMINI_API_KEY__
+GOOGLE_AI_STUDIO_KEY=<REDACTED_GEMINI_API_KEY>
 ```
 
 Meanwhile, `generate_draft.json` correctly uses:

@@ -14,9 +14,15 @@ WF_PATH = N8N / "workflows" / "generate_orchestrated.json"
 # gemini-2.5-flash: reliable VL + fast (~20–30s). Nemotron free tier idle-times out on long prompts.
 OPENROUTER_ORCH_MODEL_DEFAULT = "google/gemini-2.5-flash"
 
+# Pre-compaction baselines for 1/3 char budget gate (+10% slack).
+ARCH_LOCK_BASELINE_CHARS = 4200
+DESIGN_PRINCIPLES_BASELINE_CHARS = 2050
+PROMPT_BUDGET_SLACK = 1.1
+
 DESIGN_PRINCIPLES = (PROMPTS / "design_principles.txt").read_text(encoding="utf-8").strip()
 FRAME_LOCK = (PROMPTS / "image_gen_frame_lock.txt").read_text(encoding="utf-8").strip()
 ARCHITECTURAL_LOCK = (PROMPTS / "architectural_lock.txt").read_text(encoding="utf-8").strip()
+CANVAS_HARD_LOCK_TEMPLATE = (PROMPTS / "image_gen_pixel_lock.txt").read_text(encoding="utf-8").strip()
 AGENT3_GENERATION_MANDATE = (PROMPTS / "agent3_generation_mandate.txt").read_text(encoding="utf-8").strip()
 AGENT2_SYSTEM = (PROMPTS / "agent2_retriever.txt").read_text(encoding="utf-8").strip()
 AGENT1_ORCHESTRATOR = (PROMPTS / "agent1_orchestrator.txt").read_text(encoding="utf-8").strip()
@@ -44,12 +50,9 @@ WINDOW_COUNT_FOOTER_TEMPLATE = (
 )
 
 DOOR_CLEARANCE_BLOCK = (
-    "DOOR CLEARANCE (mandatory — image 1):\n"
-    "Keep the entire door swing arc and at least 1 meter of approach path on the photographed "
-    "entry door wall completely empty: no table, desk, console, chair, ottoman, plant, or "
-    "floor lamp base blocking the door or entry path.\n"
-    "Corner lamps, decor, and case goods only on corners away from the entry door wall — "
-    "never in front of the door."
+    "DOOR CLEARANCE (image 1):\n"
+    "Keep swing arc and ≥1 m approach empty — no furniture or lamp bases in the path.\n"
+    "Corner lamps/decor only on corners away from the entry door wall."
 )
 
 STORAGE_PLACEMENT_BLOCK = (
@@ -73,19 +76,16 @@ CUPBOARD_FOOTPRINT_BLOCK = (
     "or storage that erases the visible wall surface."
 )
 
-CONFLICT_OVERRIDE_LINE = (
-    "If any instruction would move a door, window, or change light direction, ignore that instruction."
-)
-
 AGENT1_EXTRA_RULES = """
 AGENT 3 GENERATION BRIEF (mandatory):
 - The ===PROMPT=== block is the Agent 3 generation brief — the authoritative creative directive for the image model.
+- Agent 3 uses inpainting / furnish-in-place on image 1: the room is a fixed 3D shell; only furnishings, materials, decor, and lighting change inside it.
 - Reference images are style/material/mood inspiration only; never copy their openings, symmetry, or light direction.
 - Include Retrieval expansion in ===CRITERIA=== with synonyms/proxies when catalog may lack exact terms.
 
 PRIORITY ORDER (mandatory in ===CRITERIA=== and ===PROMPT===):
-1. User photograph (image 1) — sole authority for doors, windows, light, camera frame; do not verbalize opening coordinates in text.
-2. User design intent — every literal brief requirement inside ===PROMPT=== (never by moving openings).
+1. User photograph (image 1) — sole authority for 3D structure, doors, windows, light, camera frame, and pixels; do not verbalize opening coordinates in text.
+2. User design intent — every literal brief requirement inside ===PROMPT=== (never by moving openings or changing the shell).
 3. Style & retrieval targets — for Agent 2 and styling inside the locked shell.
 4. References — inspiration only; never copy their door or window placement.
 
@@ -671,6 +671,26 @@ BUILD_GEMINI_JS = r'''function collectHttpRows() {
   if (j && typeof j === 'object') return [j];
   return [];
 }
+function getImageDimensions(buf) {
+  if (!buf || buf.length < 24) return null;
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  }
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2;
+    while (i < buf.length - 9) {
+      if (buf[i] !== 0xff) { i++; continue; }
+      const marker = buf[i + 1];
+      const len = buf.readUInt16BE(i + 2);
+      if (marker === 0xc0 || marker === 0xc2 || marker === 0xc1) {
+        return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+      }
+      if (len < 2) break;
+      i += 2 + len;
+    }
+  }
+  return null;
+}
 function parseModelValue(row) {
   if (!row) return '';
   let v = row.value;
@@ -700,12 +720,15 @@ const IMAGE_GEN_CONSTRAINTS = `__FRAME_LOCK__`;
 const ARCHITECTURAL_LOCK_BLOCK = `__ARCHITECTURAL_LOCK__`;
 const AGENT3_MANDATE_BLOCK = `__AGENT3_MANDATE__`;
 const DESIGN_PRINCIPLES_BLOCK = `__DESIGN_PRINCIPLES__`;
-const CONFLICT_OVERRIDE = `__CONFLICT_OVERRIDE__`;
 const PRIMARY_BRIEF_HEADER = `__PRIMARY_BRIEF_HEADER__`;
 
 function hasFrameLock(text) {
   const t = (text || '').toLowerCase();
   return t.includes('mandatory (every generation)') && t.includes('first attached image');
+}
+
+function hasArchitecturalHardLock() {
+  return ARCHITECTURAL_LOCK_BLOCK.includes('HARD LOCK (non-negotiable)');
 }
 
 function stripPrependedConstraintBlocks(text) {
@@ -715,6 +738,10 @@ function stripPrependedConstraintBlocks(text) {
     /^STORAGE CONSTRAINTS \(non-negotiable\):[\s\S]*?(?=\n\n|$)/im,
     /\n\nWindow count lock \(mandatory\):[\s\S]*?(?=\n\n[A-Z]|$)/i,
     /\n\nStorage placement \(mandatory\):[\s\S]*?(?=\n\n[A-Z]|$)/i,
+    /^PIXEL DIMENSION LOCK[\s\S]*?(?=\n\n[A-Z]|$)/im,
+    /^CANVAS HARD LOCK[\s\S]*?(?=\n\n[A-Z]|$)/im,
+    /^MANDATORY \(every generation\):[\s\S]*?(?=\n\n[A-Z]|$)/im,
+    /^ARCHITECTURAL LOCK — IMAGE 1[\s\S]*?(?=\n\n(?:DOOR CLEARANCE|===|AGENT 3|INTERIOR DESIGN|PRIMARY)|$)/im,
   ];
   for (const re of patterns) {
     t = t.replace(re, '').trim();
@@ -736,7 +763,10 @@ if (roomHint && !agentPrompt.toLowerCase().includes(roomHint.toLowerCase())) {
   agentPrompt += `\nRoom type: ${roomHint}.`;
 }
 
-const coreBrief = hasFrameLock(agentPrompt) ? agentPrompt : IMAGE_GEN_CONSTRAINTS + '\n\n' + agentPrompt;
+const skipFrameLockPrepend = hasArchitecturalHardLock();
+const coreBrief = (hasFrameLock(agentPrompt) || skipFrameLockPrepend)
+  ? agentPrompt
+  : IMAGE_GEN_CONSTRAINTS + '\n\n' + agentPrompt;
 const refCount = typeof ctx.reference_count === 'number' ? ctx.reference_count : Math.max(0, (ctx.image_parts || []).length - 1);
 const refNote = refCount < 3
   ? `Only ${refCount} reference image(s) attached; follow image 1 and the primary generation brief. References are style inspiration only.\n\n`
@@ -755,6 +785,44 @@ function buildOpeningInventoryBlockFromCtx(inv) {
     lines.push(`Exactly ${inv.window_count} window opening(s)${ww}; do not add any extra window.`);
   }
   return lines.join('\n');
+}
+
+const CANVAS_HARD_LOCK_TEMPLATE = `__CANVAS_HARD_LOCK_TEMPLATE__`;
+let CANVAS_HARD_LOCK_BLOCK = '';
+let input_width = null;
+let input_height = null;
+let canvas_dims_injected = false;
+if (ctx.upload_b64) {
+  try {
+    const uploadBuf = Buffer.from(ctx.upload_b64, 'base64');
+    const dims = getImageDimensions(uploadBuf);
+    if (dims && dims.width && dims.height) {
+      input_width = dims.width;
+      input_height = dims.height;
+      CANVAS_HARD_LOCK_BLOCK = CANVAS_HARD_LOCK_TEMPLATE
+        .replace('{width}', String(input_width))
+        .replace('{height}', String(input_height));
+      canvas_dims_injected = true;
+    }
+  } catch (_) {}
+}
+
+function pickAspectRatio(w, h) {
+  const r = w / h;
+  const choices = [
+    ['1:1', 1], ['5:4', 5 / 4], ['4:3', 4 / 3], ['3:2', 3 / 2], ['16:9', 16 / 9],
+    ['4:5', 4 / 5], ['3:4', 3 / 4], ['2:3', 2 / 3], ['9:16', 9 / 16],
+  ];
+  let best = '4:3';
+  let bestDelta = Infinity;
+  for (const [label, ratio] of choices) {
+    const delta = Math.abs(Math.log(r / ratio));
+    if (delta < bestDelta) {
+      bestDelta = delta;
+      best = label;
+    }
+  }
+  return best;
 }
 
 const OPENING_INVENTORY_BLOCK = buildOpeningInventoryBlockFromCtx(ctx.opening_inventory);
@@ -778,6 +846,7 @@ if (stor && stor.placement === 'freestanding_new') {
 
 const generationPrompt = [
   ARCHITECTURAL_LOCK_BLOCK,
+  CANVAS_HARD_LOCK_BLOCK,
   OPENING_INVENTORY_BLOCK,
   DOOR_CLEARANCE_BLOCK,
   WINDOW_COUNT_BLOCK,
@@ -787,30 +856,46 @@ const generationPrompt = [
   AGENT3_MANDATE_BLOCK,
   refNote,
   DESIGN_PRINCIPLES_BLOCK,
-  CONFLICT_OVERRIDE,
   PRIMARY_BRIEF_HEADER,
   coreBrief,
 ].filter(Boolean).join('\n\n');
 
+const aspect_ratio = (input_width && input_height)
+  ? pickAspectRatio(input_width, input_height)
+  : null;
 const openrouter_body = {
   model,
+  modalities: ['image', 'text'],
   messages: [{
     role: 'user',
     content: [{ type: 'text', text: generationPrompt }, ...(ctx.image_parts || [])]
   }]
 };
+if (aspect_ratio) {
+  openrouter_body.image_config = { aspect_ratio, image_size: '1K' };
+}
 
 return [{
   json: {
     ...ctx,
     model,
     openrouter_body,
+    input_width,
+    input_height,
+    aspect_ratio,
     _prompt_debug: {
       agent_prompt_len: agentPrompt.length,
       generation_prompt_len: generationPrompt.length,
-      frame_lock_prepended: generationPrompt.length > agentPrompt.length,
+      frame_lock_prepended: !skipFrameLockPrepend && !hasFrameLock(agentPrompt),
       has_frame_lock_in_agent: hasFrameLock(ctx.agent_prompt || ''),
+      has_architectural_hard_lock: hasArchitecturalHardLock(),
       has_architectural_lock_block: true,
+      has_canvas_hard_lock_block: Boolean(CANVAS_HARD_LOCK_BLOCK),
+      has_width_lock_language: /WIDTH LOCK/i.test(CANVAS_HARD_LOCK_BLOCK || ''),
+      canvas_dims_injected,
+      input_width,
+      input_height,
+      aspect_ratio,
       has_agent3_mandate_block: true,
       has_design_principles_block: true,
       primary_brief_last: true,
@@ -834,8 +919,6 @@ return [{
 ).replace(
     "__DESIGN_PRINCIPLES__", _js_escape(DESIGN_PRINCIPLES)
 ).replace(
-    "__CONFLICT_OVERRIDE__", _js_escape(CONFLICT_OVERRIDE_LINE)
-).replace(
     "__PRIMARY_BRIEF_HEADER__", _js_escape(PRIMARY_BRIEF_HEADER)
 ).replace(
     "__DOOR_CLEARANCE_BLOCK__", _js_escape(DOOR_CLEARANCE_BLOCK)
@@ -843,7 +926,141 @@ return [{
     "__STORAGE_PLACEMENT_BLOCK__", _js_escape(STORAGE_PLACEMENT_BLOCK)
 ).replace(
     "__CUPBOARD_FOOTPRINT_BLOCK__", _js_escape(CUPBOARD_FOOTPRINT_BLOCK)
+).replace(
+    "__CANVAS_HARD_LOCK_TEMPLATE__", _js_escape(CANVAS_HARD_LOCK_TEMPLATE)
 )
+
+
+EXTRACT_OUTPUT_ORCH_JS = r"""const ctx = $('Build Gemini request').item.json;
+const resp = $json;
+const msg = (resp.choices && resp.choices[0] && resp.choices[0].message) || {};
+
+function collectImageParts(message) {
+  const out = [];
+  if (Array.isArray(message.images)) {
+    for (const p of message.images) {
+      if (p && (p.type === 'image_url' || p.image_url)) out.push(p);
+    }
+  }
+  const content = message.content;
+  if (Array.isArray(content)) {
+    for (const p of content) {
+      if (p && p.type === 'image_url') out.push(p);
+    }
+  } else if (typeof content === 'string' && content.trim()) {
+    const m = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+    if (m) out.push({ type: 'image_url', image_url: { url: m[0] } });
+  }
+  return out;
+}
+
+function getImageDimensions(buf) {
+  if (!buf || buf.length < 24) return null;
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  }
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2;
+    while (i < buf.length - 9) {
+      if (buf[i] !== 0xff) { i++; continue; }
+      const marker = buf[i + 1];
+      const len = buf.readUInt16BE(i + 2);
+      if (marker === 0xc0 || marker === 0xc2 || marker === 0xc1) {
+        return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+      }
+      if (len < 2) break;
+      i += 2 + len;
+    }
+  }
+  return null;
+}
+
+const imgPart = collectImageParts(msg)[0];
+if (!imgPart) {
+  return [{ json: { _error: { status: 502, body: { error: 'no_image_in_response', code: 'upstream_error', has_images: Array.isArray(msg.images), content_type: typeof msg.content } } } }];
+}
+const dataUrl = imgPart.image_url && imgPart.image_url.url;
+const match = dataUrl && dataUrl.match(/^data:([^;]+);base64,(.+)$/s);
+if (!match) {
+  return [{ json: { _error: { status: 502, body: { error: 'invalid_image_data_url', code: 'upstream_error' } } } }];
+}
+let mime = match[1];
+let b64 = match[2];
+let outBuf = Buffer.from(b64, 'base64');
+let outDim = getImageDimensions(outBuf);
+const expectedW = ctx.input_width;
+const expectedH = ctx.input_height;
+let dimension_match = true;
+let dimension_normalized = false;
+let normalize_method = null;
+
+async function normalizeToInput(buf, targetW, targetH) {
+  if (!targetW || !targetH) return null;
+  try {
+    const sharp = require('sharp');
+    const resized = await sharp(buf)
+      .resize(targetW, targetH, { fit: 'fill', kernel: sharp.kernel.lanczos3 })
+      .png()
+      .toBuffer();
+    return { buf: resized, method: 'sharp' };
+  } catch (_) {}
+  return null;
+}
+
+if (expectedW && expectedH && (!outDim || outDim.width !== expectedW || outDim.height !== expectedH)) {
+  const normalized = await normalizeToInput(outBuf, expectedW, expectedH);
+  if (normalized?.buf) {
+    outBuf = normalized.buf;
+    outDim = getImageDimensions(outBuf) || { width: expectedW, height: expectedH };
+    b64 = outBuf.toString('base64');
+    dimension_normalized = true;
+    normalize_method = normalized.method;
+    mime = 'image/png';
+  } else {
+    dimension_match = false;
+  }
+}
+
+const latency_ms = Date.now() - ctx.started_at_ms;
+const model_config = JSON.stringify({
+  dimension_match,
+  dimension_normalized,
+  normalize_method,
+  aspect_ratio: ctx.aspect_ratio || null,
+  input_width: expectedW,
+  input_height: expectedH,
+  output_width: outDim?.width || null,
+  output_height: outDim?.height || null,
+  prompt_debug: ctx._prompt_debug || null,
+});
+
+return [{
+  json: {
+    user_id:              ctx.user_id,
+    session_id:           ctx.session_id,
+    parent_generation_id: null,
+    kind:                 'orchestrated',
+    input_image_path:     `user-uploads/${ctx.user_id}/${ctx.upload_id}`,
+    room_type:            ctx.inferred_room || null,
+    style_tag:            ctx.style_tag || null,
+    reference_image_ids:  ctx.picked_reference_ids,
+    prompt:               ctx.agent_prompt,
+    criteria:             ctx.criteria,
+    model_config,
+    model_id:             ctx.model,
+    latency_ms,
+    cost_usd:             0,
+  },
+  binary: {
+    output_png: {
+      data: b64,
+      mimeType: mime,
+      fileExtension: 'png',
+      fileName: 'output.png',
+    },
+  },
+}];
+"""
 
 
 BUILD_AGENT2_JS_TEMPLATE = r"""const ctx  = $json;
@@ -1380,6 +1597,65 @@ def _ensure_photo_only_node(wf: dict) -> bool:
     return True
 
 
+def _config_js() -> str:
+    return (
+        "return [{\n"
+        "  json: {\n"
+        "    ...$json,\n"
+        "    _cfg: {\n"
+        "      supabase_url:    'https://uzghfpxboktnbcbbthns.supabase.co',\n"
+        "      openrouter_base: 'https://openrouter.ai/api/v1',\n"
+        f"      orch_model:      '{OPENROUTER_ORCH_MODEL_DEFAULT}',\n"
+        f"      retriever_model: '{OPENROUTER_ORCH_MODEL_DEFAULT}'\n"
+        "    }\n"
+        "  },\n"
+        "  binary: $input.first().binary || {},\n"
+        "}];"
+    )
+
+
+def _ensure_config_node(wf: dict) -> bool:
+    nodes = wf.get("nodes", [])
+    if any(n.get("name") == "Config" for n in nodes):
+        return False
+
+    webhook = next(
+        (n for n in nodes if n.get("type") == "n8n-nodes-base.webhook"),
+        None,
+    )
+    wh_pos = webhook.get("position", [240, 300]) if webhook else [240, 300]
+    verify_name = "Extract user from token"
+    if not any(n.get("name") == verify_name for n in nodes):
+        raise RuntimeError("Cannot add Config: Extract user from token node missing")
+
+    nodes.append(
+        {
+            "parameters": {"jsCode": _config_js()},
+            "id": "orch-config",
+            "name": "Config",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [wh_pos[0] + 120, wh_pos[1]],
+        }
+    )
+
+    conns = wf.setdefault("connections", {})
+    wh_name = webhook["name"] if webhook else "POST /generate/orchestrated"
+    old_targets = conns.get(wh_name, {}).get("main", [[]])[0]
+    next_node = (
+        old_targets[0]["node"]
+        if old_targets and old_targets[0].get("node")
+        else verify_name
+    )
+    conns[wh_name] = {
+        "main": [[{"node": "Config", "type": "main", "index": 0}]]
+    }
+    conns["Config"] = {
+        "main": [[{"node": next_node, "type": "main", "index": 0}]]
+    }
+    return True
+
+
 def main() -> None:
     wf = json.loads(WF_PATH.read_text(encoding="utf-8-sig"))
     changed: list[str] = []
@@ -1432,13 +1708,17 @@ def main() -> None:
         elif name == "Build Gemini request":
             js = node["parameters"]["jsCode"]
             if (
-                "OPENING_INVENTORY_BLOCK" not in js
-                or "DOOR_CLEARANCE_BLOCK" not in js
-                or "STORAGE_PLACEMENT_BLOCK" not in js
-                or "PRIMARY_BRIEF_HEADER" not in js
-                or "stripPrependedConstraintBlocks" not in js
+                js != BUILD_GEMINI_JS
+                or "CONFLICT_OVERRIDE" in js
+                or "CANVAS_HARD_LOCK_BLOCK" not in js
+                or "pickAspectRatio" not in js
             ):
                 node["parameters"]["jsCode"] = BUILD_GEMINI_JS
+                changed.append(name)
+        elif name == "Extract output PNG":
+            js = node["parameters"]["jsCode"]
+            if "normalizeToInput" not in js or "dimension_normalized" not in js:
+                node["parameters"]["jsCode"] = EXTRACT_OUTPUT_ORCH_JS
                 changed.append(name)
         elif name == "Build Agent 2 request":
             ba2_cur = node["parameters"]["jsCode"]
@@ -1478,6 +1758,9 @@ def main() -> None:
     if _ensure_photo_only_node(wf):
         changed.append("Photo-only path (new)")
 
+    if _ensure_config_node(wf):
+        changed.append("Config (new)")
+
     for node in wf.get("nodes", []):
         if node.get("name") != "Config":
             continue
@@ -1508,11 +1791,28 @@ def main() -> None:
     WF_PATH.write_text(json.dumps(wf, indent=2) + "\n", encoding="utf-8")
     print("Patched:", ", ".join(changed) or "(already up to date)")
     print("Agent1 orchestrator lines:", len(AGENT1_ORCHESTRATOR.splitlines()))
-    print("Agent3 mandate lines:", len(AGENT3_GENERATION_MANDATE.splitlines()))
-    print("Architectural lock lines:", len(ARCHITECTURAL_LOCK.splitlines()))
-    print("Design principles lines:", len(DESIGN_PRINCIPLES.splitlines()))
+    print("Agent3 mandate lines:", len(AGENT3_GENERATION_MANDATE.splitlines()), f"({len(AGENT3_GENERATION_MANDATE)} chars)")
+    print("Architectural lock lines:", len(ARCHITECTURAL_LOCK.splitlines()), f"({len(ARCHITECTURAL_LOCK)} chars)")
+    print("Design principles lines:", len(DESIGN_PRINCIPLES.splitlines()), f"({len(DESIGN_PRINCIPLES)} chars)")
+    print("Frame lock chars:", len(FRAME_LOCK))
+    print("Door clearance chars:", len(DOOR_CLEARANCE_BLOCK))
+    print("Canvas hard lock template chars:", len(CANVAS_HARD_LOCK_TEMPLATE))
     print("Agent2 system lines:", len(AGENT2_SYSTEM.splitlines()))
 
 
+def assert_prompt_budgets() -> None:
+    arch_max = int(ARCH_LOCK_BASELINE_CHARS / 3 * PROMPT_BUDGET_SLACK)
+    dp_max = int(DESIGN_PRINCIPLES_BASELINE_CHARS / 3 * PROMPT_BUDGET_SLACK)
+    if len(ARCHITECTURAL_LOCK) > arch_max:
+        raise SystemExit(
+            f"architectural_lock.txt {len(ARCHITECTURAL_LOCK)} chars exceeds budget {arch_max}"
+        )
+    if len(DESIGN_PRINCIPLES) > dp_max:
+        raise SystemExit(
+            f"design_principles.txt {len(DESIGN_PRINCIPLES)} chars exceeds budget {dp_max}"
+        )
+
+
 if __name__ == "__main__":
+    assert_prompt_budgets()
     main()

@@ -1,14 +1,7 @@
-AGENT 3 GENERATION MANDATE (image model instructions)
+AGENT 3 GENERATION MANDATE
 
-The PRIMARY GENERATION BRIEF below (from the design director) is the authoritative creative directive for this render.
+PRIMARY GENERATION BRIEF below is the authoritative creative directive.
 
-Priority when anything conflicts:
-1. User photograph (image 1) — exact door/window positions, sizes, asymmetry, light direction, camera frame.
-2. PRIMARY GENERATION BRIEF — user intent, furnishings, materials, and styling inside that locked shell.
-3. Reference images (if attached) — style, palette, materials, and ambient mood only.
+Apply creativity to furnishings, materials, decor, and palette inside the locked shell from image 1 — not doors, windows, light direction, or camera frame.
 
-Reference images are inspiration only. Never copy their door/window placement, window wall, symmetry of openings, camera angle, crop, or light direction. If a reference conflicts with image 1 or the primary brief, ignore the reference.
-
-Do not relocate windows or doors to create symmetry. Preserve asymmetric opening placement exactly as in image 1. Creativity applies to furnishings, materials, decor, and palette — not architecture.
-
-If fewer than three reference images are attached, follow image 1 and the primary brief; do not invent missing reference layout.
+With fewer than three reference images, follow image 1 and the primary brief.

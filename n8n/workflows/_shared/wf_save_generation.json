@@ -167,13 +167,17 @@
       ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": true
   },
-  "tags": [
-    {
-      "name": "shared"
-    }
-  ]
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "_export": {
+    "workflow_id": "CdB8jeEoxr2p3Nht",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:37.036477+00:00"
+  }
 }

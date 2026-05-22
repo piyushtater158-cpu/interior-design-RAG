@@ -10,11 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(ROOT, ".env"))
 
-# Same anon key as mobile-app/index.html (public).
-ANON = (
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2hmcHhib2t0bmJjYmJ0aG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzUwOTAsImV4cCI6MjA5MjAxMTA5MH0."
-    "fWRtnXbZlBVIK34XybMrZfD-0vTueF_U1GDUsDNOiP8"
-)
+ANON = os.getenv("SUPABASE_ANON_KEY", "")
 
 
 def count(key: str) -> str:
@@ -34,6 +30,9 @@ def count(key: str) -> str:
 
 
 def main():
+    if not ANON:
+        print("ERROR: SUPABASE_ANON_KEY missing")
+        sys.exit(1)
     svc = os.getenv("SUPABASE_SERVICE_KEY", "")
     if not svc:
         print("ERROR: SUPABASE_SERVICE_KEY missing")

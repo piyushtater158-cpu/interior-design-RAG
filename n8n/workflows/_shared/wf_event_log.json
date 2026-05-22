@@ -14,7 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{\n  json: {\n    ...$json,\n    _cfg: {\n      supabase_url:    'https://uzghfpxboktnbcbbthns.supabase.co',\n      supabase_key:    process.env.SUPABASE_SERVICE_KEY\n    }\n  },\n  binary: $input.first().binary || {}\n}];"
+        "jsCode": "return [{\n  json: {\n    ...$json,\n    _cfg: {\n      supabase_url:    'https://uzghfpxboktnbcbbthns.supabase.co',\n      supabase_key:    '__REDACTED_SUPABASE_SERVICE_KEY__'\n    }\n  },\n  binary: $input.first().binary || {}\n}];"
       },
       "id": "639640d2-e12f-46ed-a246-1bec95983480",
       "name": "Config",
@@ -46,6 +46,14 @@
         "headerParameters": {
           "parameters": [
             {
+              "name": "apikey",
+              "value": "={{ $('Config').first().json._cfg.supabase_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ={{ $('Config').first().json._cfg.supabase_key }}"
+            },
+            {
               "name": "Content-Type",
               "value": "application/json"
             },
@@ -66,9 +74,7 @@
               "fullResponse": false
             }
           }
-        },
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "supabaseApi"
+        }
       },
       "id": "a983ab9b-c3ae-4933-af1c-b14ab1bf4d5d",
       "name": "Insert into events",
@@ -77,13 +83,7 @@
       "position": [
         448,
         0
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "7rZNgbzFZJtpVqub",
-          "name": "Supabase account"
-        }
-      }
+      ]
     },
     {
       "parameters": {
@@ -145,14 +145,17 @@
       ]
     }
   },
-  "active": true,
   "settings": {
     "executionOrder": "v1",
     "availableInMCP": true
   },
-  "tags": [
-    {
-      "name": "shared"
-    }
-  ]
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "_export": {
+    "workflow_id": "Hycihwac8DqZzBje",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:36.455650+00:00"
+  }
 }

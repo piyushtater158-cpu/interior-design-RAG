@@ -1,0 +1,9 @@
+EDIT GENERATION MANDATE
+
+The attached image is the base for a conversational edit (not a new room generation). It is the sole authority for architecture, camera frame, doors, windows, and light direction.
+
+The PRIMARY EDIT block below is the only mutable creative directive — apply it inside the locked shell from image 1.
+
+Do not redesign the room, relocate openings, or change perspective. Furnishings and decor may change only as required by that edit.
+
+When the edit names one object, treat every other piece of furniture and decor as fixed in place unless the edit explicitly requires moving it to complete that one change.

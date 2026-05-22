@@ -8,13 +8,26 @@ Also syncs the local source JSON files.
 import json, os, sys
 import urllib.request, urllib.error
 
-N8N_BASE = "https://n8n.srv1649259.hstgr.cloud"
-N8N_KEY  = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-             ".eyJzdWIiOiJiNjM5NGU0MC02YzQ2LTQ1M2ItYWNhOS01Y2NhMTdlZWJmOGEi"
-             "LCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNTkxNTQx"
-             "ZDAtNjFkNi00MTI0LWFhZGMtZTZkNGY3ZDI3YTU3IiwiaWF0IjoxNzc4MDgw"
-             "OTEzLCJleHAiOjE3ODA2MTA0MDB9"
-             ".dtY7tmo61eiTqkJevyA5sThzKnMWbrPj4k8LAehnOzk")
+import os
+from pathlib import Path
+
+PROJECT = Path(__file__).resolve().parent.parent
+
+
+def _load_n8n_key() -> str:
+    env_path = PROJECT / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("N8N_API_KEY="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    key = os.environ.get("N8N_API_KEY", "")
+    if not key:
+        raise SystemExit("N8N_API_KEY not set in .env")
+    return key
+
+
+N8N_BASE = os.environ.get("N8N_API_BASE", "https://n8n.srv1649259.hstgr.cloud/api/v1").replace("/api/v1", "")
+N8N_KEY = _load_n8n_key()
 
 WRITABLE = {"name", "description", "nodes", "connections",
             "settings", "staticData", "pinData"}

@@ -302,13 +302,13 @@
       ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": true
   },
-  "tags": [
-    {
-      "name": "generations"
-    }
-  ]
+  "_export": {
+    "workflow_id": "KJlz5cR0HG0zhcGx",
+    "active": true,
+    "exported_at": "2026-05-22T22:06:35.127668+00:00"
+  }
 }

@@ -1,129 +1,78 @@
 #!/usr/bin/env python3
 """
-migrate_to_named_credentials.py
 Replace hardcoded secrets in n8n workflow JSONs with n8n env-var expressions.
 
 Usage:
-  python n8n/migrate_to_named_credentials.py --check   # dry-run, print what would change
-  python n8n/migrate_to_named_credentials.py --apply   # patch files in-place
+  python n8n/migrate_to_named_credentials.py --check
+  python n8n/migrate_to_named_credentials.py --apply
 
-After patching, set these environment variables in n8n Settings → Environment:
-  OPENROUTER_API_KEY  = sk-or-v1-...
-  SUPABASE_ANON_KEY   = eyJhbGc... (anon/public key)
-  SUPABASE_SERVICE_KEY= sb_secret_... (service-role key)
-  ADMIN_TOKEN         = __REDACTED_ADMIN_TOKEN__
+Set variables in n8n Settings → Environment (see .env.example).
 """
+from __future__ import annotations
 
 import json
-import os
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).parent.parent
 WORKFLOWS_DIR = ROOT / "n8n" / "workflows"
 
-# (literal_string, replacement_expression)
-SIMPLE_REPLACEMENTS = [
-    # OpenRouter API key
+# Regex-based replacements (no literal secrets in this file)
+PATTERN_REPLACEMENTS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"Bearer sk-or-v1-[A-Za-z0-9]+"), "=Bearer {{ $env.OPENROUTER_API_KEY }}"),
+    (re.compile(r"sk-or-v1-[A-Za-z0-9]+"), "={{ $env.OPENROUTER_API_KEY }}"),
     (
-        "Bearer __REDACTED_OPENROUTER_API_KEY__",
-        "=Bearer {{ $env.OPENROUTER_API_KEY }}",
-    ),
-    (
-        "__REDACTED_OPENROUTER_API_KEY__",
-        "={{ $env.OPENROUTER_API_KEY }}",
-    ),
-    # Supabase anon key
-    (
-        "__REDACTED_JWT_OR_ANON__",
+        re.compile(
+            r"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"
+        ),
         "={{ $env.SUPABASE_ANON_KEY }}",
     ),
-    # Supabase service key (used in REST calls; note: Phase 5 will refine which calls
-    # should use user bearer vs service key)
-    (
-        "__REDACTED_SUPABASE_SERVICE_KEY__",
-        "={{ $env.SUPABASE_SERVICE_KEY }}",
-    ),
-    (
-        "=__REDACTED_SUPABASE_SERVICE_KEY__",
-        "={{ $env.SUPABASE_SERVICE_KEY }}",
-    ),
-    (
-        "Bearer __REDACTED_SUPABASE_SERVICE_KEY__",
-        "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}",
-    ),
-    (
-        "=Bearer __REDACTED_SUPABASE_SERVICE_KEY__",
-        "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}",
-    ),
-    # Admin token (in JS code string)
-    (
-        "__REDACTED_ADMIN_TOKEN__",
-        "' + (process.env.ADMIN_TOKEN || $env.ADMIN_TOKEN || '') + '",
-    ),
+    (re.compile(r"sb_secret_[A-Za-z0-9_-]+"), "={{ $env.SUPABASE_SERVICE_KEY }}"),
+    (re.compile(r"=sb_secret_[A-Za-z0-9_-]+"), "={{ $env.SUPABASE_SERVICE_KEY }}"),
+    (re.compile(r"Bearer sb_secret_[A-Za-z0-9_-]+"), "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"),
+    (re.compile(r"=Bearer sb_secret_[A-Za-z0-9_-]+"), "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"),
+    (re.compile(r"AIzaSy[A-Za-z0-9_-]{20,}"), "={{ $env.GOOGLE_AI_STUDIO_KEY }}"),
+    (re.compile(r"__REDACTED_ADMIN_TOKEN__"), "' + ($env.ADMIN_TOKEN || '') + '"),
+    (re.compile(r"__REDACTED_ADMIN_TOKEN__"), "' + ($env.ADMIN_TOKEN || '') + '"),
 ]
 
-# Gemini direct-call keys to flag as still needing manual migration
-REMAINING_SECRETS = [
-    "AIzaSy",  # Gemini API key prefix
-]
+REMAINING_SECRETS = ["AIzaSy", "sk-or-v1", "sb_secret_"]
 
 
 def patch_text(text: str) -> tuple[str, list[str]]:
-    """Apply all simple replacements. Returns (new_text, list_of_changes)."""
-    changes = []
-    for old, new in SIMPLE_REPLACEMENTS:
-        if old in text:
-            count = text.count(old)
-            text = text.replace(old, new)
-            changes.append(f"  replaced {count}x: {old[:60]}…")
+    changes: list[str] = []
+    for pattern, repl in PATTERN_REPLACEMENTS:
+        if pattern.search(text):
+            text, n = pattern.subn(repl, text)
+            if n:
+                changes.append(f"  replaced {n}x via {pattern.pattern[:40]}…")
     return text, changes
 
 
-def check_remaining(text: str, path: pathlib.Path) -> list[str]:
-    warnings = []
-    for secret in REMAINING_SECRETS:
-        if secret in text:
-            warnings.append(f"  WARNING: still contains '{secret}' — needs manual migration")
-    return warnings
+def patch_file(path: pathlib.Path, apply: bool) -> list[str]:
+    raw = path.read_text(encoding="utf-8")
+    patched, changes = patch_text(raw)
+    if not changes:
+        return []
+    if apply:
+        path.write_text(patched, encoding="utf-8")
+    return [f"{path.relative_to(ROOT)}:"] + changes
 
 
 def main() -> None:
-    dry_run = "--check" in sys.argv
-    apply   = "--apply" in sys.argv
-
-    if not dry_run and not apply:
-        print(__doc__)
-        sys.exit(1)
-
-    json_files = sorted(WORKFLOWS_DIR.rglob("*.json"))
-    total_changes = 0
-
-    for path in json_files:
-        original = path.read_text(encoding="utf-8")
-        patched, changes = patch_text(original)
-        warnings = check_remaining(patched, path)
-
-        if changes or warnings:
-            print(f"\n{path.relative_to(ROOT)}")
-            for c in changes:
-                print(c)
-            for w in warnings:
-                print(w)
-            total_changes += len(changes)
-
-        if apply and changes and patched != original:
-            path.write_text(patched, encoding="utf-8")
-            print("  -> written")
-
-    if total_changes == 0 and not any(
-        check_remaining(p.read_text("utf-8"), p) for p in json_files
-    ):
-        print("No secrets found — already clean.")
-    elif dry_run:
-        print(f"\nDry run: {total_changes} replacement(s) would be applied. Run --apply to patch.")
-    else:
-        print(f"\nApplied {total_changes} replacement(s).")
+    apply = "--apply" in sys.argv
+    total: list[str] = []
+    for path in sorted(WORKFLOWS_DIR.rglob("*.json")):
+        if path.name == "work.json":
+            continue
+        total.extend(patch_file(path, apply))
+    if not total:
+        print("No hardcoded secrets matched in workflow JSON files.")
+        return
+    print(("APPLIED" if apply else "DRY-RUN") + ":\n" + "\n".join(total))
+    if not apply:
+        print("\nRe-run with --apply to write changes.")
 
 
 if __name__ == "__main__":
